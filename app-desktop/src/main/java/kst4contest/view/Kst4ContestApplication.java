@@ -3706,9 +3706,25 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		clusterTable.replaceRows(chatcontroller.getLst_clusterMemberList().snapshot());
 		qsoTable.replaceRows(chatcontroller.toOtherMessages());
 
+		/*
+		 * The same preference the JavaFX SplitPane wrote, so a profile gets back the
+		 * position its operator dragged before the Compose port (#144).
+		 */
+		SplitterState monitorSplitter = new SplitterState(
+				2,
+				chatcontroller.getChatPreferences().getGUIpnl_directedMSGWin_dividerpositionDefault(),
+				SplitterState.DEFAULT_MIN_PANE_PX,
+				positions -> {
+					chatcontroller.getChatPreferences()
+							.setGUIpnl_directedMSGWin_dividerpositionDefault(positions);
+					requestLayoutSave();
+					return kotlin.Unit.INSTANCE;
+				});
+
 		MonitorWindow.show(
 				clusterTable,
 				qsoTable,
+				monitorSplitter,
 				chatcontroller.getChatPreferences().isGUI_darkModeActive(),
 				SETTINGS_WINDOW_FONT_SIZE_SP,
 				paletteStore,

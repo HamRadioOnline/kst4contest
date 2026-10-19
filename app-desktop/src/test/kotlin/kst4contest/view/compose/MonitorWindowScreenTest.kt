@@ -1,6 +1,12 @@
 package kst4contest.view.compose
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -9,6 +15,7 @@ import kst4contest.model.ChatMember
 import kst4contest.model.ChatMessage
 import kst4contest.model.ClusterMessage
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -56,10 +63,13 @@ class MonitorWindowScreenTest {
     private fun ComposeUiTest.show(
         cluster: DataTableState<ClusterMessage>,
         qsos: DataTableState<ChatMessage>,
+        splitter: SplitterState = SplitterState(paneCount = 2, stored = doubleArrayOf(0.5)) {},
     ) {
         setContent {
             Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
-                MonitorContent(cluster, qsos)
+                Box(Modifier.size(600.dp, 400.dp)) {
+                    MonitorContent(cluster, qsos, splitter)
+                }
             }
         }
         waitForIdle()
@@ -73,6 +83,22 @@ class MonitorWindowScreenTest {
         onNodeWithText("QSO of the other").assertExists()
         onNodeWithText("Call tx").assertExists()
         onNodeWithText("Call TX").assertExists()
+    }
+
+    /**
+     * The two tables used to get half the height each, fixed, and the stored position the
+     * JavaFX SplitPane had written was read by nobody (#144). The QSO heading is the top of
+     * the lower pane, so where it sits says where the divider is.
+     */
+    @Test
+    fun theStoredDividerPositionSplitsTheWindow() = runComposeUiTest {
+        show(clusterTable(), qsoTable(), SplitterState(paneCount = 2, stored = doubleArrayOf(0.8)) {})
+
+        val window = onRoot().getBoundsInRoot()
+        val qsoHeadingTop = onNodeWithText("QSO of the other").getBoundsInRoot().top
+        val share = (qsoHeadingTop - window.top) / (window.bottom - window.top)
+
+        assertTrue(share in 0.75f..0.85f, "QSO pane starts at $share of the height, expected about 0.8")
     }
 
     @Test
