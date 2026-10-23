@@ -100,11 +100,11 @@ class PaletteStoreFactoryTest(@TempDir private val tempDir: Path) {
         val files = OperatorProfilePaletteFiles.of(other)
 
         assertTrue(
-            files.dayFile.path.endsWith("profiles/OP2/KST4ContestDefaultDay.css"),
+            files.dayFile.toPath().endsWith(Path.of("profiles", "OP2", "KST4ContestDefaultDay.css")),
             "the daylight file is ${files.dayFile.path}",
         )
         assertTrue(
-            files.eveningFile.path.endsWith("profiles/OP2/KST4ContestDefaultEvening.css"),
+            files.eveningFile.toPath().endsWith(Path.of("profiles", "OP2", "KST4ContestDefaultEvening.css")),
             "the evening file is ${files.eveningFile.path}",
         )
     }

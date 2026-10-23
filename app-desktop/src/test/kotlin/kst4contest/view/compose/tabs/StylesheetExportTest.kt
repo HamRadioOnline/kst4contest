@@ -93,12 +93,16 @@ class StylesheetExportTest {
 
     @Test
     fun anUnwritablePlaceIsReportedRatherThanThrown() {
-        val target = File("/proc/kst4contest-cannot-write-here/day.css")
+        val blockingFile = Files.createTempFile("kst4contest-export-blocked-parent", ".tmp").toFile()
+        try {
+            val target = File(blockingFile, "day.css")
+            val outcome = exportShippedStylesheet(target, darkMode = false)
 
-        val outcome = exportShippedStylesheet(target, darkMode = false)
-
-        assertTrue(outcome is StylesheetExportOutcome.Failed, "outcome was $outcome")
-        assertNotNull((outcome as StylesheetExportOutcome.Failed).reason)
+            assertTrue(outcome is StylesheetExportOutcome.Failed, "outcome was $outcome")
+            assertNotNull((outcome as StylesheetExportOutcome.Failed).reason)
+        } finally {
+            blockingFile.delete()
+        }
     }
 
     @Test
