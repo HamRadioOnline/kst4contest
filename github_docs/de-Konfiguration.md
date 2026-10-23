@@ -733,12 +733,14 @@ Sind die allgemeine und die QRG-bezogene Antwort gleichzeitig aktiviert, hat die
 
 ### Debug- und Contest-History
 
-**Enable debug mode to file** ist standardmäßig aktiviert und wirkt ohne Neustart. Der Schalter steuert zwei getrennte Dateien im Verzeichnis `.praktiKST` des Benutzerprofils:
+**Enable debug mode to file** ist standardmäßig aktiviert und wirkt ohne Neustart. Neue Diagnosedateien liegen im Unterverzeichnis `.praktiKST/debug` des Benutzerprofils:
 
 - `kst4contest-errors.log` enthält bei aktiviertem Debug-Modus zusätzliche `INFO`- und `FINE`-Diagnosen. Warnungen, Fehler und Exceptions werden unabhängig vom Schalter immer geschrieben.
 - `Messagehistory.raw` zeichnet den vollständigen ON4KST-Verkehr der aktuellen Programmsitzung auf. Dazu gehören RX und TX, also neben Chat- und Privatnachrichten auch Benutzer-, Status-, Control- und Keepalive-Frames.
 
-Unter Windows liegt die History beispielsweise unter `C:\Users\<Benutzername>\.praktiKST\Messagehistory.raw`, unter Linux und macOS unter `~/.praktiKST/Messagehistory.raw`.
+Unter Windows liegt die History beispielsweise unter `C:\Users\<Benutzername>\.praktiKST\debug\Messagehistory.raw`, unter Linux und macOS unter `~/.praktiKST/debug/Messagehistory.raw`. KST4Contest legt das Verzeichnis bei Bedarf an. Vorhandene Diagnosedateien direkt unter `.praktiKST` werden weder verschoben noch gelöscht.
+
+Die Datei `kst4contest-errors.log` rotiert bei 20 MiB. Einschließlich der aktiven Datei bleiben höchstens fünf Generationen erhalten.
 
 Jede Zeile enthält genau ein Ereignis:
 
@@ -986,11 +988,12 @@ Für einen kurzen Wechsel während des Betriebs gibt es **Windows → Use dark m
 
 ## Einstellungen speichern
 
-**Save Settings** übernimmt zuerst offene Änderungen und speichert dann die fachlichen Einstellungen und den vollständigen aktuellen Layoutstand. Änderungen an Fenstergrößen und -positionen, relevanten Dividern, verwalteten Tabellenbreiten sowie der Karteneinstellung **Group nearby stations** werden zusätzlich automatisch mit kurzer Verzögerung gespeichert. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben.
+**Save Settings** übernimmt zuerst offene Änderungen und speichert dann die fachlichen Einstellungen und den vollständigen aktuellen Layoutstand. Änderungen an Fenstergrößen und -positionen, relevanten Dividern, verwalteten Tabellenbreiten sowie den Karteneinstellungen **Gruppierung** und **Immer im Vordergrund** werden zusätzlich automatisch mit kurzer Verzögerung gespeichert. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben.
 
 - Speicherort: unter Linux und macOS `~/.praktiKST/preferences.xml` und unter Windows `%USERPROFILE%\.praktiKST\preferences.xml` (bzw. `C:\Users\<Benutzername>\.praktiKST\preferences.xml`)
 - Der automatische Layout-Writer übernimmt keine noch nicht mit **Save Settings** bestätigten fachlichen Änderungen.
 - Die Konfigurationsversion 6 ergänzt optionale Spaltenbreiten unter `guiOptions`. Ältere `preferences.xml`-Dateien bleiben lesbar; fehlen Breiten oder sind Einträge ungültig, ermittelt KST4Contest wieder brauchbare Anfangsbreiten.
 - Die Konfigurationsversion 7 ergänzt `GUIstationMapClusteringEnabled` unter `guiOptions`. Fehlt der Eintrag oder ist sein Wert unbrauchbar, bleibt die räumliche Kartengruppierung aktiviert.
-- Ältere Programmversionen ignorieren die zusätzlichen XML-Einträge. Wenn eine ältere Version die Datei vollständig neu speichert, können die Spaltenbreiten und die gespeicherte Auswahl für **Group nearby stations** verloren gehen.
+- `GUIstationMapAlwaysOnTop` ist ein optionaler Layoutwert unter `guiOptions`. Fehlt der Eintrag oder ist sein Wert unbrauchbar, verhält sich das Kartenfenster normal und bleibt nicht dauerhaft im Vordergrund.
+- Ältere Programmversionen ignorieren die zusätzlichen XML-Einträge. Wenn eine ältere Version die Datei vollständig neu speichert, können die Spaltenbreiten sowie die gespeicherten Einstellungen für **Gruppierung** und **Immer im Vordergrund** verloren gehen.
 - Bei Problemen: Konfigurationsdatei löschen → KST4Contest erstellt eine neue mit Standardwerten.

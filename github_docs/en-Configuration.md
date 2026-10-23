@@ -733,12 +733,14 @@ When both automatic-reply functions are enabled, the QRG reply takes precedence.
 
 ### Debug and contest history
 
-**Enable debug mode to file** is enabled by default and takes effect without restarting the application. The setting controls two separate files in the `.praktiKST` directory of the user profile:
+**Enable debug mode to file** is enabled by default and takes effect without restarting the application. New diagnostic files are stored in the `.praktiKST/debug` subdirectory of the user profile:
 
 - `kst4contest-errors.log` includes additional `INFO` and `FINE` diagnostics while debug mode is enabled. Warnings, errors and exceptions are written regardless of this setting.
 - `Messagehistory.raw` records the complete ON4KST traffic of the current program session. It contains RX and TX traffic, including chat, private-message, user, status, control and keepalive frames.
 
-On Windows, the history is stored at `C:\Users\<YourName>\.praktiKST\Messagehistory.raw`; on Linux and macOS it is stored at `~/.praktiKST/Messagehistory.raw`.
+On Windows, the history is stored at `C:\Users\<YourName>\.praktiKST\debug\Messagehistory.raw`; on Linux and macOS it is stored at `~/.praktiKST/debug/Messagehistory.raw`. KST4Contest creates the directory when needed. Existing diagnostic files directly below `.praktiKST` are neither moved nor deleted.
+
+The `kst4contest-errors.log` file rotates at 20 MiB. At most five generations are retained, including the active file.
 
 Each line contains exactly one event:
 
@@ -1043,11 +1045,12 @@ For a quick change during operation, use **Windows → Use dark mode design** an
 
 ## Saving Settings
 
-**Save Settings** applies pending changes first, then stores functional settings and the complete current layout. Changes to window sizes and positions, relevant dividers, managed table-column widths and the **Group nearby stations** map setting are also saved automatically after a short delay. Any pending layout update is written when the programme exits.
+**Save Settings** applies pending changes first, then stores functional settings and the complete current layout. Changes to window sizes and positions, relevant dividers, managed table-column widths and the **Grouping** and **Always on top** map settings are also saved automatically after a short delay. Any pending layout update is written when the programme exits.
 
 - Storage location: `~/.praktiKST/preferences.xml` on Linux and macOS and `%USERPROFILE%\.praktiKST\preferences.xml` (or `C:\Users\<Username>\.praktiKST\preferences.xml`) on Windows
 - The automatic layout writer does not copy functional changes which have not yet been confirmed with **Save Settings**.
 - Configuration version 6 adds optional column-width entries below `guiOptions`. Older `preferences.xml` files remain readable. Missing or invalid widths simply cause KST4Contest to calculate useful initial widths again.
 - Configuration version 7 adds `GUIstationMapClusteringEnabled` below `guiOptions`. If the entry is missing or unusable, spatial map clustering remains enabled.
-- Older programme versions ignore the additional XML entries. If an older version rewrites the complete file, column widths and the stored **Group nearby stations** choice may be lost.
+- `GUIstationMapAlwaysOnTop` is an optional layout value below `guiOptions`. If the entry is missing or unusable, the map window uses normal window behaviour and does not remain permanently in front.
+- Older programme versions ignore the additional XML entries. If an older version rewrites the complete file, column widths and the stored **Grouping** and **Always on top** choices may be lost.
 - If you encounter problems: delete the configuration file → KST4Contest will create a new one with default values.

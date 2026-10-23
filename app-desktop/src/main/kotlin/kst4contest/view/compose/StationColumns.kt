@@ -45,7 +45,14 @@ object StationColumns {
         formatBand: (ChatMember, kst4contest.model.Band, Boolean) -> String,
         activeBands: EnumSet<kst4contest.model.Band> = EnumSet.allOf(kst4contest.model.Band::class.java),
     ): List<DataColumn<ChatMember>> = buildList {
-        add(DataColumn(id = "callsign", title = { kst4contest.view.i18n.CurrentStrings.get().columnCallsign }, value = { it.callSign.orEmpty() }))
+        add(DataColumn(
+            id = "callsign",
+            title = { kst4contest.view.i18n.CurrentStrings.get().columnCallsign },
+            value = { it.callSign.orEmpty() },
+            comparator = compareBy(String.CASE_INSENSITIVE_ORDER) { member: ChatMember ->
+                member.callSign?.trim().orEmpty()
+            },
+        ))
         add(DataColumn(id = "name", title = { kst4contest.view.i18n.CurrentStrings.get().columnName }, value = { it.name.orEmpty() }))
         add(DataColumn(id = "qra", title = "QRA", value = { it.qra.orEmpty() }, weight = 0.8f))
         add(DataColumn(

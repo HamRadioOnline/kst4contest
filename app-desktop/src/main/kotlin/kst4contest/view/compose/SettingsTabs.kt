@@ -1,10 +1,7 @@
 package kst4contest.view.compose
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import kst4contest.controller.ChatController
 import kst4contest.controller.ActiveOperatorProfile
 import kst4contest.controller.OperatorProfileManagementService
@@ -324,18 +321,11 @@ fun settingsButtons(
     host: SettingsHost,
     notices: SettingsNotices,
     draft: SettingsDraft,
+    connectionState: () -> On4KstConnectionState,
 ): @Composable (close: () -> Unit) -> Unit {
-    val barState = ConnectionBarState(controller.chatPreferences, controller)
+    val barState = ConnectionBarState(controller.chatPreferences, connectionState)
 
     return { close ->
-        /*
-         * The bar is rebuilt after every action so its labels and enabled states follow
-         * the session. The JavaFX bar was told by onConnectionStateChanged instead.
-         */
-        var revision by remember { mutableStateOf(0) }
-
-        @Suppress("UNUSED_EXPRESSION") revision
-
         ConnectionBar(
             state = barState,
             onConnect = {
@@ -343,14 +333,12 @@ fun settingsButtons(
                     val refusal = host.connectFromSettings()
                     if (refusal != null) notices.problem(refusal)
                 }
-                revision++
             },
             onSave = { applyAndSave(draft, notices, host::savePreferencesFromSettings) },
             onApplyAndClose = { if (applyChecked(draft, notices)) close() },
             onDisconnectAndCloseChat = host::disconnectAndCloseChatFromSettings,
             onDisconnectOnly = {
                 host.disconnectOnlyFromSettings()
-                revision++
             },
         )
     }

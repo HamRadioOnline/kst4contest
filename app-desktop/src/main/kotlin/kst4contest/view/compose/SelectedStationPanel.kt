@@ -2,12 +2,24 @@ package kst4contest.view.compose
 
 import kst4contest.view.i18n.LocalStrings
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,8 +34,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import kst4contest.model.Band
 import java.util.function.Consumer
+
+internal const val SELECTED_STATION_PANEL_TAG = "selected-station-panel"
+internal const val SELECTED_NOT_QRV_GROUP_TAG = "selected-not-qrv-group"
+internal const val SELECTED_SKED_GROUP_TAG = "selected-sked-group"
+
+internal fun skedBandOptions(activeBands: Set<Band>): List<Band> {
+    val options = ArrayList<Band>(activeBands.size)
+    Band.entries.forEach { band ->
+        if (activeBands.contains(band)) options.add(band)
+    }
+    return options
+}
 
 /**
  * The panel below the station list, for whichever station is selected.
@@ -40,9 +65,7 @@ import java.util.function.Consumer
 fun SelectedStationPanel(
     state: SelectedStationState,
     messages: DataTableState<kst4contest.model.ChatMessage>,
-    /** The bands this station is set up for; BandOpportunityResolver decides them. */
-    skedBands: List<Band>,
-    /** My own station's enabled bands; used for the "Tag not QRV" checkboxes. */
+    /** My own station's enabled bands; used for NOT-QRV and sked controls. */
     activeBands: Set<Band>,
     openInBrowser: Consumer<String>,
     onShowOnMap: () -> Unit,
@@ -52,9 +75,21 @@ fun SelectedStationPanel(
     val strings = LocalStrings.current
     val member = state.selected
 
+    val scroll = rememberScrollState()
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(SELECTED_STATION_PANEL_TAG)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outlineVariant),
+    ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 3.dp, end = Density.SCROLLBAR_GUTTER, bottom = 4.dp)
+            .verticalScroll(scroll),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (member == null) {
             Text(
@@ -65,120 +100,84 @@ fun SelectedStationPanel(
             return@Column
         }
 
-        Text(
-            member.callSign.orEmpty() + "  " + member.qra.orEmpty(),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-        )
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(bottom = 8.dp)
-        ) {
-            val category = member.chatCategory?.let { it.getChatCategoryName(it.categoryNumber) }
-            if (category != null) {
-                Text(category, style = MaterialTheme.typography.bodySmall)
-            }
-            if (member.getQTFdirection() != null) {
-                Text("QTF: ${member.getQTFdirection()}°", style = MaterialTheme.typography.bodySmall)
-            }
-            if (member.qrb != null) {
-                Text("QRB: ${member.qrb} km", style = MaterialTheme.typography.bodySmall)
-            }
-
+        val category = member.chatCategory?.let { it.getChatCategoryName(it.categoryNumber) }
+        val detectedBands = state.detectedBands()
+        val metadata = buildList {
+            category?.let(::add)
+            member.getQTFdirection()?.let { add("QTF: $it°") }
+            member.qrb?.let { add("QRB: $it km") }
             val lastActSec = member.activityTimeLastInEpoch
             if (lastActSec > 0L) {
                 val actStr = MessageFormats.clockTime(lastActSec.toString())
-                val minAgo = kst4contest.controller.Utils4KST.time_getSecondsBetweenEpochAndNow(lastActSec.toString()) / 60
-                Text(strings.selectedLastActivity(actStr, minAgo), style = MaterialTheme.typography.bodySmall)
+                val minAgo = kst4contest.controller.Utils4KST
+                    .time_getSecondsBetweenEpochAndNow(lastActSec.toString()) / 60
+                add(strings.selectedLastActivity(actStr, minAgo))
             }
-
-            val detectedBands = state.detectedBands()
-            if (detectedBands.isNotBlank()) {
-                Text(detectedBands, style = MaterialTheme.typography.bodySmall)
+            add(detectedBands.ifBlank { strings.tooltipBandsNone })
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp),
+        ) {
+            Text(
+                member.callSign.orEmpty(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            metadata.forEach { value ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "|",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(end = Density.BUTTON_GAP),
+                    )
+                    Text(value, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
 
-        Form.section(strings.selectedShowMessages) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP)) {
-                SelectedMessageFilter.entries.forEach { filter ->
-                    RadioChoice(
-                        label = filter.label,
-                        selected = state.messageFilter == filter,
-                        onSelect = { state.messageFilter = filter },
-                    )
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+            verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
+            ) {
+                Text(
+                    "${strings.selectedShowMessages}:",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(end = Density.BUTTON_GAP),
+                )
+                RadioChoice(
+                    label = SelectedMessageFilter.PM_TO_ME.label,
+                    selected = state.messageFilter == SelectedMessageFilter.PM_TO_ME,
+                    onSelect = { state.messageFilter = SelectedMessageFilter.PM_TO_ME },
+                )
+            }
+            SelectedMessageFilter.entries.drop(1).forEach { filter ->
+                RadioChoice(
+                    label = filter.label,
+                    selected = state.messageFilter == filter,
+                    onSelect = { state.messageFilter = filter },
+                )
             }
         }
 
         DataTableView(
             state = messages,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Density.SELECTED_MESSAGE_TABLE_HEIGHT),
         )
 
-        Form.section(strings.selectedTagNotQrv) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP)) {
-                val activeNotQrvBands = NotQrvBand.entries.filter { activeBands.contains(it.band) }
-                
-                activeNotQrvBands.forEach { band ->
-                    Form.check(band.label, state.isTaggedNotQrv(band)) {
-                        state.tagNotQrv(band, it)
-                    }
-                }
-
-                Form.check(strings.selectedNotQrvAll, activeNotQrvBands.all { state.isTaggedNotQrv(it) }) {
-                    state.tagNotQrvAll(it)
-                }
-            }
-        }
-
-        Form.section("Sked") {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP)
-            ) {
-                Form.inlineChoice(
-                    label = strings.selectedSkedInMinutes,
-                    items = SelectedStationState.SKED_MINUTES,
-                    selected = state.skedMinutes,
-                    describe = { it.toString() },
-                    onSelect = { state.skedMinutes = it },
-                )
-                Form.inlineChoice(
-                    label = strings.selectedBand,
-                    items = skedBands,
-                    selected = state.skedBand,
-                    describe = { it.prefix + " MHz" },
-                    onSelect = { state.skedBand = it },
-                )
-                Form.inlineChoice(
-                    label = strings.selectedMode,
-                    items = SelectedStationState.SKED_MODES,
-                    selected = state.skedMode,
-                    describe = { it },
-                    onSelect = { state.skedMode = it },
-                )
-            }
-            
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Form.check(strings.selectedRemindPmIn, state.remindPm) { state.remindPm = it }
-                Form.inlineChoice(
-                    label = strings.selectedReminderOffsets,
-                    items = SelectedStationState.REMINDER_OFFSETS,
-                    selected = state.reminderOffsets,
-                    describe = { it },
-                    enabled = state.remindPm,
-                    onSelect = { state.reminderOffsets = it },
-                )
-            }
-
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP)) {
-                Form.button(strings.selectedCreateSked, enabled = state.canCreateSked) { state.createSked() }
-                Form.button(strings.selectedSkedFail, enabled = state.canCreateSked) { state.markSkedFail() }
-                Form.button(strings.selectedResetFail, enabled = state.canCreateSked) { state.resetSkedFail() }
-            }
-        }
+        SelectedStationActionGroups(
+            state = state,
+            activeBands = activeBands,
+        )
 
         Form.section(strings.selectedLookUpAndShow) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP)) {
@@ -202,8 +201,175 @@ fun SelectedStationPanel(
                 }
             }
         }
+    }
 
+        VerticalScrollbar(
+            adapter = rememberScrollbarAdapter(scroll),
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            style = LocalScrollbarStyle.current.copy(
+                unhoverColor = MaterialTheme.colorScheme.outline,
+                hoverColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        )
+    }
+}
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SelectedStationActionGroups(
+    state: SelectedStationState,
+    activeBands: Set<Band>,
+) {
+    val strings = LocalStrings.current
+    val member = state.selected ?: return
+    val activeNotQrvBands = NotQrvBand.entries.filter { activeBands.contains(it.band) }
+    val notQrvContent: @Composable () -> Unit = {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+            verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+        ) {
+            activeNotQrvBands.forEach { band ->
+                Form.toggle(band.label, state.isTaggedNotQrv(band)) {
+                    state.tagNotQrv(band, it)
+                }
+            }
+            Form.toggle(
+                strings.selectedNotQrvAll,
+                activeNotQrvBands.all { state.isTaggedNotQrv(it) },
+            ) {
+                state.tagNotQrvAll(it)
+            }
+        }
+    }
+    val skedContent: @Composable () -> Unit = {
+        SkedAlertControls(state, activeBands)
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth >= Density.SELECTED_ACTION_GROUPS_ROW_MIN_WIDTH) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+                verticalAlignment = Alignment.Top,
+            ) {
+                CompactFunctionGroup(
+                    title = strings.selectedTagNotQrv(member.callSign.orEmpty()),
+                    modifier = Modifier.weight(0.35f).testTag(SELECTED_NOT_QRV_GROUP_TAG),
+                    content = notQrvContent,
+                )
+                CompactFunctionGroup(
+                    title = strings.selectedSked,
+                    modifier = Modifier.weight(0.65f).testTag(SELECTED_SKED_GROUP_TAG),
+                    content = skedContent,
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+            ) {
+                CompactFunctionGroup(
+                    title = strings.selectedTagNotQrv(member.callSign.orEmpty()),
+                    modifier = Modifier.fillMaxWidth().testTag(SELECTED_NOT_QRV_GROUP_TAG),
+                    content = notQrvContent,
+                )
+                CompactFunctionGroup(
+                    title = strings.selectedSked,
+                    modifier = Modifier.fillMaxWidth().testTag(SELECTED_SKED_GROUP_TAG),
+                    content = skedContent,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactFunctionGroup(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outlineVariant, Density.BUTTON_SHAPE)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        content()
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SkedAlertControls(state: SelectedStationState, activeBands: Set<Band>) {
+    val strings = LocalStrings.current
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+        verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+    ) {
+        Form.inlineChoice(
+            label = strings.selectedSkedIn,
+            items = SelectedStationState.SKED_MINUTES,
+            selected = state.skedMinutes,
+            describe = { it.toString() },
+            trailingText = strings.selectedSkedMinutesAt,
+            onSelect = { state.skedMinutes = it },
+        )
+        Form.inlineChoice(
+            label = "",
+            items = skedBandOptions(activeBands),
+            selected = state.skedBand,
+            describe = { it.prefix + " MHz" },
+            trailingText = strings.selectedSkedModeLink,
+            onSelect = { state.skedBand = it },
+        )
+        Form.inlineChoice(
+            label = "",
+            items = SelectedStationState.SKED_MODES,
+            selected = state.skedMode,
+            describe = { it },
+            trailingText = ".",
+            onSelect = { state.skedMode = it },
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(Density.CONTROL_HEIGHT),
+        ) {
+            CompactCheckbox(state.remindPm) { state.remindPm = it }
+            Text(
+                strings.selectedRemindPmIn,
+                style = compactControlTextStyle(),
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp),
+            )
+            Form.inlineChoice(
+                label = "",
+                items = SelectedStationState.REMINDER_OFFSETS,
+                selected = state.reminderOffsets,
+                describe = { it },
+                enabled = state.remindPm,
+                trailingText = strings.selectedMinutes,
+                onSelect = { state.reminderOffsets = it },
+            )
+        }
+    }
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
+        verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+    ) {
+        Form.button(strings.selectedCreateSked, enabled = state.canCreateSked) { state.createSked() }
+        Form.button(strings.selectedSkedFail, enabled = state.canCreateSked) { state.markSkedFail() }
+        Form.button(strings.selectedResetFail, enabled = state.canCreateSked) { state.resetSkedFail() }
     }
 }
 
@@ -220,7 +386,10 @@ fun TopPriorityBar(
     val strings = LocalStrings.current
 
     Row(
-        modifier = modifier.padding(2.dp),
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outlineVariant)
+            .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -163,6 +163,28 @@ interface ColumnWidthStore {
 }
 
 /**
+ * Optional shared row selection for tables whose selected entity is also displayed by
+ * other components. Ordinary event tables keep their selection inside [DataTableState].
+ */
+interface TableSelectionModel<T> {
+
+    val selected: T?
+
+    /** Changes whenever [selected] changes, including a repeated explicit selection. */
+    val selectionRevision: Long
+
+    /** Changes only when the table should scroll to the current selection. */
+    val scrollRequestRevision: Long
+
+    fun select(row: T?)
+
+    /** Replaces the selected instance after a roster refresh without requesting a scroll. */
+    fun reconcile(row: T?)
+
+    fun requestScroll()
+}
+
+/**
  * The state of a multi-column table: its rows, its sorting and its selection.
  *
  * Free of Compose UI so the rules can be tested, but the three mutable properties are
@@ -170,12 +192,16 @@ interface ColumnWidthStore {
  * data that shows up as a stale display rather than as an unresponsive one — harder
  * to notice and worse in effect.
  */
-class DataTableState<T>(
+class DataTableState<T> @JvmOverloads constructor(
     val columns: List<DataColumn<T>>,
     private val rowKey: RowKeySource<T>,
     /** Part of the stored layout: renaming it loses the operator's column sizing. */
     private val tableId: String = "",
     private val widths: ColumnWidthStore? = null,
+    initialSortColumnId: String? = null,
+    initialSortAscending: Boolean = true,
+    private val selectionModel: TableSelectionModel<T>? = null,
+    private val keepSelectionVisible: Boolean = false,
 ) {
 
     /**
@@ -251,19 +277,29 @@ class DataTableState<T>(
     var rows: List<T> by mutableStateOf(emptyList())
         private set
 
-    var sortedColumnId: String? by mutableStateOf(null)
+    var sortedColumnId: String? by mutableStateOf(
+        initialSortColumnId?.takeIf { requested -> columns.any { it.id == requested } },
+    )
         private set
 
-    var sortAscending: Boolean by mutableStateOf(true)
+    var sortAscending: Boolean by mutableStateOf(initialSortAscending)
         private set
 
     private var selectedKey: Any? by mutableStateOf(null)
 
-    private var sortedCache: List<T>? = null
+    private var internalSelectionRevision: Long by mutableStateOf(0L)
+
+    private var internalScrollRequestRevision: Long by mutableStateOf(0L)
+
+    private var filteredCache: List<T>? = null
+
+    private var visibleCache: List<T>? = null
+
+    private var cachedSelectionRevision: Long = Long.MIN_VALUE
 
     private var _rowFilter by mutableStateOf<((T) -> Boolean)?>(null, androidx.compose.runtime.neverEqualPolicy())
     
-    /** Optional filter predicate. If set, [visibleRows] will only include matching rows. */
+    /** Optional filter predicate. If set, [filteredRows] only includes matching rows. */
     var rowFilter: ((T) -> Boolean)?
         get() = _rowFilter
         set(value) {
@@ -294,7 +330,7 @@ class DataTableState<T>(
      * per inbound message on the thread that draws — with a column that has no
      * comparator calling its value function once per comparison on top.
      */
-    val visibleRows: List<T>
+    val filteredRows: List<T>
         get() {
             /*
              * Read before the cache is consulted, and that order is the whole point.
@@ -307,45 +343,84 @@ class DataTableState<T>(
             val currentRows = rows
             val currentFilter = rowFilter
             contentRevision // read for the subscription: forceRedraw drops the cache
-            val currentColumn = sortedColumnId
+            val currentColumnId = sortedColumnId
             val ascending = sortAscending
+            filteredCache?.let { return it }
 
-            sortedCache?.let { return it }
+            val filtered = if (currentFilter != null) currentRows.filter(currentFilter) else currentRows
+            val sorted = sort(filtered, currentColumnId, ascending)
 
-            val filteredRows = if (currentFilter != null) currentRows.filter(currentFilter) else currentRows
-
-            val column = columns.firstOrNull { it.id == currentColumn }
-            val sorted = if (column == null) {
-                filteredRows
-            } else {
-                /*
-                 * The displayed text is read once per row rather than once per
-                 * comparison, and sortedBy is stable, so rows that compare equal keep
-                 * the order they arrived in. Etappe 2 lost that: the JavaFX SortedList
-                 * inserted by binary search and put ties wherever it landed, which made
-                 * rows jump.
-                 */
-                val order = column.comparator
-                    ?: compareBy(filteredRows.associateWith { column.value(it) }::getValue)
-
-                if (ascending) {
-                    filteredRows.sortedWith(order)
-                } else {
-                    filteredRows.sortedWith(order.reversed())
-                }
-            }
-
-            sortedCache = sorted
+            filteredCache = sorted
             return sorted
         }
 
+    /**
+     * Rows drawn by this table. A station selected outside the table can optionally be
+     * included even when the active filter rejects it; [filteredRows] remains the exact
+     * shared filter result used by the map.
+     */
+    val visibleRows: List<T>
+        get() {
+            val currentRows = rows
+            val filtered = filteredRows
+            val revision = selectionRevision
+
+            if (!keepSelectionVisible) {
+                return filtered
+            }
+
+            if (visibleCache != null && cachedSelectionRevision == revision) {
+                return visibleCache.orEmpty()
+            }
+
+            val selected = selectedRow
+            val visible = if (selected == null || filtered.any { keyOf(it) == keyOf(selected) }) {
+                filtered
+            } else if (currentRows.any { keyOf(it) == keyOf(selected) }) {
+                val filteredKeys = filtered.mapTo(HashSet<Any>()) { row -> keyOf(row) }
+                val selectedKey = keyOf(selected)
+                sort(currentRows.filter { row -> keyOf(row) == selectedKey || keyOf(row) in filteredKeys })
+            } else {
+                filtered
+            }
+
+            cachedSelectionRevision = revision
+            visibleCache = visible
+            return visible
+        }
+
+    private fun sort(
+        source: List<T>,
+        columnId: String? = sortedColumnId,
+        ascending: Boolean = sortAscending,
+    ): List<T> {
+        val column = columns.firstOrNull { it.id == columnId } ?: return source
+
+        /*
+         * The displayed text is read once per row rather than once per comparison, and
+         * Kotlin's sort is stable, so equal values keep their source order.
+         */
+        val order = column.comparator
+            ?: compareBy(source.associateWith { column.value(it) }::getValue)
+
+        return if (ascending) source.sortedWith(order) else source.sortedWith(order.reversed())
+    }
+
     private fun invalidateOrder() {
-        sortedCache = null
+        filteredCache = null
+        visibleCache = null
     }
 
     /** The selected row, or null when nothing is selected or it has gone. */
     val selectedRow: T?
-        get() = selectedKey?.let { key -> rows.firstOrNull { rowKey.keyOf(it) == key } }
+        get() = selectionModel?.selected
+            ?: selectedKey?.let { key -> rows.firstOrNull { rowKey.keyOf(it) == key } }
+
+    val selectionRevision: Long
+        get() = selectionModel?.selectionRevision ?: internalSelectionRevision
+
+    val scrollRequestRevision: Long
+        get() = selectionModel?.scrollRequestRevision ?: internalScrollRequestRevision
 
     /**
      * Replaces the rows.
@@ -356,18 +431,43 @@ class DataTableState<T>(
      * neighbour, which would silently point the operator at someone else.
      */
     fun replaceRows(newRows: List<T>) {
+        val selectedIdentity = selectionModel?.selected?.let(rowKey::keyOf) ?: selectedKey
+
         rows = newRows
         rowKey.retainOnly(newRows)
         invalidateOrder()
 
-        val key = selectedKey
-        if (key != null && newRows.none { rowKey.keyOf(it) == key }) {
-            selectedKey = null
+        val replacement = selectedIdentity?.let { key -> newRows.firstOrNull { rowKey.keyOf(it) == key } }
+
+        if (selectionModel != null) {
+            if (selectedIdentity != null) {
+                selectionModel.reconcile(replacement)
+            }
+        } else if (selectedIdentity != null) {
+            selectedKey = replacement?.let(rowKey::keyOf)
+            internalSelectionRevision++
         }
     }
 
     fun select(row: T?) {
-        selectedKey = row?.let(rowKey::keyOf)
+        if (selectionModel != null) {
+            selectionModel.select(row)
+        } else {
+            selectedKey = row?.let(rowKey::keyOf)
+            internalSelectionRevision++
+        }
+        visibleCache = null
+    }
+
+    /** Requests navigation to the current selection without changing it. */
+    fun requestScrollToSelection() {
+        if (selectedRow == null) return
+
+        if (selectionModel != null) {
+            selectionModel.requestScroll()
+        } else {
+            internalScrollRequestRevision++
+        }
     }
 
     /**
@@ -377,7 +477,10 @@ class DataTableState<T>(
      */
     fun keyOf(row: T): Any = rowKey.keyOf(row)
 
-    fun isSelected(row: T): Boolean = selectedKey != null && rowKey.keyOf(row) == selectedKey
+    fun isSelected(row: T): Boolean {
+        val selected = selectedRow ?: return false
+        return rowKey.keyOf(row) == rowKey.keyOf(selected)
+    }
 
     /**
      * Sorts by a column, cycling ascending, descending, unsorted.

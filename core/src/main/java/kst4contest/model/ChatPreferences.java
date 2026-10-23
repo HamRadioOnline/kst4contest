@@ -425,6 +425,7 @@ public class ChatPreferences {
 	private double[] GUIstationMapStagePositionXY = new double[] { Double.NaN, Double.NaN };
 	private boolean GUIstationMapPathAnalysisVisible = true;
 	private boolean GUIstationMapClusteringEnabled = true;
+	private boolean GUIstationMapAlwaysOnTop = false;
 	private final Map<String, Double> tableColumnWidths = new LinkedHashMap<>();
 
 	private static final String TAG_TABLE_COLUMN_WIDTH = "tableColumnWidth";
@@ -801,6 +802,14 @@ public class ChatPreferences {
 
 	public void setGUIstationMapClusteringEnabled(boolean GUIstationMapClusteringEnabled) {
 		this.GUIstationMapClusteringEnabled = GUIstationMapClusteringEnabled;
+	}
+
+	public boolean isGUIstationMapAlwaysOnTop() {
+		return GUIstationMapAlwaysOnTop;
+	}
+
+	public void setGUIstationMapAlwaysOnTop(boolean GUIstationMapAlwaysOnTop) {
+		this.GUIstationMapAlwaysOnTop = GUIstationMapAlwaysOnTop;
 	}
 
 	/**
@@ -2395,6 +2404,12 @@ public class ChatPreferences {
 			);
 			guiOptions.appendChild(GUIstationMapClusteringEnabled);
 
+			Element GUIstationMapAlwaysOnTop = doc.createElement("GUIstationMapAlwaysOnTop");
+			GUIstationMapAlwaysOnTop.setTextContent(
+					String.valueOf(this.isGUIstationMapAlwaysOnTop())
+			);
+			guiOptions.appendChild(GUIstationMapAlwaysOnTop);
+
 			appendTableColumnWidths(doc, guiOptions);
 			appendWindowPositions(doc, guiOptions);
 
@@ -2484,6 +2499,8 @@ public class ChatPreferences {
 				getGUIstationMapStagePositionXY()[0] + ";" + getGUIstationMapStagePositionXY()[1]);
 		upsertDirectChildText(document, guiOptions, "GUIstationMapClusteringEnabled",
 				String.valueOf(isGUIstationMapClusteringEnabled()));
+		upsertDirectChildText(document, guiOptions, "GUIstationMapAlwaysOnTop",
+				String.valueOf(isGUIstationMapAlwaysOnTop()));
 	}
 
 	private void appendTableColumnWidths(Document document, Element guiOptions) {
@@ -3223,6 +3240,7 @@ public class ChatPreferences {
 			 *
 			 ***********************************************/
 			this.setGUIstationMapClusteringEnabled(true);
+			this.setGUIstationMapAlwaysOnTop(false);
 			list = doc.getElementsByTagName("guiOptions");
 			if (list.getLength() != 0) {
 
@@ -3270,6 +3288,12 @@ public class ChatPreferences {
 								element,
 								true,
 								"GUIstationMapClusteringEnabled"
+						));
+
+						this.setGUIstationMapAlwaysOnTop(getBooleanOrDefault(
+								element,
+								false,
+								"GUIstationMapAlwaysOnTop"
 						));
 
 						// Splitpane divider positions

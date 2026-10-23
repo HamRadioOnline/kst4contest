@@ -9,8 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
-import kst4contest.model.Band
 import kst4contest.model.ChatMember
 import kst4contest.model.ChatMessage
 import kst4contest.utils.PlatformUtils
@@ -31,7 +31,6 @@ import java.util.function.Consumer
 fun FrameWindowScope.MainWindow(
     state: MainWindowState,
     actions: MainMenuActions,
-    skedBands: List<Band>,
     openInBrowser: Consumer<String>,
     onShowOnMap: () -> Unit,
     onShowPathInAirScout: () -> Unit,
@@ -42,6 +41,7 @@ fun FrameWindowScope.MainWindow(
      * message aims at whoever it was addressed to rather than at oneself.
      */
     onDirectedMessageClicked: (ChatMessage) -> Unit,
+    onMessageStationClicked: (ChatMessage, StationSelectionSource) -> Unit,
     /** Whether a message came from this station; decides its row colour. */
     isOwnMessage: (ChatMessage) -> Boolean,
     /** How old a message is, for the fading highlight. */
@@ -133,6 +133,7 @@ fun FrameWindowScope.MainWindow(
                             state = state,
                             onCandidateClicked = onCandidateClicked,
                             onDirectedMessageClicked = onDirectedMessageClicked,
+                            onMessageStationClicked = onMessageStationClicked,
                             isOwnMessage = isOwnMessage,
                             messageAgeSeconds = messageAgeSeconds,
                         )
@@ -140,7 +141,6 @@ fun FrameWindowScope.MainWindow(
                     {
                         StationColumn(
                             state = state,
-                            skedBands = skedBands,
                             openInBrowser = openInBrowser,
                             onShowOnMap = onShowOnMap,
                             onShowPathInAirScout = onShowPathInAirScout,
@@ -167,6 +167,7 @@ private fun MessageColumn(
     state: MainWindowState,
     onCandidateClicked: (TimelineCandidate) -> Unit,
     onDirectedMessageClicked: (ChatMessage) -> Unit,
+    onMessageStationClicked: (ChatMessage, StationSelectionSource) -> Unit,
     isOwnMessage: (ChatMessage) -> Boolean,
     messageAgeSeconds: (ChatMessage) -> Long,
 ) {
@@ -174,6 +175,13 @@ private fun MessageColumn(
         state = state.messageSplitter,
         orientation = SplitterOrientation.VERTICAL,
         modifier = Modifier.fillMaxSize(),
+        minimumPaneSizes = listOf(
+            SplitterState.DEFAULT_MIN_PANE_PX.dp,
+            Density.CONTROL_HEIGHT,
+            TimelineGeometry.HEIGHT.dp,
+            Density.CONTROL_HEIGHT,
+            SplitterState.DEFAULT_MIN_PANE_PX.dp,
+        ),
         panes = listOf(
             {
                 SnippetContextMenu(state.snippets.entries, state.chatInput) {
@@ -216,6 +224,7 @@ private fun MessageColumn(
                         publicMessages = state.publicMessages,
                         clusterMessages = state.clusterMessages,
                         qsoOfTheOther = state.qsoOfTheOther,
+                        onStationMessageClicked = onMessageStationClicked,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -230,7 +239,6 @@ private fun MessageColumn(
 @Composable
 private fun StationColumn(
     state: MainWindowState,
-    skedBands: List<Band>,
     openInBrowser: Consumer<String>,
     onShowOnMap: () -> Unit,
     onShowPathInAirScout: () -> Unit,
@@ -248,18 +256,21 @@ private fun StationColumn(
                     StationFilterBar(
                         filters = state.stationFilter,
                         activeBands = state.activeBands,
+                        reachability = state.reachability,
                         onChanged = {
                             onFiltersChanged()
                         },
+                        onReset = state::resetStationFilters,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     HorizontalDivider(thickness = Density.HAIRLINE)
                     SnippetContextMenu(state.snippets.entries, state.chatInput) {
-                        DataTableView(
-                            state = state.stations,
-                            modifier = Modifier.fillMaxSize(),
-                            onRowClick = onStationSelected,
-                        )
+                DataTableView(
+                    state = state.stations,
+                    modifier = Modifier.fillMaxSize(),
+                    onRowClick = onStationSelected,
+                    selectOnRowClick = false,
+                )
                     }
                 }
             },
@@ -274,7 +285,6 @@ private fun StationColumn(
                 SelectedStationPanel(
                     state = state.selectedStation,
                     messages = state.selectedStationMessages,
-                    skedBands = skedBands,
                     activeBands = state.activeBands,
                     openInBrowser = openInBrowser,
                     onShowOnMap = onShowOnMap,

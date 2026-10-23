@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,17 +48,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
+
+/** One font size and natural line box for every compact interactive control. */
+@Composable
+internal fun compactControlTextStyle(): TextStyle =
+    MaterialTheme.typography.bodyMedium.copy(lineHeight = TextUnit.Unspecified)
 
 /**
  * Form controls shared by the settings tabs.
@@ -232,6 +249,7 @@ object Form {
         val draft = rememberDraft(selected)
 
         labelled(label) {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
             Box {
                 OutlinedButton(
                     onClick = { expanded = true },
@@ -240,18 +258,20 @@ object Form {
                     contentPadding = Density.FIELD_CONTENT_PADDING,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = Density.FIELD_MIN_HEIGHT),
+                        .heightIn(min = Density.CONTROL_HEIGHT),
                 ) {
                     Text(
                         draft.value?.let(describe) ?: kst4contest.view.i18n.LocalStrings.current.formNotSelected,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = compactControlTextStyle(),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     items.forEach { item ->
                         DropdownMenuItem(
-                            text = { Text(describe(item), style = MaterialTheme.typography.bodyMedium) },
+                            text = { Text(describe(item), style = compactControlTextStyle()) },
+                            contentPadding = Density.FIELD_CONTENT_PADDING,
+                            modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
                             onClick = {
                                 expanded = false
                                 draft.value = item
@@ -260,6 +280,7 @@ object Form {
                         )
                     }
                 }
+            }
             }
         }
     }
@@ -271,30 +292,39 @@ object Form {
         selected: T?,
         describe: (T) -> String,
         enabled: Boolean = true,
+        trailingText: String = "",
         onSelect: (T) -> Unit,
     ) {
         var expanded by remember { mutableStateOf(false) }
         val draft = rememberDraft(selected)
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
+        ) {
+            if (label.isNotBlank()) {
+                Text(label, style = compactControlTextStyle(), modifier = Modifier.padding(end = 4.dp))
+            }
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
             Box {
                 OutlinedButton(
                     onClick = { expanded = true },
                     enabled = enabled,
                     shape = Density.BUTTON_SHAPE,
                     contentPadding = Density.FIELD_CONTENT_PADDING,
-                    modifier = Modifier.heightIn(min = Density.FIELD_MIN_HEIGHT),
+                    modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
                 ) {
                     Text(
                         draft.value?.let(describe) ?: kst4contest.view.i18n.LocalStrings.current.formNotSelected,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = compactControlTextStyle(),
                     )
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     items.forEach { item ->
                         DropdownMenuItem(
-                            text = { Text(describe(item), style = MaterialTheme.typography.bodyMedium) },
+                            text = { Text(describe(item), style = compactControlTextStyle()) },
+                            contentPadding = Density.FIELD_CONTENT_PADDING,
+                            modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
                             onClick = {
                                 expanded = false
                                 draft.value = item
@@ -303,6 +333,14 @@ object Form {
                         )
                     }
                 }
+            }
+            }
+            if (trailingText.isNotBlank()) {
+                Text(
+                    trailingText,
+                    style = compactControlTextStyle(),
+                    modifier = Modifier.padding(start = 4.dp),
+                )
             }
         }
     }
@@ -313,14 +351,36 @@ object Form {
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.heightIn(min = Density.ROW_MIN_HEIGHT),
+            modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
         ) {
             CompactCheckbox(draft.value) { ticked ->
                 draft.value = ticked
                 onChange(ticked)
             }
-            Text(label, modifier = Modifier.padding(start = 6.dp))
+            Text(
+                label,
+                style = compactControlTextStyle(),
+                modifier = Modifier.padding(start = 4.dp),
+            )
         }
+    }
+
+    /** A compact two-state button for dense desktop option groups. */
+    @Composable
+    fun toggle(
+        text: String,
+        checked: Boolean,
+        enabled: Boolean = true,
+        modifier: Modifier = Modifier,
+        onCheckedChange: (Boolean) -> Unit,
+    ) {
+        CompactToggleButton(
+            text = text,
+            checked = checked,
+            enabled = enabled,
+            modifier = modifier,
+            onCheckedChange = onCheckedChange,
+        )
     }
 
     @Composable
@@ -430,26 +490,49 @@ object Form {
     }
 
     /**
-     * The button of the settings windows: square-ish corners and desktop padding.
-     *
-     * Material's own Button is a 40dp pill, which is the single strongest reason the
-     * window looked like a phone application.
-     */
-    /**
-     * The button of the settings windows.
+     * The shared desktop button used in settings, filter and shortcut areas.
      *
      * Material's own Button is a 40dp pill; this one is square-ish and at desktop
      * height. It also carries the two states the JavaFX stylesheets give every button:
      * a gradient while the pointer is over it and a red border while it is held down.
      */
     @Composable
-    fun button(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    fun button(
+        text: String,
+        enabled: Boolean = true,
+        accented: Boolean = false,
+        selected: Boolean = false,
+        modifier: Modifier = Modifier,
+        horizontalPadding: Dp = 6.dp,
+        onClick: () -> Unit,
+    ) {
         val palette = LocalJavaFxPalette.current
         val interactions = remember { MutableInteractionSource() }
         val hovered by interactions.collectIsHoveredAsState()
         val pressed by interactions.collectIsPressedAsState()
-
         val hoverGradient = palette.buttonHoverGradient
+        val accentGradient = if (palette.windowBackground.luminance() < 0.5f) {
+            listOf(Color(0xFF008000), Color(0xFF90EE90))
+        } else {
+            listOf(Color(0xFF00FFFF), Color(0xFFFF99FF))
+        }
+        val backgroundGradient = when {
+            !enabled -> emptyList()
+            hovered && hoverGradient.size >= 2 -> hoverGradient
+            accented -> accentGradient
+            else -> emptyList()
+        }
+        val containerColor = when {
+            backgroundGradient.isNotEmpty() -> Color.Transparent
+            selected -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        }
+        val contentColor = when {
+            hovered && enabled && hoverGradient.isNotEmpty() -> Color.Black
+            accented -> Color(0xFF395306)
+            selected -> MaterialTheme.colorScheme.onPrimary
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentSize provides 0.dp
@@ -458,35 +541,28 @@ object Form {
             onClick = onClick,
             enabled = enabled,
             shape = Density.BUTTON_SHAPE,
-            contentPadding = Density.BUTTON_CONTENT_PADDING,
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
             interactionSource = interactions,
-            border = if (pressed) {
-                BorderStroke(Density.SELECTION_BORDER, palette.buttonPressedBorder)
-            } else {
-                null
-            },
-            colors = if (hovered && enabled && hoverGradient.isNotEmpty()) {
-                /*
-                 * Compose paints a solid container, so the gradient is applied as the
-                 * background below and the container itself is cleared. The text turns
-                 * dark because the gradient the sheets use is a bright lime.
-                 */
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.Black,
-                )
-            } else {
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            border = when {
+                pressed -> BorderStroke(Density.SELECTION_BORDER, palette.buttonPressedBorder)
+                enabled -> BorderStroke(Density.HAIRLINE, MaterialTheme.colorScheme.outline)
+                else -> BorderStroke(
+                    Density.HAIRLINE,
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
                 )
             },
-            modifier = Modifier
-                .heightIn(min = Density.BUTTON_MIN_HEIGHT)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = containerColor,
+                contentColor = contentColor,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+            ),
+            modifier = modifier
+                .heightIn(min = Density.CONTROL_HEIGHT)
                 .then(
-                    if (hovered && enabled && hoverGradient.size >= 2) {
+                    if (backgroundGradient.size >= 2) {
                         Modifier.background(
-                            brush = Brush.verticalGradient(hoverGradient),
+                            brush = Brush.verticalGradient(backgroundGradient),
                             shape = Density.BUTTON_SHAPE,
                         )
                     } else {
@@ -499,7 +575,11 @@ object Form {
              * bar instead of simply being too narrow, and that bar then pushes the rest
              * of the window out of view.
              */
-            Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            Text(
+                text,
+                style = compactControlTextStyle(),
+                maxLines = 1,
+            )
         }
         }
     }
@@ -539,6 +619,137 @@ object Form {
 }
 
 /**
+ * A content-sized toggle with the same typography, height and palette as the shared
+ * desktop buttons. Checkbox semantics keep keyboard and accessibility behaviour while
+ * avoiding the extra symbol and label width of a checkbox row.
+ */
+@Composable
+internal fun CompactToggleButton(
+    text: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val interactions = remember { MutableInteractionSource() }
+    val hovered by interactions.collectIsHoveredAsState()
+    val focused by interactions.collectIsFocusedAsState()
+    val pressed by interactions.collectIsPressedAsState()
+    val containerColor = when {
+        !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
+        pressed -> MaterialTheme.colorScheme.primaryContainer
+        hovered && checked -> MaterialTheme.colorScheme.primaryContainer
+        checked -> MaterialTheme.colorScheme.primary
+        hovered || focused -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        (pressed || hovered) && checked -> MaterialTheme.colorScheme.onPrimaryContainer
+        checked -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val outlineColor = when {
+        focused || checked -> MaterialTheme.colorScheme.primary
+        enabled -> MaterialTheme.colorScheme.outline
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+    }
+
+    Box(
+        modifier = modifier
+            .heightIn(min = Density.CONTROL_HEIGHT)
+            .background(containerColor, Density.BUTTON_SHAPE)
+            .border(
+                if (focused) Density.SELECTION_BORDER else Density.HAIRLINE,
+                outlineColor,
+                Density.BUTTON_SHAPE,
+            )
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Checkbox,
+                interactionSource = interactions,
+                indication = null,
+                onValueChange = onCheckedChange,
+            )
+            .padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = compactControlTextStyle(),
+            color = contentColor,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * A compact desktop tab with the same interaction palette as the shared controls.
+ * The selected surface visually continues into the content below it, while the border
+ * keeps inactive entries recognizable as tabs in both palettes.
+ */
+@Composable
+internal fun CompactTab(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val interactions = remember { MutableInteractionSource() }
+    val hovered by interactions.collectIsHoveredAsState()
+    val focused by interactions.collectIsFocusedAsState()
+    val pressed by interactions.collectIsPressedAsState()
+    val primary = MaterialTheme.colorScheme.primary
+    val background = when {
+        pressed -> MaterialTheme.colorScheme.primaryContainer
+        selected -> MaterialTheme.colorScheme.surface
+        hovered || focused -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val outline = when {
+        selected || focused -> primary
+        else -> MaterialTheme.colorScheme.outlineVariant
+    }
+
+    Box(
+        modifier = modifier
+            .heightIn(min = Density.TAB_MIN_HEIGHT)
+            .background(background)
+            .border(
+                if (focused) Density.SELECTION_BORDER else Density.HAIRLINE,
+                outline,
+            )
+            .selectable(
+                selected = selected,
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+            )
+            .drawBehind {
+                if (selected) {
+                    val thickness = 2.dp.toPx()
+                    drawRect(
+                        color = primary,
+                        topLeft = Offset(0f, size.height - thickness),
+                        size = Size(size.width, thickness),
+                    )
+                }
+            }
+            .padding(horizontal = Density.TAB_HORIZONTAL_PADDING, vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = compactControlTextStyle(),
+            color = if (selected) primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
  * A text field at desktop density.
  *
  * Built from BasicTextField and the outlined decoration box rather than from
@@ -563,6 +774,7 @@ internal fun CompactTextField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isError: Boolean = false,
+    placeholder: String = "",
     visualTransformation: VisualTransformation = VisualTransformation.None,
     borderColor: Color? = null,
     borderThickness: Dp? = null,
@@ -596,11 +808,11 @@ internal fun CompactTextField(
         onValueChange = onValueChange,
         enabled = enabled,
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+        textStyle = compactControlTextStyle().copy(color = textColor),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         visualTransformation = visualTransformation,
         interactionSource = interactionSource,
-        modifier = modifier.heightIn(min = Density.FIELD_MIN_HEIGHT),
+        modifier = modifier.heightIn(min = Density.CONTROL_HEIGHT),
     ) { innerTextField ->
         OutlinedTextFieldDefaults.DecorationBox(
             value = value,
@@ -612,6 +824,19 @@ internal fun CompactTextField(
             isError = isError,
             colors = colors,
             contentPadding = Density.FIELD_CONTENT_PADDING,
+            placeholder = if (placeholder.isNotEmpty()) {
+                {
+                    Text(
+                        placeholder,
+                        style = compactControlTextStyle().copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                null
+            },
             container = {
                 OutlinedTextFieldDefaults.Container(
                     enabled = enabled,
@@ -628,16 +853,19 @@ internal fun CompactTextField(
 }
 
 /**
- * A checkbox without the 48dp touch target Material reserves around it. On a desktop
- * form that target is dead space between every two rows.
+ * A checkbox on the shared compact control surface instead of Material's 48dp touch target.
  */
 @Composable
-internal fun CompactCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+internal fun CompactCheckbox(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         Checkbox(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            modifier = Modifier.size(Density.CHECK_SIZE),
+            modifier = modifier.size(Density.CONTROL_HEIGHT),
         )
     }
 }

@@ -30,6 +30,21 @@ public class ApplicationFileUtils {
     }
 
     /**
+     * Gets the path of a diagnostic file below the application's debug directory.
+     *
+     * @param applicationName application directory name
+     * @param fileName diagnostic file name
+     * @return full path below {@code .applicationName/debug}
+     */
+    public static String getDebugFilePath(
+            final String applicationName,
+            final String fileName
+    ) {
+        return Path.of(getFilePath(applicationName, "debug"), fileName)
+                .toString();
+    }
+
+    /**
      * Copies a resource to the application folder if required.
      * @param applicationName Name of the application.
      * @param resourcePath Path of the resource.

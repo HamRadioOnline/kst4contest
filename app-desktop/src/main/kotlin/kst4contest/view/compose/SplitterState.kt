@@ -39,8 +39,26 @@ class SplitterState(
      * @param to the wanted position as a fraction of the whole
      * @param totalPx the splitter's length, needed to turn the minimum into a fraction
      */
-    fun drag(index: Int, to: Float, totalPx: Float) {
+    fun drag(
+        index: Int,
+        to: Float,
+        totalPx: Float,
+        minimumPaneSizesPx: FloatArray = EMPTY_MINIMUMS,
+    ) {
         if (index !in 0 until dividerCount) return
+
+        if (minimumPaneSizesPx.isNotEmpty()) {
+            val minimums = scaledMinimums(totalPx, minimumPaneSizesPx)
+            val effective = effectiveDividerPositions(totalPx, minimumPaneSizesPx)
+            val lowerBound = (effective.getOrElse(index - 1) { 0f } + minimums[index]) / totalPx
+            val upperBound = (effective.getOrElse(index + 1) { totalPx } - minimums[index + 1]) / totalPx
+            livePositions[index] = if (lowerBound > upperBound) {
+                (lowerBound + upperBound) / 2f
+            } else {
+                to.coerceIn(lowerBound, upperBound)
+            }
+            return
+        }
 
         val minFraction = if (totalPx > 0f) minPanePx / totalPx else 0f
         val lowerBound = (if (index == 0) 0f else livePositions[index - 1]) + minFraction
@@ -64,17 +82,63 @@ class SplitterState(
     }
 
     /** The pane lengths for a given splitter length; they always add up to the whole. */
-    fun paneSizes(totalPx: Float): List<Float> {
+    fun paneSizes(totalPx: Float, minimumPaneSizesPx: FloatArray = EMPTY_MINIMUMS): List<Float> {
         if (paneCount <= 1) return listOf(totalPx)
         val edges = buildList {
             add(0f)
-            livePositions.forEach { add(it * totalPx) }
+            effectiveDividerPositions(totalPx, minimumPaneSizesPx).forEach { add(it) }
             add(totalPx)
         }
         return (0 until paneCount).map { edges[it + 1] - edges[it] }
     }
 
+    /** The position the pointer sees after pane-specific minimums have been applied. */
+    internal fun dividerPosition(
+        index: Int,
+        totalPx: Float,
+        minimumPaneSizesPx: FloatArray = EMPTY_MINIMUMS,
+    ): Float = effectiveDividerPositions(totalPx, minimumPaneSizesPx)
+        .getOrElse(index) { 0f } / totalPx.coerceAtLeast(1f)
+
+    private fun effectiveDividerPositions(
+        totalPx: Float,
+        minimumPaneSizesPx: FloatArray,
+    ): FloatArray {
+        if (minimumPaneSizesPx.isEmpty()) {
+            return FloatArray(dividerCount) { index -> livePositions[index] * totalPx }
+        }
+
+        val minimums = scaledMinimums(totalPx, minimumPaneSizesPx)
+        val effective = FloatArray(dividerCount)
+        var previous = 0f
+        repeat(dividerCount) { index ->
+            val lowerBound = previous + minimums[index]
+            var trailingMinimum = 0f
+            for (remainingIndex in index + 1 until paneCount) {
+                trailingMinimum += minimums[remainingIndex]
+            }
+            val upperBound = totalPx - trailingMinimum
+            val wanted = livePositions[index] * totalPx
+            val position = wanted.coerceIn(lowerBound, upperBound)
+            effective[index] = position
+            previous = position
+        }
+        return effective
+    }
+
+    private fun scaledMinimums(totalPx: Float, minimumPaneSizesPx: FloatArray): FloatArray {
+        val minimums = FloatArray(paneCount) { index ->
+            minimumPaneSizesPx.getOrNull(index)?.coerceAtLeast(minPanePx) ?: minPanePx
+        }
+        val sum = minimums.sum()
+        if (sum <= totalPx || sum <= 0f) return minimums
+        val scale = totalPx.coerceAtLeast(0f) / sum
+        return FloatArray(paneCount) { index -> minimums[index] * scale }
+    }
+
     companion object {
+
+        private val EMPTY_MINIMUMS = FloatArray(0)
 
         /** Enough to still see a table header and grab the divider again. */
         const val DEFAULT_MIN_PANE_PX = 24f

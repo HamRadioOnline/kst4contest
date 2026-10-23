@@ -1,11 +1,14 @@
 package kst4contest.view.compose
 
 import kst4contest.model.ChatMember
+import kst4contest.model.ChatPreferences
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 
 /**
  * The panel below the station list, for the station currently selected.
@@ -15,6 +18,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
  * it. The sked controls create a real reminder. Both are worth pinning.
  */
 class SelectedStationStateTest {
+
+    @TempDir
+    lateinit var tempDir: Path
 
     private class Session {
         val propagated = mutableListOf<String>()
@@ -176,6 +182,15 @@ class SelectedStationStateTest {
         state.messageFilter = SelectedMessageFilter.PUBLIC
         assertEquals(SelectedMessageFilter.PUBLIC, state.messageFilter,
             "the JavaFX radio buttons were one toggle group; two cannot be on")
+    }
+
+    @Test
+    fun `public messages can be the configured initial radio mode`() {
+        val prefs = ChatPreferences(tempDir.resolve("preferences.xml")).apply {
+            isGuiOptions_defaultFilterPublicMsgs = true
+        }
+
+        assertEquals(SelectedMessageFilter.PUBLIC, SelectedMessageFilter.fromPreferences(prefs))
     }
 
     /**

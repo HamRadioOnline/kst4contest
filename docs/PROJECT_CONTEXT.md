@@ -1,6 +1,6 @@
 # KST4Contest Project Context
 
-Last reviewed: 2026-10-03
+Last reviewed: 2026-10-23
 
 This file is the durable technical project context for KST4Contest. It is not a user manual and not a replacement for the changelog. Current code, tests and authoritative external specifications remain the source of truth when this document is stale or ambiguous.
 
@@ -53,15 +53,17 @@ mirror on the user-interface thread (FxRosterBinding -> ObservableList)
 
 `MessageBusManagementThread` must not directly iterate or mutate a UI-bound collection; it works on snapshots. UI-visible changes cross the controller/UI boundary through the dispatcher.
 
-A roster hands out immutable snapshots and has no incremental change protocol: listeners receive the whole new content. `FxRosterBinding` mirrors a roster into the `ObservableList` a `TableView` holds, and must be disposed when its owner goes away — `shutdownRuntime()` releases all of them, which is what keeps a discarded runtime from surviving an operator profile switch.
+A roster hands out immutable snapshots and has no incremental change protocol: listeners receive the whole new content. `RosterListBinding` mirrors or derives plain lists for the Compose states and must be disposed when its owner goes away — `shutdownRuntime()` releases all of them, which is what keeps a discarded runtime from surviving an operator profile switch.
 
 A batch of changes belongs in one `SimpleRoster.mutate(...)`, not one call per element: with several thousand ON4KST users the difference is not cosmetic.
 
 ## Configuration and Layout Persistence
 
 - Configuration and layout live in the `preferences.xml` of the **active operator profile**; see "Operator Profiles and Per-Profile Persistence" below. The current `preferences.xml` configuration version is 8. Version 8 adds the default-enabled `messageHandling_debugModeToFileEnabled` setting. Missing entries in older files retain the enabled default. Version 6 introduced optional managed leaf-column widths below `guiOptions`, identified by stable table and column IDs. Parent-column widths remain derived from their leaf columns.
+- `guiOptions_darkModeActiveByDefault` is a functional, per-profile startup preference. Applying Settings updates it before the complete preference file is written. A temporary Design menu change affects only `guiOptions_darkModeActive` for the running session. Selective layout autosave reparses the current file and changes layout fields only, so it must not overwrite the startup default.
 - `GUIstationMapClusteringEnabled` is a layout preference below `guiOptions`. It defaults to `true`, is selectively autosaved and controls only screen-based clustering of nearby map markers. Missing or malformed values retain the enabled default for backward compatibility.
-- Stored widths take precedence. Without a usable entry, a managed column is sized once when meaningful table data first becomes available. Message and similar free-text columns use a flexible initial width instead of following the longest value.
+- `GUIstationMapAlwaysOnTop` is a map-only layout preference below `guiOptions`. It defaults to `false`, is applied through the existing AWT window API and is included in full and selective preference writes. Missing or malformed values retain normal window behaviour.
+- Stored widths always take precedence, including widths below the calculated minimum. Without a usable entry, a managed column measures its heading and a bounded initial content sample once when the first data arrives; DPI, font scale and typography participate in the Compose measurement key. Automatic widths are capped, remain session-only and are not recalculated for every chat event.
 - Main-window and separate-monitor DXCluster/QSO tables use distinct layout IDs even though they share the underlying message stores.
 - Window sizes and positions, relevant divider positions and managed column widths are selectively autosaved after a short debounce. A pending write is flushed during application shutdown.
 - Window positions are persisted only as an **opt-in** (`guiOptions_rememberWindowPositions`, GUI tab, off by default; issue #59). Every secondary window and every `ComposeAlert`/profile-picker dialog opens centred on the screen the main window is on (`WindowPlacement`, fed by `WindowPlacementOnScreen`). A window the operator moved during the running session reopens there (shifted wholly into that screen's usable area), held in its `ComposeWindowHost` and tracked by `MoveTracker`; the remembered spot is dropped in favour of the main window's screen when its title bar cannot be reached on any connected screen. With the opt-in, operator moves (never window-manager nudges) are also stored per window id (the host's thread name) as `windowPosition` elements with the screen bounds they were made on, written by the layout autosave; a stored position is restored only when a screen with exactly those bounds is connected (`WindowPlacement.restore`), for the main window too. Order for secondary windows: session move, then stored position, then main window's screen. Opening sizes are clamped to the target screen's usable area without writing the clamped size back; an open window that rests on a screen too small for it is cut down (`WindowPlacement.fitted`), and enforced minimum sizes are capped to the smallest connected screen. Without a stored position the main window keeps the platform's placement; before it exists (update window, profile picker at startup) the platform decides as before. `GUIstationMapStagePositionXY` is an unused JavaFX leftover and must not be revived for this.
@@ -148,6 +150,7 @@ CR/LF framing, XML framing, ports/transports, callsign normalization and frequen
 - Cached entries are separated by owner identity through the primary key (`owner_callsign_raw` + `owner_locator6`). Earlier versions stored a single owner identity in a meta table and dropped the whole cache whenever the configured callsign or locator changed; with several operator profiles that would discard every computed profile on each switch. The old `TerrainProfileCache*` tables inside `praktiKST.db` are left in place and are still readable by older releases; the new file starts empty and refills itself.
 - The highest point of a remote locator square (path analysis, Station tab switch, on by default) is found by `LocatorHighestPointResolver`: a 5 x 5 grid of cell centres, one batched request against the same Open-Meteo provider and rate limiter as the profile, cached in memory per locator for the session and not persisted. A failed lookup is retried after five minutes; until then the analysis falls back to the square centre and that result is not kept in the reachability cache. The lookup runs on the reachability thread only; request building peeks the cache without blocking. The optional own ground height ASL replaces the first profile sample's elevation, a resolved highest point the last one.
 - `OfflineDemImportService` only prepares a local directory and copies manually selected Copernicus GLO-30 GeoTIFF files into it. Importing files does not activate an offline provider or change the active calculation chain.
+- The station filter bar owns an operator-selected Reachability band override. `Auto` uses the shared `ReachabilityService` resolver; an explicit locally enabled band overrides it. Selecting a band, rendering or sorting the station table and applying filters may read cached results only. Online terrain work for this control remains behind the explicit **Calc selected** action for the current station.
 
 ### ON4KST session and authentication
 
@@ -156,6 +159,7 @@ CR/LF framing, XML framing, ports/transports, callsign normalization and frequen
 - The primary category is part of the initial login. A distinct second category is added to the same session through ON4KST Single Sign-on; it must not create a second TCP connection or local login.
 - **Name in Chat** is a visible category-specific name field, not a login callsign or message destination. Private messages to the local station are addressed to the local login callsign.
 - The visible **Name in Chat** field, message context, QRG and beacon configuration remain category-specific.
+- The Settings connection buttons observe the `On4KstConnectionState` mirrored in `MainWindowSurroundings` by `ConnectionStateFeed`. Connect is available only in `DISCONNECTED`; Disconnect is available while the Connection Manager reports an active attempt or session. `CONNECTING`, `STOPPING` and other intermediate states therefore cannot start a duplicate connection, while a completed disconnect or failed attempt immediately enables a new one.
 
 ### ON4KST session liveness
 
@@ -168,12 +172,13 @@ CR/LF framing, XML framing, ports/transports, callsign normalization and frequen
 ### ON4KST replay history and diagnostic logging
 
 - `MessageHistoryRecorder` is the single non-JavaFX owner of raw ON4KST session-history file I/O. Reader and writer threads only report complete frames to it.
-- The current program session is stored at `~/.praktiKST/Messagehistory.raw` as one `UTC<TAB>RX|TX<TAB>RAW_FRAME` event per line. Timestamps use UTC with milliseconds; TCP CR/LF terminators are not part of the raw frame.
+- New diagnostic files live below `~/.praktiKST/debug/`. Existing files directly below `~/.praktiKST` are deliberately not migrated, renamed or removed.
+- The current program session is stored at `~/.praktiKST/debug/Messagehistory.raw` as one `UTC<TAB>RX|TX<TAB>RAW_FRAME` event per line. Timestamps use UTC with milliseconds; TCP CR/LF terminators are not part of the raw frame.
 - RX is recorded immediately after `BufferedReader.readLine()`, before liveness handling or internal filtering. TX is recorded only after the final frame has been written and flushed successfully.
 - A non-empty current file is archived once when recording is first initialised for a new program session. Reconnects do not rotate it. Disabling closes the writer; re-enabling in the same program session appends to the same current file.
 - `LOGINC`/`LOGIN` password fields are replaced by `<REDACTED>` through protocol-aware redaction. Other frames are not reconstructed or normalised for history output.
 - History I/O failures are warning-level diagnostics and must never terminate reader, writer or message-processing threads or deliberately disconnect ON4KST.
-- The default-enabled Messagehandling setting also controls additional application `FINE`/`INFO` records in `kst4contest-errors.log`. `WARNING`/`SEVERE` records and exceptions remain file-logged regardless of that setting. File-log timestamps use UTC with milliseconds.
+- The default-enabled Messagehandling setting also controls additional application `FINE`/`INFO` records in `debug/kst4contest-errors.log`. `WARNING`/`SEVERE` records and exceptions remain file-logged regardless of that setting. File-log timestamps use UTC with milliseconds. The active file rotates at 20 MiB and at most five files including the active file are retained.
 - The raw history is intended for future replay/simulation tooling and can contain personal chat and station data even though credentials are redacted.
 
 ## User Workflow / UI Invariants
@@ -181,14 +186,24 @@ CR/LF framing, XML framing, ports/transports, callsign normalization and frequen
 - Contest operating speed and low-friction interaction are primary goals.
 - Incidental code changes must not unexpectedly change selection, focus, sorting, tab state, map zoom or prefilled text.
 - Map reset clears the selected target without changing zoom unless explicitly redesigned.
-- **Group nearby stations** re-renders only the existing station-marker layer from JavaScript `stationData`. It must not reload the WebView, tiles or station data, request a new controller snapshot, or change zoom, viewport or selection.
+- **Grouping** changes only spatial clustering of the existing Compose map markers. It must not reload tiles or station data, request a new controller snapshot, or change zoom, viewport or selection.
 - Base-callsign aggregation into one geographical marker happens before screen-based clustering. Disabling clustering displays each resulting positionable map station individually but never splits active variants of the same normalised base callsign into separate geographical markers.
 - A hidden Station Map is not continuously refreshed. Relevant background changes mark it dirty; the next `showWindow()` performs one current full refresh before normal visible-window updates resume.
 - Maidenhead grid construction depends only on viewport bounds, zoom and WebView size. Ordinary station-data refreshes must not rebuild or serialise the grid when those inputs are unchanged.
 - Panning updates viewport and grid state through `notifyViewport()` without rebuilding station markers or screen-based clusters. Zoom changes, station-data changes and clustering toggles still rebuild the marker layer.
 - Debug file logging reports Station Map refreshes only when total FX-thread refresh time reaches 100 ms. The diagnostic separates snapshot and render time and includes visible-member and station counts.
 - Station selection preserves the established `/cq callsign` prefill behaviour.
+- `StationSelectionState` is the canonical selection shared by the station table and Further Info panel. Its identity is the complete callsign plus chat category. Explicit actions carry a `StationSelectionSource` and increment a separate scroll-request revision even when the same station is selected again; roster reconciliation replaces the selected instance without moving the table.
+- The station table starts with a case-insensitive ascending callsign sort. A user-selected sort remains authoritative across roster and filter updates. An externally selected filtered station is pinned into the table only; `filteredRows` remains the exact filter result used by the map.
+- PM, Public, QSO-of-the-other, priority, timeline and individual map-marker actions route through the application-level station selector. Directed messages target the sender, except that an outgoing local PM targets its receiver. Public and QSO-of-the-other rows target their sender in the message category.
+- The selected-station message radio mode is independent of station identity and always retains the complete callsign plus chat category. `PM_TO_ME` is the private conversation with the local station plus public traffic from the selected station carrying the structured leading `(LOCALCALL)` address, `PM_TO_OTHER` is private traffic sent by the selected station to other participants, `PUBLIC` is traffic sent by it to `ALL`, and `NOTHING` applies no additional type/receiver restriction. An arbitrary callsign mention in prose is not a structured public address.
+- ON4KST chat parsing records `messageDirectedToCommunity` from the receiver field and `messageDirectedToMe` from either a genuine private receiver or the exact leading public address. The selected-station Compose message mirror is initialized with the main window state, before the first selection callback, and roster changes recompute and push the filtered rows automatically.
+- The map's **Reset filters** action uses the same `StationFilterState.reset()` path as the main filter bar and does not change sort, selection, zoom or viewport. Individual raw-callsign markers retain an already selected category variant; otherwise they use the configured Main category. Spatial clusters zoom and never choose an arbitrary member.
+- The AP timeline renders the producer's four candidate lanes in order (two in-beam, two global priority) plus a separate sked lane. Its relative 0–30 minute axis normally uses five-minute ticks and increases the interval when labels would overlap. The vertical message splitter applies pane-specific minimums for the timeline, shortcut row and send row, so older stored divider positions cannot clip these fixed-height controls; stored positions remain the unconstrained baseline.
 - Sending without an explicitly selected send category preserves the established Main-category fallback unless explicitly changed.
+- The lower selected-station panel is vertically scrollable. Its message table has a finite, independently scrollable height so Compose never measures a `LazyColumn` with unbounded vertical constraints and every action remains reachable in a short splitter pane. Empty `DataTableView` instances retain their header and border and show an explicit empty-state label. Header metadata and message filters use width-aware flow layouts; the NOT-QRV and sked groups switch between a row and a column from the panel's actual Compose constraint, without duplicating their domain state.
+- The selected-station sked picker takes its options exclusively from `MainWindowState.activeBands`, which originates in `BandOpportunityResolver.getEnabledStationBands(...)`. Station QRG and name evidence chooses the initial band but must not empty or narrow the operator's locally enabled choices. The detected-band header value is already localized and labelled by its producer, so the Compose panel renders it unchanged.
+- Compact desktop buttons, text fields, choices and checkbox rows share `Density.CONTROL_HEIGHT` at 26 dp and `compactControlTextStyle()`. Material touch-target and component defaults must not reintroduce different visible heights. Compass filter buttons keep a common 28 dp width with reduced horizontal content padding; the send-row QRG fields reserve 96 dp and QTF fields 56 dp so normal contest values remain visible.
 
 ## Autoanswer / Beacon
 
@@ -393,7 +408,7 @@ Before implementing planned items, re-check current decisions and obtain a fresh
 - Historical project context is useful but may be stale; current code/tests win.
 - External service/API behaviour must be verified against current upstream documentation when uncertain.
 - Screenshots in manuals/website may need targeted replacement after visible UI changes; never fabricate them.
-- `station_map_path_analysis.png` and `station_map_reset.png` predate the **Group nearby stations** checkbox in the map header. Replace them with current screenshots when suitable source images are available; the website reuses `station_map_path_analysis.png` through `/manual/assets/`.
+- `station_map_path_analysis.png` and `station_map_reset.png` predate the **Grouping**, **Reset filters** and **Always on top** controls in the map header. Replace them with current screenshots when suitable source images are available; the website reuses `station_map_path_analysis.png` through `/manual/assets/`.
 
 ## Recent Significant Changes
 

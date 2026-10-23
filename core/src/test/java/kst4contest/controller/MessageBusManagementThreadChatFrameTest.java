@@ -146,6 +146,41 @@ class MessageBusManagementThreadChatFrameTest {
         verifyNoInteractions(playAudioUtils);
     }
 
+    @Test
+    @Timeout(10)
+    void genuinePrivateMessageCarriesTheAuthoritativeRouteFlags() throws InterruptedException {
+        runThrough(chatFrame("CH", REMOTE_CALL, "pse ur qrg", MY_CALL));
+
+        ChatMessage published = singlePublished();
+        assertEquals(MY_CALL, published.getReceiver().getCallSign());
+        assertTrue(published.isMessageDirectedToMe());
+        assertFalse(published.isMessageDirectedToCommunity());
+        assertEquals(ChatCategory.VUHF, published.getChatCategory().getCategoryNumber());
+    }
+
+    @Test
+    @Timeout(10)
+    void publicMessageWithLeadingAddressIsMarkedAsExplicitlyAddressedToMe()
+            throws InterruptedException {
+        runThrough(chatFrame("CH", REMOTE_CALL, "(" + MY_CALL + ") pse ur qrg", "0"));
+
+        ChatMessage published = singlePublished();
+        assertEquals("ALL", published.getReceiver().getCallSign());
+        assertTrue(published.isMessageDirectedToCommunity());
+        assertTrue(published.isMessageDirectedToMe());
+    }
+
+    @Test
+    @Timeout(10)
+    void arbitraryPublicMentionIsNotMarkedAsExplicitlyAddressedToMe()
+            throws InterruptedException {
+        runThrough(chatFrame("CH", REMOTE_CALL, "ask " + MY_CALL + " about the sked", "0"));
+
+        ChatMessage published = singlePublished();
+        assertTrue(published.isMessageDirectedToCommunity());
+        assertFalse(published.isMessageDirectedToMe());
+    }
+
     // --- sent by me ---------------------------------------------------------
 
     @Test

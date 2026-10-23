@@ -2901,7 +2901,7 @@ private SimpleRoster<String>
 
         chatPreferences = new ChatPreferences(preferencesRelativeFileName);
         chatPreferences.readPreferencesFromXmlFile();
-		Path historyFile = Path.of(ApplicationFileUtils.getFilePath(
+		Path historyFile = Path.of(ApplicationFileUtils.getDebugFilePath(
 				ApplicationConstants.APPLICATION_NAME,
 				MessageHistoryRecorder.CURRENT_FILE_NAME));
 		messageHistoryRecorder = new MessageHistoryRecorder(

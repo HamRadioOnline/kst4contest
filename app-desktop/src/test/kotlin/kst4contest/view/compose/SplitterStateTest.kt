@@ -219,6 +219,40 @@ class SplitterStateTest {
         assertEquals(777f, state.paneSizes(totalPx = 777f).sum(), 0.01f)
     }
 
+    @Test
+    fun `pane-specific minimums keep fixed-height controls visible without replacing stored positions`() {
+        val stored = doubleArrayOf(0.62, 0.7, 0.75, 0.9)
+        val state = SplitterState(paneCount = 5, stored = stored) {}
+
+        val sizes = state.paneSizes(
+            totalPx = 800f,
+            minimumPaneSizesPx = floatArrayOf(24f, 26f, 104f, 26f, 24f),
+        )
+
+        assertTrue(sizes[0] >= 24f)
+        assertTrue(sizes[1] >= 26f)
+        assertTrue(sizes[2] >= 104f)
+        assertTrue(sizes[3] >= 26f)
+        assertTrue(sizes[4] >= 24f)
+        assertEquals(800f, sizes.sum(), 0.01f)
+        stored.forEachIndexed { index, position ->
+            assertEquals(position.toFloat(), state.positions[index], 0.001f)
+        }
+    }
+
+    @Test
+    fun `pane-specific minimums scale down together in an impossibly small splitter`() {
+        val state = SplitterState(paneCount = 3, stored = doubleArrayOf(0.2, 0.8)) {}
+
+        val sizes = state.paneSizes(
+            totalPx = 100f,
+            minimumPaneSizesPx = floatArrayOf(50f, 100f, 50f),
+        )
+
+        assertEquals(listOf(25f, 50f, 25f), sizes)
+        assertEquals(100f, sizes.sum(), 0.01f)
+    }
+
     private fun assertNull(value: Any?, message: String) {
         assertFalse(value != null, message)
     }

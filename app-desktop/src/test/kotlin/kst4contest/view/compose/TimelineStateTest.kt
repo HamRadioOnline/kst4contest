@@ -124,7 +124,9 @@ class TimelineStateTest {
     @Test
     fun `the lanes stack downwards in even steps`() {
         assertEquals(2f, TimelineGeometry.laneY(0))
-        assertEquals(22f, TimelineGeometry.laneY(1))
+        assertEquals(18f, TimelineGeometry.laneY(1))
+        assertEquals(34f, TimelineGeometry.laneY(2))
+        assertEquals(50f, TimelineGeometry.laneY(3))
     }
 
     /**
@@ -151,12 +153,43 @@ class TimelineStateTest {
         )
     }
 
-    /** A third lane would land on the axis, so it shares the last one instead. */
+    /** Unknown producer values stay visible in the nearest defined lane. */
     @Test
     fun `a lane beyond the available ones folds onto the last`() {
-        assertEquals(TimelineGeometry.laneY(1), TimelineGeometry.laneY(2))
-        assertEquals(TimelineGeometry.laneY(1), TimelineGeometry.laneY(7))
+        assertEquals(TimelineGeometry.laneY(3), TimelineGeometry.laneY(7))
         assertEquals(TimelineGeometry.laneY(0), TimelineGeometry.laneY(-1))
+    }
+
+    @Test
+    fun `lane definitions expose the producer semantics in display order`() {
+        assertEquals(
+            listOf(
+                TimelineLane.IN_BEAM_1,
+                TimelineLane.IN_BEAM_2,
+                TimelineLane.PRIORITY_1,
+                TimelineLane.PRIORITY_2,
+            ),
+            TimelineLane.entries,
+        )
+        assertEquals(TimelineLane.PRIORITY_1, TimelineLane.forIndex(2))
+        assertEquals(TimelineLane.PRIORITY_2, TimelineLane.forIndex(99))
+    }
+
+    @Test
+    fun `a wide timeline gets five minute ticks over the full preview`() {
+        val ticks = TimelineGeometry.minuteTicks(axisWidth = 600f, minimumLabelSpacing = 30f)
+
+        assertEquals(listOf(0, 5, 10, 15, 20, 25, 30), ticks.map { it.minutes })
+        assertEquals(0f, ticks.first().x, 0.01f)
+        assertEquals(600f, ticks.last().x, 0.01f)
+    }
+
+    @Test
+    fun `tick interval grows when labels would overlap`() {
+        val ticks = TimelineGeometry.minuteTicks(axisWidth = 100f, minimumLabelSpacing = 30f)
+
+        assertEquals(listOf(0, 10, 20, 30), ticks.map { it.minutes })
+        assertTrue(ticks.zipWithNext().all { (left, right) -> right.x - left.x >= 30f })
     }
 
     // ---- the labels --------------------------------------------------------

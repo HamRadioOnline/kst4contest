@@ -1,10 +1,9 @@
 package kst4contest.view.compose
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,7 +48,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import kst4contest.view.i18n.LocalStrings
 
 /**
  * A multi-column table.
@@ -78,8 +79,10 @@ fun <T> DataTableView(
     modifier: Modifier = Modifier,
     rowStyle: ((T) -> CellAccent?)? = null,
     onRowClick: ((T) -> Unit)? = null,
+    selectOnRowClick: Boolean = true,
 ) {
     val density = LocalDensity.current
+    val automaticWidths = rememberAutomaticColumnWidths(state)
 
     val horizontal = rememberScrollState()
     val vertical = rememberLazyListState()
@@ -113,16 +116,36 @@ fun <T> DataTableView(
         }
     }
 
+    var handledScrollRequest by remember(state) { mutableStateOf(0L) }
+    val scrollRequest = state.scrollRequestRevision
+    val displayedRows = state.visibleRows
+
+    /*
+     * Resolve the index only after reading the current filtered and sorted rows. If the
+     * selected row has not arrived yet, leave the request pending and retry when that
+     * list changes. A handled request is never repeated by an ordinary data refresh.
+     */
+    LaunchedEffect(scrollRequest, displayedRows) {
+        if (scrollRequest <= handledScrollRequest) return@LaunchedEffect
+
+        val index = displayedRows.indexOfFirst(state::isSelected)
+        if (index >= 0) {
+            vertical.scrollToItem(index)
+            handledScrollRequest = scrollRequest
+        }
+    }
+
     /*
      * Both directions scroll. The columns of these two tables need about 890dp and
      * 1000dp, and the stored window width starts at 700: without this the last columns
      * are simply unreachable, and so are the handles that would narrow them. The JavaFX
      * tables had a horizontal scrollbar.
      */
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    val slack = unusedWidth(state, maxWidth)
-    val lastColumnId = state.orderedColumns.lastOrNull()?.id
-
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outline),
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         /*
          * A second header row above the first, spanning the columns that share a
@@ -150,9 +173,8 @@ fun <T> DataTableView(
 
                     val width = (index until index + span).sumOf { position ->
                         val column = state.orderedColumns[position]
-                        val stored = state.widthOf(column.id)
-                        val own = stored ?: (DEFAULT_COLUMN_WIDTH * column.weight).value.toDouble()
-                        own + Density.COLUMN_HANDLE_WIDTH.value
+                        effectiveColumnWidthDp(state, column, automaticWidths).toDouble() +
+                            Density.COLUMN_HANDLE_WIDTH.value
                     }
 
                     Box(
@@ -202,7 +224,7 @@ fun <T> DataTableView(
 
                 Box(
                     modifier = Modifier
-                        .columnWidth(state, column, if (column.id == lastColumnId) slack else 0.dp)
+                        .columnWidth(state, column, automaticWidths)
                         .fillMaxHeight()
                         .clickable { state.toggleSort(column.id) }
                         .pointerInput(column.id, index) {
@@ -211,7 +233,7 @@ fun <T> DataTableView(
                                 onDragCancel = { dragged = 0f },
                             ) { _, dragAmount ->
                                 dragged += dragAmount
-                                val step = with(density) { DEFAULT_COLUMN_WIDTH.toPx() } / 2f
+                                val step = with(density) { DEFAULT_COLUMN_WIDTH_DP.dp.toPx() } / 2f
 
                                 if (dragged > step) {
                                     state.moveColumn(column.id, index + 1)
@@ -258,8 +280,11 @@ fun <T> DataTableView(
                                  * and writes that into preferences.xml.
                                  */
                                 val deltaDp = with(density) { dragAmount.toDp().value }
-                                val current = state.widthOf(column.id)
-                                    ?: (DEFAULT_COLUMN_WIDTH * column.weight).value.toDouble()
+                                val current = effectiveColumnWidthDp(
+                                    state,
+                                    column,
+                                    automaticWidths,
+                                ).toDouble()
 
                                 state.resizeColumn(column.id, current + deltaDp)
                             }
@@ -278,7 +303,12 @@ fun <T> DataTableView(
 
         HorizontalDivider(thickness = Density.HAIRLINE)
 
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)),
+        ) {
         LazyColumn(
             state = vertical,
             modifier = Modifier
@@ -306,7 +336,9 @@ fun <T> DataTableView(
                                 }
                             )
                             .clickable {
-                                state.select(row)
+                                if (selectOnRowClick) {
+                                    state.select(row)
+                                }
                                 onRowClick?.invoke(row)
                             }
                             .heightIn(min = Density.ROW_MIN_HEIGHT),
@@ -318,7 +350,7 @@ fun <T> DataTableView(
 
                             Box(
                                 modifier = Modifier
-                                    .columnWidth(state, column, if (column.id == lastColumnId) slack else 0.dp)
+                                    .columnWidth(state, column, automaticWidths)
                                     .fillMaxHeight()
                                     .background(cell?.background ?: Color.Transparent)
                                     .padding(horizontal = 4.dp, vertical = 2.dp),
@@ -378,6 +410,15 @@ fun <T> DataTableView(
             }
         }
 
+            if (state.visibleRows.isEmpty()) {
+                Text(
+                    text = LocalStrings.current.tableEmpty,
+                    modifier = Modifier.align(Alignment.Center).padding(8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+
             VerticalScrollbar(
                 adapter = rememberScrollbarAdapter(vertical),
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
@@ -402,39 +443,71 @@ fun <T> DataTableView(
 }
 
 
-/**
- * A stored width when the operator has sized this column, otherwise the column's own
- * weight. The stored value wins because it is the operator's decision.
- *
- * @param extra added to the last column so the table fills the window instead of
- *        leaving a band of empty background to the right. The JavaFX table did the
- *        same through `flexibleInitialWidth`.
- */
+/** A stored width wins over the measured automatic width, even when it is narrower. */
 @Composable
 private fun <T> Modifier.columnWidth(
     state: DataTableState<T>,
     column: DataColumn<T>,
-    extra: Dp = 0.dp,
+    automaticWidths: Map<String, Float>,
 ): Modifier {
-    val stored = state.widthOf(column.id)
-    val own = if (stored != null) stored.dp else DEFAULT_COLUMN_WIDTH * column.weight
-
-    return this.width(own + extra)
+    return this.width(effectiveColumnWidthDp(state, column, automaticWidths).dp)
 }
 
 /**
- * How much is left over once every column has its width. Zero when the columns are
- * already wider than the window, in which case the table scrolls.
+ * Measures automatic columns once from their headers and once more when the first
+ * source rows arrive. Later chat events do not resize a live table.
  */
 @Composable
-private fun <T> unusedWidth(state: DataTableState<T>, available: Dp): Dp {
-    val used = state.orderedColumns.sumOf { column ->
-        val stored = state.widthOf(column.id)
-        val own = if (stored != null) stored else (DEFAULT_COLUMN_WIDTH * column.weight).value.toDouble()
-        own + Density.COLUMN_HANDLE_WIDTH.value
-    }
+private fun <T> rememberAutomaticColumnWidths(state: DataTableState<T>): Map<String, Float> {
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val headerStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+    val cellStyle = MaterialTheme.typography.bodyMedium
+    val hasSourceRows = state.rows.isNotEmpty()
+    val titles = state.orderedColumns.associate { column -> column.id to column.title() }
 
-    return (available.value - used).coerceAtLeast(0.0).dp
+    return remember(
+        state,
+        density.density,
+        density.fontScale,
+        headerStyle,
+        cellStyle,
+        titles,
+        hasSourceRows,
+    ) {
+        val sample = if (hasSourceRows) state.rows.take(AUTO_WIDTH_SAMPLE_SIZE) else emptyList()
+
+        state.orderedColumns.associate { column ->
+            val title = titles.getValue(column.id) + SORT_INDICATOR_SAMPLE
+            val headerWidthPx = measurer.measure(title, headerStyle).size.width
+            val contentWidthPx = sample.maxOfOrNull { row ->
+                val value = runCatching { column.value(row) }.getOrDefault("")
+                measurer.measure(value, cellStyle).size.width
+            } ?: 0
+            val measuredDp = with(density) {
+                maxOf(headerWidthPx, contentWidthPx).toDp().value + CELL_HORIZONTAL_PADDING_DP
+            }
+            val maximumDp = (AUTO_WIDTH_MAX_BASE_DP * column.weight.coerceAtLeast(0.5f))
+                .coerceIn(AUTO_WIDTH_MIN_MAX_DP, AUTO_WIDTH_ABSOLUTE_MAX_DP)
+
+            column.id to measuredDp.coerceIn(AUTO_WIDTH_MIN_DP, maximumDp)
+        }
+    }
 }
 
-private val DEFAULT_COLUMN_WIDTH = 85.dp
+internal fun <T> effectiveColumnWidthDp(
+    state: DataTableState<T>,
+    column: DataColumn<T>,
+    automaticWidths: Map<String, Float>,
+): Float = state.widthOf(column.id)?.toFloat()
+    ?: automaticWidths[column.id]
+    ?: DEFAULT_COLUMN_WIDTH_DP * column.weight
+
+private const val AUTO_WIDTH_SAMPLE_SIZE = 160
+private const val AUTO_WIDTH_MIN_DP = 32f
+private const val AUTO_WIDTH_MIN_MAX_DP = 90f
+private const val AUTO_WIDTH_MAX_BASE_DP = 180f
+private const val AUTO_WIDTH_ABSOLUTE_MAX_DP = 360f
+private const val CELL_HORIZONTAL_PADDING_DP = 10f
+private const val DEFAULT_COLUMN_WIDTH_DP = 85f
+private const val SORT_INDICATOR_SAMPLE = " ▲"

@@ -13,27 +13,36 @@ import androidx.compose.ui.unit.dp
  * over thirty fields, so those defaults turn a settings window into a scrolling
  * exercise and make a desktop application look like a phone.
  *
- * Every height here is a **minimum**, never a fixed size. The configured base font
- * size scales all text through Typography.scaledTo, and a fixed height would clip a
- * larger font instead of growing with it.
+ * Interactive controls share one minimum visible height. Their common font and padding
+ * keep the standard size exact while still allowing a larger configured font to grow.
  */
 internal object Density {
 
-    /** Text fields, pickers and anything else on the field column. */
-    val FIELD_MIN_HEIGHT = 30.dp
+    /** Minimum for buttons, text fields, choices and checkbox rows in the desktop UI. */
+    val CONTROL_HEIGHT = 26.dp
 
-    /** Inside a text field. The vertical value is what buys back the 56dp. */
-    val FIELD_CONTENT_PADDING = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+    /** Text stays vertically centred by the control instead of by extra padding. */
+    val FIELD_CONTENT_PADDING = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
 
-    val BUTTON_MIN_HEIGHT = 24.dp
-
-    val BUTTON_CONTENT_PADDING = PaddingValues(horizontal = 8.dp, vertical = 1.dp)
+    val BUTTON_CONTENT_PADDING = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
 
     /** Square-ish, not a pill: the pill shape is the strongest mobile tell. */
     val BUTTON_SHAPE = RoundedCornerShape(4.dp)
 
     /** One row of a list or table. */
-    val ROW_MIN_HEIGHT = 26.dp
+    val ROW_MIN_HEIGHT = CONTROL_HEIGHT
+
+    /** Equal width for all eight compass-direction filter buttons. */
+    val DIRECTION_BUTTON_WIDTH = 28.dp
+
+    /** Two-letter compass labels need only a small inset inside their fixed width. */
+    val DIRECTION_BUTTON_HORIZONTAL_PADDING = 2.dp
+
+    /** A compact, independently scrollable message table in the selected-station pane. */
+    val SELECTED_MESSAGE_TABLE_HEIGHT = 104.dp
+
+    /** Enough room for the NOT-QRV and sked groups to remain usable side by side. */
+    val SELECTED_ACTION_GROUPS_ROW_MIN_WIDTH = 520.dp
 
     val TAB_MIN_HEIGHT = 30.dp
 

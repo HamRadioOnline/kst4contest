@@ -1,6 +1,5 @@
 package kst4contest.view.compose
 
-import kst4contest.model.Band
 import kst4contest.model.ChatMember
 import kst4contest.model.ChatMessage
 import java.util.function.Consumer
@@ -34,12 +33,12 @@ object MainWindowHost {
      */
     private var currentState by androidx.compose.runtime.mutableStateOf<MainWindowState?>(null)
     private var currentActions by androidx.compose.runtime.mutableStateOf<MainMenuActions?>(null)
-    private var currentSkedBands by androidx.compose.runtime.mutableStateOf<(() -> List<Band>)?>(null)
     private var currentOpenInBrowser by androidx.compose.runtime.mutableStateOf<Consumer<String>?>(null)
     private var currentOnShowOnMap by androidx.compose.runtime.mutableStateOf<(() -> Unit)?>(null)
     private var currentOnShowPathInAirScout by androidx.compose.runtime.mutableStateOf<(() -> Unit)?>(null)
     private var currentOnStationSelected by androidx.compose.runtime.mutableStateOf<((ChatMember) -> Unit)?>(null)
     private var currentOnDirectedMessageClicked by androidx.compose.runtime.mutableStateOf<((ChatMessage) -> Unit)?>(null)
+    private var currentOnMessageStationClicked by androidx.compose.runtime.mutableStateOf<((ChatMessage, StationSelectionSource) -> Unit)?>(null)
     private var currentIsOwnMessage by androidx.compose.runtime.mutableStateOf<((ChatMessage) -> Boolean)?>(null)
     private var currentMessageAgeSeconds by androidx.compose.runtime.mutableStateOf<((ChatMessage) -> Long)?>(null)
     private var currentOnFiltersChanged by androidx.compose.runtime.mutableStateOf<(() -> Unit)?>(null)
@@ -79,12 +78,12 @@ object MainWindowHost {
          * leave the client running with the chat connected and nothing to see it in.
          */
         onCloseRequest: () -> Unit,
-        skedBands: () -> List<Band>,
         openInBrowser: Consumer<String>,
         onShowOnMap: () -> Unit,
         onShowPathInAirScout: () -> Unit,
         onStationSelected: (ChatMember) -> Unit,
         onDirectedMessageClicked: (ChatMessage) -> Unit,
+        onMessageStationClicked: (ChatMessage, StationSelectionSource) -> Unit,
         isOwnMessage: (ChatMessage) -> Boolean,
         messageAgeSeconds: (ChatMessage) -> Long,
         onFiltersChanged: () -> Unit,
@@ -93,12 +92,12 @@ object MainWindowHost {
     ) {
         currentState = state
         currentActions = actions
-        currentSkedBands = skedBands
         currentOpenInBrowser = openInBrowser
         currentOnShowOnMap = onShowOnMap
         currentOnShowPathInAirScout = onShowPathInAirScout
         currentOnStationSelected = onStationSelected
         currentOnDirectedMessageClicked = onDirectedMessageClicked
+        currentOnMessageStationClicked = onMessageStationClicked
         currentIsOwnMessage = isOwnMessage
         currentMessageAgeSeconds = messageAgeSeconds
         currentOnFiltersChanged = onFiltersChanged
@@ -151,12 +150,12 @@ object MainWindowHost {
             MainWindow(
                 state = s,
                 actions = a,
-                skedBands = currentSkedBands?.invoke() ?: emptyList(),
                 openInBrowser = currentOpenInBrowser ?: Consumer { _ -> },
                 onShowOnMap = currentOnShowOnMap ?: {},
                 onShowPathInAirScout = currentOnShowPathInAirScout ?: {},
                 onStationSelected = currentOnStationSelected ?: {},
                 onDirectedMessageClicked = currentOnDirectedMessageClicked ?: {},
+                onMessageStationClicked = currentOnMessageStationClicked ?: { _, _ -> },
                 isOwnMessage = currentIsOwnMessage ?: { false },
                 messageAgeSeconds = currentMessageAgeSeconds ?: { 0L },
                 onFiltersChanged = currentOnFiltersChanged ?: {},

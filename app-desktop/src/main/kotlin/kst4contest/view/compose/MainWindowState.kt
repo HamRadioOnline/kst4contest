@@ -59,6 +59,7 @@ class MainWindowState(
     val outerSplitter: SplitterState,
     val messageSplitter: SplitterState,
     val rightSplitter: SplitterState,
+    val reachability: ReachabilityState = ReachabilityState(activeBands),
 ) {
 
     /** The shortcut buttons above the send line. */
@@ -67,7 +68,35 @@ class MainWindowState(
      * service, send line). Set by the host after construction; other windows, such as the
      * map, go through it instead of touching [selectedStation] alone. Null clears.
      */
-    var stationSelector: ((ChatMember?) -> Unit)? = null
+    var stationSelector: ((ChatMember?, StationSelectionSource) -> Unit)? = null
+
+    /** Application callback that rebuilds the controller and Compose station filters. */
+    var stationFiltersChanged: (() -> Unit)? = null
+
+    /** Debounced persistence hook shared by the main and map windows. */
+    var layoutSaveRequested: (() -> Unit)? = null
+
+    val stationSelection: StationSelectionState
+        get() = selectedStation.stationSelection
+
+    /** Routes every explicit station choice through the application-level action. */
+    fun selectStation(member: ChatMember?, source: StationSelectionSource) {
+        val selector = stationSelector
+        if (selector != null) {
+            selector(member, source)
+        } else {
+            selectedStation.select(member, source)
+        }
+    }
+
+    fun resetStationFilters() {
+        stationFilter.reset()
+        stationFiltersChanged?.invoke()
+    }
+
+    fun requestLayoutSave() {
+        layoutSaveRequested?.invoke()
+    }
 
     val shortcuts = RosterMirror(prefs.getLst_txtShortCutBtnList())
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kst4contest.model.Band
 import kst4contest.model.ChatMember
+import kst4contest.model.ChatPreferences
 
 /**
  * The bands a station can be tagged as not being on, under the labels the panel shows.
@@ -39,7 +40,17 @@ enum class SelectedMessageFilter(val label: String) {
     PM_TO_ME("pm to me"),
     PM_TO_OTHER("pm to other"),
     PUBLIC("public msgs"),
-    NOTHING("nothing"),
+    NOTHING("nothing");
+
+    companion object {
+        @JvmStatic
+        fun fromPreferences(prefs: ChatPreferences): SelectedMessageFilter = when {
+            prefs.isGuiOptions_defaultFilterPmToMe -> PM_TO_ME
+            prefs.isGuiOptions_defaultFilterPmToOther -> PM_TO_OTHER
+            prefs.isGuiOptions_defaultFilterPublicMsgs -> PUBLIC
+            else -> NOTHING
+        }
+    }
 }
 
 /**
@@ -61,7 +72,7 @@ enum class SelectedMessageFilter(val label: String) {
  *        every draw, so the supplied lambda has to read Compose state for the button to
  *        follow a settings Apply
  */
-class SelectedStationState(
+class SelectedStationState @JvmOverloads constructor(
     private val propagateNotQrv: (ChatMember) -> Unit,
     private val createSked: (ChatMember, Int, Band?, String?) -> Boolean,
     private val markSkedFail: (ChatMember) -> Unit = { },
@@ -72,10 +83,11 @@ class SelectedStationState(
     private val turnAntennaTo: ((Double) -> Unit)? = null,
     private val turnSecondAntennaTo: ((Double) -> Unit)? = null,
     private val secondAntennaOffered: () -> Boolean = { false },
+    val stationSelection: StationSelectionState = StationSelectionState(),
 ) {
 
-    var selected: ChatMember? by mutableStateOf(null)
-        private set
+    val selected: ChatMember?
+        get() = stationSelection.selected
 
     /** Bumped on a tag so the panel redraws; the flags live on the station itself. */
     private var tagRevision: Int by mutableStateOf(0)
@@ -136,11 +148,15 @@ class SelectedStationState(
         if (heading.isFinite() && showsSecondAntenna) turnSecondAntennaTo?.invoke(heading)
     }
 
-    fun select(member: ChatMember?) {
-        if (selected?.callSignRaw != member?.callSignRaw) {
+    @JvmOverloads
+    fun select(
+        member: ChatMember?,
+        source: StationSelectionSource = StationSelectionSource.PROGRAMMATIC,
+    ) {
+        if (StationIdentity.of(selected) != StationIdentity.of(member)) {
             skedBand = member?.let { resolveDefaultSkedBand(it) }
         }
-        selected = member
+        stationSelection.select(member, source)
     }
 
     fun isTaggedNotQrv(band: NotQrvBand): Boolean {

@@ -56,6 +56,14 @@ Mehrere Operateure an einem Rechner können jetzt eigene Rufzeichen, Locators un
 
 ### Behoben
 
+- **Verbindung aus den Einstellungen erneut aufbauen:** Nach **Disconnect** blieb **Connect to ...** im geöffneten Einstellungsfenster deaktiviert. Die Buttons folgen jetzt dem Verbindungszustand des Connection Managers, sperren doppelte Verbindungsversuche und werden nach einem vollständigen Disconnect oder einem fehlgeschlagenen Versuch wieder freigegeben.
+
+- **Reachability-Bedienung wieder sichtbar:** Die Compose-Filterleiste enthält wieder **Reachability** mit **Auto** und den lokal aktivierten Bändern sowie **Calc selected**. Nur die ausdrückliche Berechnung der ausgewählten Station darf Online-Höhendaten anfordern; Tabellenaufbau, Sortierung und Bandauswahl verwenden ausschließlich vorhandene Ergebnisse.
+
+- **Kompaktere Oberfläche auf kleinen Bildschirmen:** Der Further-Info-Bereich ist scrollbar, leere Tabellen zeigen einen eindeutigen Leerzustand, Filterzeilen brechen bei Bedarf um und lange Sendetexte lassen sich vollständig als Hinweis anzeigen. Bedienelemente und rechte Fensterbereiche sind deutlicher voneinander abgegrenzt.
+
+- **Diagnosedateien gebündelt und begrenzt:** Neue Fehlerprotokolle und ON4KST-Messagehistory-Dateien werden unter `.praktiKST/debug` angelegt. Vorhandene Dateien im bisherigen Verzeichnis bleiben unverändert. Das Fehlerprotokoll rotiert bei 20 MiB und behält einschließlich der aktiven Datei höchstens fünf Generationen.
+
 - **Einheitliche Schriftgröße:** Unter macOS und Linux verwendet JavaFX eine etwas größere Standardschrift als unter Windows. Dadurch wurden Beschriftungen in fest bemessenen Bedienelementen abgeschnitten. KST4Contest verwendet jetzt auf allen Systemen dieselbe Grundschriftgröße; unter Windows ändert sich nichts.
 
 - **Dark Mode nach dem Neustart:** Das Hauptfenster startete immer hell, auch wenn zuletzt der Dark Mode aktiv war, während die Stationskarte dunkel blieb. Jetzt starten alle Fenster einheitlich mit dem Farbschema des Profils.

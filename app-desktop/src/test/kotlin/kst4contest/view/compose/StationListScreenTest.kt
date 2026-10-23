@@ -41,6 +41,14 @@ import java.util.EnumSet
 @OptIn(ExperimentalTestApi::class)
 class StationListScreenTest {
 
+    @Test
+    fun anEmptyTableKeepsItsStructureAndExplainsTheEmptyBody() = runComposeUiTest {
+        show(stationList())
+
+        onNodeWithText("No entries").assertExists()
+        onNodeWithText("QRB").assertExists()
+    }
+
     private fun stationList(): DataTableState<ChatMember> = DataTableState(
         StationColumns.all(
             tropoOf = { "" },
@@ -140,6 +148,7 @@ class StationListScreenTest {
         onNodeWithText("QRB").performClick()
         waitForIdle()
 
+        assertEquals("qrb", state.sortedColumnId, "clicking the header did not select its sort")
         onNodeWithText("DL2BBB").assertDoesNotExist()
         assertEquals(listOf("DL1AAA", "DL3CCC"), drawnOrder("DL3CCC", "DL1AAA"))
     }
@@ -162,6 +171,7 @@ class StationListScreenTest {
         onNodeWithText("AP [minutes / pot%]").performClick()
         waitForIdle()
 
+        assertEquals("airscout", state.sortedColumnId, "clicking the header did not select its sort")
         assertEquals(
             listOf("DL1THREE", "DL1THIRTEEN", "DL1NONE"),
             drawnOrder("DL1THIRTEEN", "DL1NONE", "DL1THREE"),
@@ -194,6 +204,34 @@ class StationListScreenTest {
 
         onNodeWithText("DL2BBB").assertDoesNotExist()
         assertEquals(null, state.selectedRow)
+    }
+
+    @Test
+    fun anExplicitSelectionScrollsUsingTheCurrentSortedPosition() = runComposeUiTest {
+        val selection = StationSelectionState()
+        val state = DataTableState(
+            StationColumns.all(
+                tropoOf = { "" },
+                priorityScoreOf = { 0.0 },
+                formatBand = { _, _, _ -> "" },
+                activeBands = EnumSet.noneOf(Band::class.java),
+            ),
+            RowKeys.byValue(StationColumns::rowKey),
+            initialSortColumnId = "callsign",
+            selectionModel = selection,
+            keepSelectionVisible = true,
+        )
+        val stations = (1..60).map { number -> station("DL${number.toString().padStart(2, '0')}TEST") }
+        state.replaceRows(stations.reversed())
+
+        show(state)
+        onNodeWithText("DL60TEST").assertDoesNotExist()
+
+        runOnIdle { selection.select(stations.last(), StationSelectionSource.PUBLIC_MESSAGE) }
+        waitForIdle()
+
+        onNodeWithText("DL60TEST").assertExists()
+        assertSame(stations.last(), state.selectedRow)
     }
 
     /**

@@ -103,7 +103,9 @@ Each status cell has a tooltip containing the legend and the state derived for t
 
 ![Band-specific Worked status and worked grid squares](worked_band_status.png)
 
-**Sorting**: Click column headers. QRB sorting is numerical (corrected in v1.22).
+On its first build, the user list is sorted alphabetically by complete callsign, ignoring letter case. New stations are inserted at the corresponding position. A sort subsequently selected through a column header is retained across new stations, data updates and filter changes. QRB is sorted numerically.
+
+Station selection is shared by the user list, PM, Public and QSO-of-the-other tables, priority display, AP timeline and map. A selection made in another view scrolls the user list to the chat member's current position and highlights the row. If a filter hides that station, it is temporarily added to the user list; the stored filters and exactly filtered map view remain unchanged. Callsign and chat category jointly identify the station.
 
 A callsign displayed in green and bold indicates a directional opportunity derived from a directed message. The marker applies to the sender of that message and remains visible for no more than five minutes. Derivation and limitations: [Directional Opportunities from Directed Messages](en-Features#directional-opportunities-from-directed-messages).
 
@@ -182,6 +184,8 @@ The filter bar is located above the chat-member table. Filters can be combined; 
 
 ![Wrapped filter bar in a narrow chat-member view](filter_bar_wrapped.png)
 
+> **Note:** This screenshot still shows the previous filter-bar layout. It will be replaced after the new compact, wrapping layout has completed its visual check.
+
 ### Station Filters
 
 | Control | Effect |
@@ -254,20 +258,30 @@ In plain terms: the filters determine the table contents, but no longer enforce 
 
 The lower-right panel combines the messages associated with the selected station. This includes public messages, private messages to the local station and, where visible in the chat, private messages addressed to other stations.
 
-The selected filter controls which of these messages are displayed. Under **Settings → GUI**, the default filter can be set to:
+The selected filter is a separate dimension which controls the message type shown for the selected station. Under **Settings → GUI**, its initial value can be set to:
 
-- all messages,
-- private messages to the local station,
-- private messages to other stations, or
-- public messages.
+- **pm to me**: private messages between the selected and local station, plus public messages from the selected station whose structured leading address names the local login callsign,
+- **pm to other**: private messages sent by the selected station to other participants,
+- **Public msgs**: public messages sent by the selected station to `ALL`,
+- **nothing**: all messages involving the selected station in its chat category, without an additional message-type or receiver restriction.
+
+A local callsign mentioned only somewhere in ordinary message text does not make a public line a **pm to me** message. A public line qualifies only when the ON4KST message begins with its explicit parenthesised address.
 
 This setting changes the Further Info display only. Messages are neither discarded nor removed from the other message tables, and the filter can be changed at any time for the currently selected station.
 
-The lower part of the panel contains per-band **Not QRV** marks for the selected station. Individual controls are shown for the bands enabled in the local station settings. **tag not qrv all** sets or removes the mark for every supported band, including bands which are not currently visible.
+When the lower divider leaves the Further Info area very short, its contents can be scrolled vertically. The message table keeps a compact scroll area of its own, while the sked, NOT-QRV, map, AirScout, antenna and lookup actions remain reachable. Empty tables retain their column structure and show **No entries**.
+
+The station header combines the callsign, chat category, QTF, QRB, last activity and detected bands in a compact flow. It does not repeat the locator; the locator remains available in the other station views. In a narrow panel, the metadata wraps onto additional lines without clipping. **Show messages** sits directly in front of the four message filters and flows with them.
+
+The **NOT QRV** and **Sked alert** areas sit next to each other while the actual right-panel width is sufficient. Moving the splitter further to the right stacks the two bordered groups. Controls can also wrap inside their group, without introducing a horizontal scroll area.
+
+The lower part of the panel contains per-band **Not QRV** marks for the selected station. Compact toggle buttons are shown for the bands enabled in the local station settings. **all** sets or removes the mark for every supported band, including bands which are not currently visible.
 
 The change immediately affects the **NOT QRV @** column, band opportunities and the corresponding filters. It is stored in the internal database and restored after a restart.
 
 ![Per-band NOT-QRV marks in the Further Info panel](not_qrv_controls.png)
+
+> **Screenshot note:** This image still shows the previous checkbox controls. It will be replaced after manual acceptance of the compact toggle buttons.
 
 The current **Priority score** of the selected station is displayed in the same section.
 
@@ -285,6 +299,8 @@ The controls underneath are used to create a sked:
 | **2+1**, **5+2+1**, **10+5+2+1** | Times at which reminder PMs are sent before the sked |
 
 ![Sked controls in the Further Info section](sked_controls.png)
+
+> **Screenshot note:** This image still shows the previous separate layout. It will be replaced after manual acceptance of the responsive **NOT QRV** and **Sked alert** groups.
 
 The proposed band is derived from recent QRG and name information for the station. It can be changed explicitly before creating the sked. The mode selection only affects the Win-Test handover; the internal sked and reminder PMs work independently.
 
@@ -308,6 +324,8 @@ The **more** button opens a separate window containing up to 15 candidates. The 
 
 ![Priority Score, compact candidate list and Further Info controls](priority_score_overview.png)
 
+> **Note:** This screenshot still shows the previous Further Info geometry. It will be replaced after the new scrollable, height-constrained station panel has completed its visual check.
+
 Stations with a score of `0` are not included in the priority list. They remain visible in the user list so that the reason for their exclusion can be examined and, for example, an incorrect NOT-QRV mark can be changed.
 
 The score is calculated for the normalised base callsign. Several active variants such as `9A0BB-2` and `9A0BB-70` may therefore display the same value in the user list. They nevertheless remain separate message targets.
@@ -315,6 +333,14 @@ The score is calculated for the normalised base callsign. Several active variant
 New messages, AirScout data, skeds and status changes request a new calculation. A periodic refresh also runs in the background. A briefly outdated order is therefore not an error.
 
 Calculation and limitations: [Priority Score and Priority List](en-Features#priority-score-and-priority-list-from-v140).
+
+---
+
+## AP Timeline
+
+The AP timeline shows opportunities in the upcoming window relative to now. Its subtle minute axis runs from `0 min` on the left to `+30 min` on the right. Ticks normally use five-minute intervals; a narrow view increases the interval so the labels remain readable.
+
+The four candidate lanes directly reflect the existing priority selection: **In beam 1**, **In beam 2**, **Priority 1** and **Priority 2**. **Skeds** have a separate lane. The existing colour coding, antenna emphasis and click-to-select behaviour remain in effect.
 
 ---
 
@@ -340,9 +366,9 @@ A single station marker can be selected directly. KST4Contest then:
 
 Chat logins with the same normalised base callsign and position may share one marker. They nevertheless remain separate message targets inside KST4Contest.
 
-When **Group nearby stations** is selected, markers which are too close together at lower zoom levels are displayed as a cluster containing the number of stations. Clicking the cluster zooms into that area. A concrete station is selected only after an individual marker becomes visible and is clicked. Clearing the checkbox displays every positionable station as an individual marker at every zoom level.
+When **Grouping** is selected, markers which are too close together at lower zoom levels are displayed as a cluster containing the number of stations. Clicking the cluster zooms into that area. A concrete station is selected only after an individual marker becomes visible and is clicked. Clearing the checkbox displays every positionable station as an individual marker at every zoom level. Its tooltip explains the compact switch's full purpose.
 
-The change takes effect immediately without changing the current zoom, viewport or station selection. It is saved automatically and restored at the next programme start. If no value has been stored yet, **Group nearby stations** remains selected so existing installations retain the previous behaviour.
+The change takes effect immediately without changing the current zoom, viewport or station selection. It is saved automatically and restored at the next programme start. If no value has been stored yet, **Grouping** remains selected so existing installations retain the previous behaviour.
 
 This switch controls only the spatial clusters on screen. Active chat variants of the same normalised base callsign may still share one geographical marker and remain separate message targets regardless of this setting.
 
@@ -356,6 +382,8 @@ For a selected station, the header additionally shows:
 - the most recently known QRGs.
 
 Long header content is shortened. The complete text remains available in its tooltip.
+
+**Reset filters** invokes the same action as the button in the user list. It clears all enabled station filters, callsign search, direction filters and grid colouring. Sorting, station selection, zoom and viewport remain unchanged. **Always on top** affects only the map window, is applied immediately and is saved automatically for the operator profile. It is disabled when no value has been stored.
 
 ### Clearing the Selection with Reset View
 
@@ -432,6 +460,8 @@ The lower part of the main window contains three global message tabs. Their cont
 | **Public messages** | Public chat messages, CQ calls and beacons |
 | **DXCluster messages** | DX cluster messages received through ON4KST |
 | **QSO of the other** | Directed messages between two other stations |
+
+Clicking a row under **Public messages** or **QSO of the other** selects its sender as the current station and scrolls the user list to the matching callsign and chat category. The global tab contents remain unchanged.
 
 ![Global message tabs in the main window](global_message_tabs.png)
 

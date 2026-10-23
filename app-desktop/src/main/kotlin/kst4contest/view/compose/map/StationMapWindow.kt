@@ -20,13 +20,18 @@ import kst4contest.view.ApplicationRuntimeLauncher
 import kst4contest.view.compose.PaletteStore
 import kst4contest.view.compose.ComposeWindowHost
 import kst4contest.view.compose.MainWindowState
+import kst4contest.view.compose.StationIdentity
+import kst4contest.view.compose.StationSelectionSource
 import kst4contest.view.map.MapCallsignRawSnapshotBuilder
 import kst4contest.view.map.PathAnalysisResult
 import kst4contest.view.map.StationMapStatusText
 import kst4contest.view.map.TileFetcher
 import java.util.EnumSet
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+)
 object StationMapWindow {
 
     private val host = ComposeWindowHost("Map")
@@ -60,14 +65,16 @@ object StationMapWindow {
             widthDp = widthDp,
             heightDp = heightDp,
             onResized = onResized,
+            alwaysOnTop = mainWindowState.prefs.isGUIstationMapAlwaysOnTop,
         ) { _ ->
             val window = this.window
             /*
              * Never larger than the smallest screen: AWT enforces a minimum size even past
              * the edge, and some operators work on 640x480.
              */
-            androidx.compose.runtime.LaunchedEffect(window) {
+            androidx.compose.runtime.LaunchedEffect(window, mainWindowState.prefs.isGUIstationMapAlwaysOnTop) {
                 window?.minimumSize = WindowPlacementOnScreen.minimumSizeOnScreens(900, 600)
+                window?.isAlwaysOnTop = mainWindowState.prefs.isGUIstationMapAlwaysOnTop
             }
             val tileFetcher = remember { TileFetcher() }
 
@@ -80,7 +87,11 @@ object StationMapWindow {
                 onDispose { tileFetcher.close() }
             }
 
-            Content(mainWindowState = mainWindowState, tileFetcher = tileFetcher)
+            Content(
+                mainWindowState = mainWindowState,
+                tileFetcher = tileFetcher,
+                onAlwaysOnTopChanged = { enabled -> window?.isAlwaysOnTop = enabled },
+            )
         } // host.show content
     }
 
@@ -108,6 +119,7 @@ object StationMapWindow {
         },
         mapState: MapState = remember { MapState() },
         pathAnalysis: () -> MapPathAnalysis? = ::runtimePathAnalysis,
+        onAlwaysOnTopChanged: (Boolean) -> Unit = { },
     ) {
             val strings = LocalStrings.current
 
@@ -128,6 +140,7 @@ object StationMapWindow {
             
             var groupingEnabled by remember { mutableStateOf(prefs.isGUIstationMapClusteringEnabled) }
             var pathAnalysisVisible by remember { mutableStateOf(prefs.isGUIstationMapPathAnalysisVisible) }
+            var alwaysOnTop by remember { mutableStateOf(prefs.isGUIstationMapAlwaysOnTop) }
             
             val selectedMember = mainWindowState.selectedStation.selected
             
@@ -159,7 +172,7 @@ object StationMapWindow {
                     }
 
                     builder.buildSnapshots(
-                        mainWindowState.stations.visibleRows,
+                        mainWindowState.stations.filteredRows,
                         selectedMember,
                         bandSet
                     )
@@ -237,10 +250,11 @@ object StationMapWindow {
                  * the theme's primary colour, which in the evening sheet is a bright
                  * green, and the map window was the only one wearing it.
                  */
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     val statusText = StationMapStatusText.build(
                         markers.size,
@@ -274,8 +288,7 @@ object StationMapWindow {
                     }
 
                     kst4contest.view.compose.Form.button(strings.mapResetView) {
-                        mainWindowState.stationSelector?.invoke(null)
-                            ?: mainWindowState.selectedStation.select(null)
+                        mainWindowState.selectStation(null, StationSelectionSource.RESET_VIEW)
                         val home = runCatching {
                             kst4contest.locatorUtils.Location(ownLocator6)
                         }.getOrNull()
@@ -284,12 +297,38 @@ object StationMapWindow {
                         /* The zoom is deliberately left alone; see AGENTS.md, UI behaviour. */
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        kst4contest.view.compose.CompactCheckbox(groupingEnabled) {
-                            groupingEnabled = it
-                            prefs.isGUIstationMapClusteringEnabled = it
+                    kst4contest.view.compose.Form.button(strings.filterReset) {
+                        mainWindowState.resetStationFilters()
+                    }
+
+                    androidx.compose.foundation.TooltipArea(
+                        tooltip = { kst4contest.view.compose.TooltipCard(strings.mapGroupNearbyTooltip) },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            kst4contest.view.compose.CompactCheckbox(
+                                checked = groupingEnabled,
+                                modifier = Modifier.testTag(GROUPING_TAG),
+                            ) {
+                                groupingEnabled = it
+                                prefs.isGUIstationMapClusteringEnabled = it
+                                mainWindowState.requestLayoutSave()
+                            }
+                            Text(strings.mapGroupNearby, modifier = Modifier.padding(start = 4.dp))
                         }
-                        Text(strings.mapGroupNearby, modifier = Modifier.padding(start = 4.dp))
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        kst4contest.view.compose.CompactCheckbox(
+                            checked = alwaysOnTop,
+                            onCheckedChange = { enabled ->
+                                alwaysOnTop = enabled
+                                prefs.isGUIstationMapAlwaysOnTop = enabled
+                                onAlwaysOnTopChanged(enabled)
+                                mainWindowState.requestLayoutSave()
+                            },
+                            modifier = Modifier.testTag(ALWAYS_ON_TOP_TAG),
+                        )
+                        Text(strings.mapAlwaysOnTop, modifier = Modifier.padding(start = 4.dp))
                     }
 
                     if (!pathAnalysisVisible) {
@@ -305,6 +344,7 @@ object StationMapWindow {
                     ) {
                         pathAnalysisVisible = !pathAnalysisVisible
                         prefs.isGUIstationMapPathAnalysisVisible = pathAnalysisVisible
+                        mainWindowState.requestLayoutSave()
                     }
                 }
 
@@ -340,15 +380,15 @@ object StationMapWindow {
                                  * A marker stands for a raw callsign, not a category. Keep the
                                  * category already selected when it is one of the variants.
                                  */
-                                val member = variants.firstOrNull { it === mainWindowState.selectedStation.selected }
-                                    ?: variants.firstOrNull()
+                                val selectedIdentity = StationIdentity.of(mainWindowState.selectedStation.selected)
+                                val member = variants.firstOrNull {
+                                    StationIdentity.of(it) == selectedIdentity
+                                } ?: variants.firstOrNull {
+                                    it.chatCategory?.categoryNumber ==
+                                        prefs.loginChatCategoryMain?.categoryNumber
+                                } ?: variants.singleOrNull()
                                 if (member != null) {
-                                    val selector = mainWindowState.stationSelector
-                                    if (selector != null) {
-                                        selector(member)
-                                    } else {
-                                        mainWindowState.selectedStation.select(member)
-                                    }
+                                    mainWindowState.selectStation(member, StationSelectionSource.MAP)
                                     // Mirror old JavaFX handleMapCallsignSelection logic: prefill /cq
                                     mainWindowState.chatInput.prepareCq(member.callSign ?: "", forceOverwrite = true)
                                 }
@@ -420,6 +460,8 @@ object StationMapWindow {
 
     /** Marks the map canvas so a test can click a marker on it. */
     internal const val MAP_CANVAS_TAG = "station-map-canvas"
+    internal const val GROUPING_TAG = "station-map-grouping"
+    internal const val ALWAYS_ON_TOP_TAG = "station-map-always-on-top"
 
     @JvmStatic
     fun applyDarkMode(darkMode: Boolean) {

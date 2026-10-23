@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.EnumSet
+import kotlin.math.abs
 
 /**
  * The QRB part of the station filter bar, drawn (#21).
@@ -51,10 +52,45 @@ class StationFilterBarScreenTest {
             StationFilterBar(
                 filters = bar.filters,
                 activeBands = EnumSet.of(Band.B_144),
+                reachability = ReachabilityState(EnumSet.of(Band.B_144)),
                 onChanged = { bar.changes++ },
             )
         }
         return bar
+    }
+
+    @Test
+    fun reachabilityBandChangesDoNotCalculateUntilTheButtonIsClicked() = runComposeUiTest {
+        val filters = StationFilterState()
+        val station = kst4contest.model.ChatMember()
+        var calculations = 0
+        val reachability = ReachabilityState(
+            activeBands = EnumSet.of(Band.B_144, Band.B_432),
+            resolveAutoBand = { Band.B_144 },
+            selectedStation = { station },
+            calculate = { member, band ->
+                assertEquals(station, member)
+                assertEquals(Band.B_432, band)
+                calculations++
+            },
+        )
+
+        showTab {
+            StationFilterBar(
+                filters = filters,
+                activeBands = EnumSet.of(Band.B_144, Band.B_432),
+                reachability = reachability,
+                onChanged = { },
+            )
+        }
+
+        onNodeWithText("Reachability").assertIsDisplayed()
+        onNodeWithText("Auto").performClick()
+        awaitNode(inPopup("432")).performClick()
+        assertEquals(0, calculations)
+
+        onNodeWithText("Calc selected").performClick()
+        assertEquals(1, calculations)
     }
 
     @Test
@@ -133,7 +169,12 @@ class StationFilterBarScreenTest {
         setContent {
             Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
                 Box(Modifier.width(width)) {
-                    StationFilterBar(filters = filters, activeBands = EnumSet.of(Band.B_144), onChanged = {})
+                    StationFilterBar(
+                        filters = filters,
+                        activeBands = EnumSet.of(Band.B_144),
+                        reachability = ReachabilityState(EnumSet.of(Band.B_144)),
+                        onChanged = {},
+                    )
                 }
             }
         }
@@ -145,6 +186,10 @@ class StationFilterBarScreenTest {
                 onNodeWithText(maxLabel),
                 onNodeWithText(minLabel),
                 onNodeWithText("Show only QTF:"),
+                onNodeWithText("Inactive stations"),
+                onNodeWithText("Only new grids"),
+                onNodeWithText("AS next 5m"),
+                onNodeWithText("Calc selected"),
                 fieldBeside(maxLabel),
                 fieldBeside(minLabel),
             )
@@ -153,5 +198,33 @@ class StationFilterBarScreenTest {
             val right = node.fetchSemanticsNode().boundsInRoot.right
             assertTrue(right <= limit + 0.5f, "a control ends at $right px, beyond the $limit px wide bar")
         }
+    }
+
+    @Test
+    fun filterControlsShareOneHeightAndBearingsShareOneCompactWidth() = runComposeUiTest {
+        showBar()
+
+        val fieldHeight = fieldBeside(maxLabel).fetchSemanticsNode().boundsInRoot.height
+        val checkboxHeight = checkBeside(maxLabel).fetchSemanticsNode().boundsInRoot.height
+        val findFieldHeight = onNodeWithText("Find...").fetchSemanticsNode().boundsInRoot.height
+        val controlHeights = listOf("Reset filters", "N", "Auto", "Calc selected")
+            .map { onNodeWithText(it).fetchSemanticsNode().boundsInRoot.height } +
+            listOf(fieldHeight, checkboxHeight, findFieldHeight)
+        assertTrue(
+            controlHeights.max() - controlHeights.min() <= 1f,
+            "filter control heights differ: $controlHeights",
+        )
+
+        val bearingWidths = Bearing.entries
+            .map { onNodeWithText(it.name).fetchSemanticsNode().boundsInRoot.width }
+        assertTrue(
+            bearingWidths.max() - bearingWidths.min() <= 1f,
+            "bearing widths differ: $bearingWidths",
+        )
+        val expectedWidth = with(density) { Density.DIRECTION_BUTTON_WIDTH.toPx() }
+        assertTrue(
+            bearingWidths.all { abs(it - expectedWidth) <= 1f },
+            "bearing buttons are not $expectedWidth px wide: $bearingWidths",
+        )
     }
 }
