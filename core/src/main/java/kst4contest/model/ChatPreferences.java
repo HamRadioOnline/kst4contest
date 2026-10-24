@@ -57,11 +57,13 @@ public class ChatPreferences {
 	 * only use is a best-effort warning when a file is newer than the application. Release
 	 * 1.50 added the two palette-override elements and deliberately left this at 7. A bump
 	 * that no reader acts on only invites the next person to bump it again.
+	 * Version 9 marks the manual-QTF-heading opt-out migration. A missing opt-out marker
+	 * enables the feature, and a subsequently written marker preserves the user's decision.
 	 * <p>
 	 * Reading must stay backwards compatible: missing/unknown tags should fall back to defaults.
 	 */
 //	private static final int CONFIG_VERSION = 2;
-	public static final int CONFIG_VERSION = 8;
+	public static final int CONFIG_VERSION = 9;
 
 	// Prefer writing tag names that mirror variable names (human readable). Keep legacy tags for compatibility.
 	private static final String TAG_CONFIG_VERSION = "configVersion";
@@ -202,6 +204,7 @@ public class ChatPreferences {
 	int stn_on4kstServersPort = 23001;
 
 	boolean stn_pstRotatorEnabled = false;
+	boolean stn_qtfFilterDirectionAsAntennaHeadingOptedOut;
 	String stn_pstRotatorHost = "127.0.0.1";
 	int stn_pstRotatorPort = 12000;
 	boolean stn_pstRotator2Enabled = false;
@@ -259,6 +262,7 @@ public class ChatPreferences {
 	boolean loginToSecondChatEnabled;
 	MutableValue<Double> actualQTF = new SimpleValue<>(360.0); // will be updated by user at runtime!
 	MutableValue<Double> actualQTF2 = new SimpleValue<>(Double.NaN); // heading of rotator 2 (SO2R), NaN when unknown
+	private boolean actualQtfInitializedFromPreferences;
 
 	boolean stn_bandActive50;
 	boolean stn_bandActive70;
@@ -425,6 +429,7 @@ public class ChatPreferences {
 	private double[] GUIstationMapStagePositionXY = new double[] { Double.NaN, Double.NaN };
 	private boolean GUIstationMapPathAnalysisVisible = true;
 	private boolean GUIstationMapClusteringEnabled = true;
+	private boolean GUIstationMapAlwaysOnTop = false;
 	private final Map<String, Double> tableColumnWidths = new LinkedHashMap<>();
 
 	private static final String TAG_TABLE_COLUMN_WIDTH = "tableColumnWidth";
@@ -803,6 +808,14 @@ public class ChatPreferences {
 		this.GUIstationMapClusteringEnabled = GUIstationMapClusteringEnabled;
 	}
 
+	public boolean isGUIstationMapAlwaysOnTop() {
+		return GUIstationMapAlwaysOnTop;
+	}
+
+	public void setGUIstationMapAlwaysOnTop(boolean GUIstationMapAlwaysOnTop) {
+		this.GUIstationMapAlwaysOnTop = GUIstationMapAlwaysOnTop;
+	}
+
 	/**
 	 * Returns a stored width for one stable table/leaf-column identity.
 	 *
@@ -1043,6 +1056,20 @@ public class ChatPreferences {
 		this.stn_pstRotatorEnabled = stn_pstRotatorEnabled;
 	}
 
+	public boolean isStn_useQtfFilterDirectionAsAntennaHeading() {
+		return !stn_qtfFilterDirectionAsAntennaHeadingOptedOut;
+	}
+
+	public void setStn_useQtfFilterDirectionAsAntennaHeading(
+			boolean stn_useQtfFilterDirectionAsAntennaHeading) {
+		this.stn_qtfFilterDirectionAsAntennaHeadingOptedOut =
+				!stn_useQtfFilterDirectionAsAntennaHeading;
+	}
+
+	public boolean isQtfFilterDirectionAsAntennaHeadingEnabled() {
+		return !stn_pstRotatorEnabled && !stn_qtfFilterDirectionAsAntennaHeadingOptedOut;
+	}
+
 	public String getStn_pstRotatorHost() {
 		return stn_pstRotatorHost;
 	}
@@ -1215,7 +1242,9 @@ public class ChatPreferences {
 	}
 
 	public void setStn_qtfDefault(double stn_qtfDefault) {
-		this.stn_qtfDefault = stn_qtfDefault;
+		if (Double.isFinite(stn_qtfDefault) && stn_qtfDefault >= 0.0 && stn_qtfDefault <= 360.0) {
+			this.stn_qtfDefault = stn_qtfDefault;
+		}
 	}
 
 	public boolean isStn_loginAFKState() {
@@ -1732,6 +1761,12 @@ public class ChatPreferences {
 			Element stn_qtfDefault = doc.createElement("stn_qtfDefault");
 			stn_qtfDefault.setTextContent(this.stn_qtfDefault+"");
 			station.appendChild(stn_qtfDefault);
+
+			Element stn_qtfFilterDirectionAsAntennaHeadingOptedOut =
+					doc.createElement("stn_qtfFilterDirectionAsAntennaHeadingOptedOut");
+			stn_qtfFilterDirectionAsAntennaHeadingOptedOut.setTextContent(
+					Boolean.toString(this.stn_qtfFilterDirectionAsAntennaHeadingOptedOut));
+			station.appendChild(stn_qtfFilterDirectionAsAntennaHeadingOptedOut);
 
 			Element stn_pathAnalysisOwnAntennaHeightMeters = doc.createElement("stn_pathAnalysisOwnAntennaHeightMeters");
 			stn_pathAnalysisOwnAntennaHeightMeters.setTextContent(this.stn_pathAnalysisOwnAntennaHeightMeters + "");
@@ -2395,6 +2430,12 @@ public class ChatPreferences {
 			);
 			guiOptions.appendChild(GUIstationMapClusteringEnabled);
 
+			Element GUIstationMapAlwaysOnTop = doc.createElement("GUIstationMapAlwaysOnTop");
+			GUIstationMapAlwaysOnTop.setTextContent(
+					String.valueOf(this.isGUIstationMapAlwaysOnTop())
+			);
+			guiOptions.appendChild(GUIstationMapAlwaysOnTop);
+
 			appendTableColumnWidths(doc, guiOptions);
 			appendWindowPositions(doc, guiOptions);
 
@@ -2484,6 +2525,8 @@ public class ChatPreferences {
 				getGUIstationMapStagePositionXY()[0] + ";" + getGUIstationMapStagePositionXY()[1]);
 		upsertDirectChildText(document, guiOptions, "GUIstationMapClusteringEnabled",
 				String.valueOf(isGUIstationMapClusteringEnabled()));
+		upsertDirectChildText(document, guiOptions, "GUIstationMapAlwaysOnTop",
+				String.valueOf(isGUIstationMapAlwaysOnTop()));
 	}
 
 	private void appendTableColumnWidths(Document document, Element guiOptions) {
@@ -2611,7 +2654,7 @@ public class ChatPreferences {
 
 				stn_antennaBeamWidthDeg = getDouble(stationEl, stn_antennaBeamWidthDeg, "stn_antennaBeamWidthDeg");
 				stn_maxQRBDefault = getDouble(stationEl, stn_maxQRBDefault, "stn_maxQRBDefault");
-				stn_qtfDefault = getDouble(stationEl, stn_qtfDefault, "stn_qtfDefault");
+				setStn_qtfDefault(getDouble(stationEl, stn_qtfDefault, "stn_qtfDefault"));
 
 				stn_pathAnalysisOwnAntennaHeightMeters = getDouble(
 						stationEl,
@@ -2721,6 +2764,16 @@ public class ChatPreferences {
 				stn_bandActive10G = getBoolean(stationEl, stn_bandActive10G, "stn_bandActive10G");
 
 				stn_pstRotatorEnabled = getBoolean(stationEl, stn_pstRotatorEnabled, "stn_pstRotatorEnabled");
+				/*
+				 * The positive version-8 setting cannot distinguish an explicit false from its old
+				 * default. Absence of the opt-out marker therefore performs the approved migration
+				 * to enabled; once written, the marker preserves every later user decision.
+				 */
+				stn_qtfFilterDirectionAsAntennaHeadingOptedOut = getBoolean(
+						stationEl,
+						false,
+						"stn_qtfFilterDirectionAsAntennaHeadingOptedOut"
+				);
 
 				setStn_pstRotatorHost(
 						getText(
@@ -3223,6 +3276,7 @@ public class ChatPreferences {
 			 *
 			 ***********************************************/
 			this.setGUIstationMapClusteringEnabled(true);
+			this.setGUIstationMapAlwaysOnTop(false);
 			list = doc.getElementsByTagName("guiOptions");
 			if (list.getLength() != 0) {
 
@@ -3270,6 +3324,12 @@ public class ChatPreferences {
 								element,
 								true,
 								"GUIstationMapClusteringEnabled"
+						));
+
+						this.setGUIstationMapAlwaysOnTop(getBooleanOrDefault(
+								element,
+								false,
+								"GUIstationMapAlwaysOnTop"
 						));
 
 						// Splitpane divider positions
@@ -3387,8 +3447,16 @@ public class ChatPreferences {
 			System.out.println(e.getMessage());
 		}
 
+		initializeActualQtfFromDefaultIfRequired();
 		return true;
 
+	}
+
+	private void initializeActualQtfFromDefaultIfRequired() {
+		if (!actualQtfInitializedFromPreferences) {
+			actualQTF.set(stn_qtfDefault);
+			actualQtfInitializedFromPreferences = true;
+		}
 	}
 
 	/**

@@ -102,10 +102,14 @@ Jede Statuszelle besitzt einen Tooltip mit der Legende und dem für die betreffe
 
 ![Bandbezogener Worked-Status und Worked-Großfelder](worked_band_status.png)
 
-**Sortierung**: Klick auf Spaltenköpfe. QRB-Sortierung arbeitet numerisch (ab v1.22 korrigiert).
+Beim ersten Aufbau ist die Benutzerliste alphabetisch nach dem vollständigen Rufzeichen sortiert, ohne Groß- und Kleinschreibung zu unterscheiden. Neue Stationen werden an der passenden Stelle eingefügt. Eine anschließend über einen Spaltenkopf gewählte Sortierung bleibt bei neuen Stationen, Daten- und Filteraktualisierungen erhalten. QRB wird numerisch sortiert.
 
+Die Stationsauswahl gilt gemeinsam für Benutzerliste, PM-, Public- und QSO-of-the-other-Tabelle, Prioritätsanzeige, AP-Timeline und Karte. Eine Auswahl aus einer anderen Ansicht scrollt die Benutzerliste zur aktuellen Position des Chatmembers und hebt die Zeile hervor. Ist die Station durch einen Filter ausgeblendet, erscheint sie vorübergehend zusätzlich in der Benutzerliste; die gespeicherten Filter und die exakt gefilterte Kartenansicht ändern sich dadurch nicht. Rufzeichen und Chat-Kategorie bilden gemeinsam die Identität.
+
+Ein fett dargestelltes Rufzeichen kennzeichnet eine Station, die während der laufenden Sitzung tatsächlich neu in den Chat gekommen ist. Die Hervorhebung bleibt zehn Minuten sichtbar. Die anfängliche Benutzerliste und eine vollständige Neusynchronisierung nach einem Reconnect erzeugen keine solchen Markierungen. Im Day-Design wird eine kontrastreiche dunkle, im Evening-Design eine entsprechend helle Schrift verwendet.
 
 Ein grün und fett dargestelltes Rufzeichen kennzeichnet eine aus einer gerichteten Nachricht hergeleitete Richtungsgelegenheit. Die Markierung bezieht sich auf den Absender der Nachricht und bleibt höchstens fünf Minuten sichtbar. Herleitung und Grenzen: [Richtungsgelegenheiten aus gerichteten Nachrichten](de-Funktionen#richtungsgelegenheiten-aus-gerichteten-nachrichten).
+
 ### Sendfeld
 
 Das Sendfeld enthält den vorbereiteten Text für die nächste ausgehende Nachricht.
@@ -178,7 +182,11 @@ Damit muss der Divider nicht allein deshalb verschoben werden, um eine einzelne 
 
 Die Filterleiste befindet sich oberhalb der Chatmember-Tabelle. Filter können miteinander kombiniert werden; eine Station bleibt nur sichtbar, wenn sie alle aktiven Bedingungen erfüllt.
 
+Dezent umrahmte Flächen fassen **QRB**, **QTF** einschließlich Richtungstasten, **Hide**, **Show** und **Reachability** jeweils funktional zusammen. **Find** und **Reset filters** bleiben eigenständige Controls. Die Gruppen ändern nur die Darstellung; Filterzustände, Reset-Verhalten und Kartenkopplung bleiben gemeinsam verwaltet.
+
 ![Umgebrochene Filterleiste bei schmaler Chatmember-Ansicht](filter_bar_wrapped.png)
+
+> **Hinweis:** Dieser Screenshot zeigt noch die frühere Anordnung der Filterleiste. Er wird nach der visuellen Prüfung der neuen kompakten, umbrechenden Leiste ersetzt.
 
 ### Stationsfilter
 
@@ -195,6 +203,8 @@ Die Filterleiste befindet sich oberhalb der Chatmember-Tabelle. Filter können m
 | **New bands** | Zeigt Stationen mit mindestens einer erkannten, lokal aktivierten und noch nicht gearbeiteten Bandmöglichkeit |
 | **Tropo >=0dB** | Zeigt Stationen mit einer berechneten, nicht negativen SSB-Marge |
 | **AS next 5m** | Zeigt Stationen mit einem aktuellen oder innerhalb der nächsten fünf Minuten erwarteten AirScout-Fenster |
+
+Standardmäßig aktualisiert eine gültige direkte Eingabe in der QTF-Gruppe oder der Klick auf eine Richtungstaste zugleich die aktuelle eigene Antennenrichtung. Diese ausdrückliche Übernahme funktioniert unabhängig davon, ob **Show only QTF** ein- oder ausgeschaltet ist. Das Zurücksetzen oder bloße Ausschalten des Filters verändert die Antennenrichtung nicht. Im Abschnitt **Station → Manuelle Antennenrichtung** kann das Verhalten mit **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** profilbezogen ausgeschaltet werden. PSTRotator 1 hat vorübergehend Vorrang, ohne diese gespeicherte Auswahl zu verändern.
 
 Bei **New bands** werden aktuelle QRGs, Bandangaben im Namensfeld und aktive Rufzeichenvarianten gemeinsam ausgewertet. Manuelle NOT-QRV-Markierungen haben Vorrang.
 
@@ -252,20 +262,30 @@ Im Klartext: Die Filter bestimmen den Tabelleninhalt, aber nicht mehr die Mindes
 
 Rechts unten werden die Nachrichten der ausgewählten Station zusammengeführt. Dazu gehören öffentliche Nachrichten, Privatnachrichten an die eigene Station und – soweit im Chat sichtbar – Privatnachrichten an andere Stationen.
 
-Der im Panel gewählte Filter bestimmt, welche dieser Nachrichten angezeigt werden. Unter **Settings → GUI** lässt sich festlegen, welcher Filter beim Öffnen einer Stationsinformation vorausgewählt ist:
+Der im Panel gewählte Filter bestimmt als eigene Dimension, welche Nachrichtenart für die ausgewählte Station angezeigt wird. Unter **Settings → GUI** lässt sich der Startwert festlegen:
 
-- alle Nachrichten,
-- Privatnachrichten an die eigene Station,
-- Privatnachrichten an andere Stationen oder
-- öffentliche Nachrichten.
+- **pm to me**: private Nachrichten zwischen der ausgewählten und der eigenen Station sowie öffentliche Nachrichten der ausgewählten Station, deren strukturierte Adressangabe am Anfang das eigene Login-Rufzeichen nennt,
+- **pm to other**: private Nachrichten der ausgewählten Station an andere Teilnehmer,
+- **Public msgs**: öffentliche Nachrichten der ausgewählten Station an `ALL`,
+- **nothing**: alle Nachrichten mit Beteiligung der ausgewählten Station in ihrer Chat-Kategorie, ohne zusätzliche Einschränkung nach Nachrichtenart oder Empfänger.
+
+Eine bloße Erwähnung des eigenen Rufzeichens irgendwo im Nachrichtentext macht eine öffentliche Zeile nicht zu **pm to me**. Dafür muss die ON4KST-Nachricht mit der ausdrücklichen Adressangabe in Klammern beginnen.
 
 Die Einstellung verändert nur die Darstellung im Stationsinfo-Panel. Nachrichten werden dadurch weder verworfen noch aus den übrigen Nachrichtentabellen entfernt. Der Filter kann im Panel jederzeit für die aktuell betrachtete Station gewechselt werden.
 
-Im unteren Bereich können für die ausgewählte Station bandbezogene **Not QRV**-Markierungen gesetzt werden. Sichtbar sind die Bänder, die in den Stationseinstellungen für die eigene Station aktiviert wurden. **tag not qrv all** setzt beziehungsweise entfernt die Markierung für alle unterstützten Bänder gemeinsam, einschließlich momentan nicht eingeblendeter Bänder.
+Ein horizontaler Divider im Further-Info-Bereich teilt die Höhe zwischen Nachrichtentabelle und Stationsfunktionen. Die Nachrichtentabelle wird beim Verschieben unmittelbar höher oder niedriger. NOT-QRV und Sked besitzen im unteren Bereich einen eigenen vertikalen Scrollbereich; **Look up and show** bleibt darunter fest sichtbar. Die Dividerposition wird mit dem Layout des aktiven Root- oder Operatorprofils gespeichert und bei einem kleineren Fenster auf einen bedienbaren Wert begrenzt. Leere Tabellen zeigen weiterhin ihre Spaltenstruktur und den Hinweis **Keine Einträge**.
+
+Der Stationskopf fasst Rufzeichen, Chat-Kategorie, QTF, QRB, letzte Aktivität und erkannte Bänder platzsparend zusammen. Der Locator wird im Kopf nicht noch einmal wiederholt; in den übrigen Stationsansichten bleibt er unverändert verfügbar. Bei einem schmalen Panel fließen die Angaben kontrolliert in weitere Zeilen. **Show messages** steht direkt vor den vier Nachrichtenfiltern und fließt gemeinsam mit ihnen um.
+
+Die Bereiche **NOT QRV** und **Sked alert** stehen nebeneinander, solange die tatsächliche Breite des rechten Panels dafür ausreicht. Wird der Splitter weiter nach rechts verschoben, ordnet KST4Contest die beiden umrahmten Gruppen untereinander an. Die enthaltenen Controls brechen innerhalb ihrer Gruppe ebenfalls um; ein horizontaler Scrollbereich ist dafür nicht nötig.
+
+Im unteren Bereich können für die ausgewählte Station bandbezogene **Not QRV**-Markierungen gesetzt werden. Sichtbar sind kompakte Togglebuttons für die Bänder, die in den Stationseinstellungen für die eigene Station aktiviert wurden. **all** setzt beziehungsweise entfernt die Markierung für alle unterstützten Bänder gemeinsam, einschließlich momentan nicht eingeblendeter Bänder.
 
 Die Änderung wirkt sofort auf die Spalte **NOT QRV @**, die Bandmöglichkeiten und die zugehörigen Filter. Sie wird in der internen Datenbank gespeichert und nach einem Neustart wiederhergestellt.
 
 ![Bandbezogene NOT-QRV-Markierungen im Further-Info-Bereich](not_qrv_controls.png)
+
+> **Screenshot-Hinweis:** Dieses Bild zeigt noch die frühere Checkbox-Darstellung. Es wird nach der manuellen Abnahme der kompakten Togglebuttons ersetzt.
 
 Im selben Bereich wird der aktuelle **Priority score** der ausgewählten Station angezeigt.
 
@@ -284,6 +304,8 @@ Darunter befinden sich die Bedienelemente zum Anlegen eines Skeds:
 
 ![Sked-Steuerung im Further-Info-Bereich](sked_controls.png)
 
+> **Screenshot-Hinweis:** Dieses Bild zeigt noch die frühere getrennte Anordnung. Es wird nach der manuellen Abnahme der responsiven Bereiche **NOT QRV** und **Sked alert** ersetzt.
+
 Das vorgeschlagene Band wird aus aktuellen QRG- und Namensinformationen der Station hergeleitet. Vor dem Anlegen kann es ausdrücklich geändert werden. Die Mode-Auswahl betrifft nur die Übergabe an Win-Test; der interne Sked und die Reminder-PMs funktionieren unabhängig davon.
 
 **Create sked** legt den Termin immer zuerst in KST4Contest an. Ist der Win-Test-Netzwerk-Listener aktiv, wird anschließend zusätzlich eine Übergabe an Win-Test versucht. Kann keine zum ausgewählten Band passende QRG ermittelt werden oder ist Win-Test nicht erreichbar, bleiben der interne Sked, seine Priorisierung und gegebenenfalls angelegte Reminder erhalten.
@@ -294,7 +316,13 @@ Die vollständige Herleitung und die Grenzen der Funktion sind unter [Skeds und 
 
 ## Prioritätsliste
 
-Die kompakte Prioritätsleiste befindet sich rechts zwischen Benutzerliste und Further-Info-Bereich. Sie zeigt die beiden derzeit höchstbewerteten Kandidaten unmittelbar im Hauptfenster:
+Die kompakte Leiste befindet sich rechts zwischen Benutzerliste und Further-Info-Bereich. Links erscheint bei Bedarf die Gruppe **Neu hinzugekommen**, rechts bleibt die unabhängige Gruppe **Priority**.
+
+**Neu hinzugekommen** zeigt die neuesten tatsächlichen Chat-Beitritte für zehn Minuten an, neuere Einträge zuerst. Bei ausreichender Breite sind bis zu fünf Stationen direkt sichtbar; weitere oder wegen geringer Breite ausgeblendete Einträge stehen im kompakten **more**-Dropdown. Die anfängliche Benutzerliste, eine vollständige Neusynchronisierung, reine Profilaktualisierungen und das eigene Rufzeichen werden nicht aufgenommen. Verlässt eine Station den Chat, verschwindet ihr Eintrag sofort. Ein späterer echter Wiedereintritt startet die Frist neu. Vollständiges Rufzeichen und Chat-Kategorie bleiben getrennte Identitäten.
+
+Ein Klick auf einen Eintrag verwendet die gemeinsame Stationsauswahl, aktualisiert das Further-Info-Panel und scrollt bei Bedarf zur Station in der Benutzerliste.
+
+Die Gruppe **Priority** zeigt die beiden derzeit höchstbewerteten Kandidaten unmittelbar im Hauptfenster:
 
 ```text
 Priority:  1 RUFZEICHEN SCORE  2 RUFZEICHEN SCORE  more
@@ -306,6 +334,8 @@ Die Schaltfläche **more** öffnet ein separates Fenster mit bis zu 15 Kandidate
 
 ![Priority Score, kompakte Kandidatenliste und Further-Info-Steuerung](priority_score_overview.png)
 
+> **Hinweis:** Dieser Screenshot zeigt noch die frühere Geometrie des Further-Info-Bereichs. Er wird nach der visuellen Prüfung des neuen scrollbar begrenzten Stationsbereichs ersetzt.
+
 Stationen mit einem Score von `0` werden nicht in die Prioritätsliste aufgenommen. In der Benutzerliste bleiben sie sichtbar, sodass der Ausschluss nachvollzogen und beispielsweise durch eine geänderte NOT-QRV-Markierung korrigiert werden kann.
 
 Der Score wird für das normalisierte Basisrufzeichen berechnet. Mehrere aktive Varianten wie `9A0BB-2` und `9A0BB-70` können daher in der Benutzerliste denselben Wert anzeigen. Die Chatmember bleiben trotzdem getrennte Nachrichtenziele.
@@ -313,6 +343,14 @@ Der Score wird für das normalisierte Basisrufzeichen berechnet. Mehrere aktive 
 Neue Nachrichten, AirScout-Daten, Skeds und Statusänderungen lösen eine Neuberechnung aus. Zusätzlich erfolgt eine regelmäßige Aktualisierung im Hintergrund. Eine kurzzeitig noch nicht angepasste Reihenfolge ist deshalb kein Fehler.
 
 Herleitung und Grenzen: [Prioritätsscore und Prioritätsliste](de-Funktionen#prioritätsscore-und-prioritätsliste-ab-v140).
+
+---
+
+## AP-Timeline
+
+Die AP-Timeline zeigt Chancen im kommenden Zeitfenster relativ zu jetzt. Die zurückhaltende Minutenachse läuft von `0 min` links bis `+30 min` rechts. Normalerweise erscheinen Marken in Fünf-Minuten-Schritten; bei wenig horizontalem Platz wird der Abstand vergrößert, damit die Beschriftungen lesbar bleiben.
+
+Die vier Kandidatenzeilen entsprechen direkt der vorhandenen Prioritätsauswahl: **Im Strahl 1**, **Im Strahl 2**, **Priorität 1** und **Priorität 2**. **Skeds** besitzen eine eigene Zeile. Die bisherige Farbcodierung, Antennenausrichtung und Auswahl einer Station per Klick bleiben erhalten.
 
 ---
 
@@ -327,7 +365,11 @@ Die Karte verwendet die Stationen, die nach Anwendung der aktuellen Benutzerlist
 
 ![Stationskarte mit ausgewählter Station und eingeblendeter Streckenanalyse](station_map_path_analysis.png)
 
+> **Screenshot-Hinweis:** Das Bild zeigt noch die frühere Markerbeschriftung und weder das neue Kontextmenü noch die Worked-Großfeldfläche. Es wird nach der manuellen Kartenabnahme ersetzt.
+
 ### Station auswählen
+
+Ein Marker zeigt als sichtbare Beschriftung ausschließlich das Rufzeichen. Locator, erkannte Bänder, `B+`-Status und zuletzt bekannte QRGs stehen weiterhin im Tooltip.
 
 Ein einzelner Stationsmarker kann direkt angeklickt werden. KST4Contest:
 
@@ -336,11 +378,17 @@ Ein einzelner Stationsmarker kann direkt angeklickt werden. KST4Contest:
 3. aktualisiert den **Further Info**-Bereich und
 4. bereitet das vollständige sichtbare Rufzeichen als `/cq`-Empfänger vor.
 
-Ist **Group nearby stations** ausgewählt, werden Marker, die bei niedrigen Zoomstufen zu dicht beieinanderliegen, als Cluster mit einer Stationsanzahl dargestellt. Ein Klick auf einen Cluster vergrößert den betreffenden Kartenausschnitt. Erst ein anschließend sichtbarer einzelner Marker wählt eine konkrete Station aus. Wird die Checkbox ausgeschaltet, zeigt die Karte unabhängig von der Zoomstufe alle positionierbaren Stationen als einzelne Marker.
+Ist **Gruppierung** ausgewählt, werden Marker, die bei niedrigen Zoomstufen zu dicht beieinanderliegen, als Cluster mit einer Stationsanzahl dargestellt. Ein Klick auf einen Cluster vergrößert den betreffenden Kartenausschnitt. Erst ein anschließend sichtbarer einzelner Marker wählt eine konkrete Station aus. Wird die Checkbox ausgeschaltet, zeigt die Karte unabhängig von der Zoomstufe alle positionierbaren Stationen als einzelne Marker. Der Tooltip erläutert den vollständigen Zweck des kompakten Schalters.
 
-Das Umschalten wirkt sofort und verändert weder Zoom noch Kartenausschnitt oder Stationsauswahl. Die Einstellung wird automatisch gespeichert und beim nächsten Programmstart wiederhergestellt. Ohne gespeicherte Einstellung bleibt **Group nearby stations** ausgewählt, damit bestehende Installationen zunächst das bisherige Verhalten behalten.
+Das Umschalten wirkt sofort und verändert weder Zoom noch Kartenausschnitt oder Stationsauswahl. Die Einstellung wird automatisch gespeichert und beim nächsten Programmstart wiederhergestellt. Ohne gespeicherte Einstellung bleibt **Gruppierung** ausgewählt, damit bestehende Installationen zunächst das bisherige Verhalten behalten.
 
 Der Schalter betrifft nur die räumlichen Cluster auf dem Bildschirm. Aktive Chatvarianten desselben normalisierten Basisrufzeichens können weiterhin einen gemeinsamen geografischen Marker verwenden und bleiben unabhängig davon getrennte Nachrichtenziele.
+
+Ein Rechtsklick auf einen Marker oder eine Zeile der Benutzerliste öffnet dasselbe Stations-Kontextmenü. Es enthält **Message snippets**, **Create sked…**, bandbezogene **Tag NOT QRV**- und **Mark as worked**-Aktionen sowie **Calculate reachability**. Repräsentiert ein Marker mehrere vollständige Rufzeichen oder Chat-Kategorien, muss zuerst das konkrete Ziel gewählt werden. Dadurch werden keine Aktionen willkürlich auf den ersten Eintrag angewendet.
+
+Die Snippet-Aktion ergänzt lediglich das Sendefeld und sendet nicht selbst. Der Sked-Dialog arbeitet mit dem beim Öffnen festgehaltenen Ziel; ein späterer Auswahlwechsel ändert diesen Entwurf nicht. **Mark as worked** verwendet dieselbe additive Worked- und Datenbanklogik wie ein empfangenes Logger-`contactinfo` und entfernt keine bereits vorhandene Markierung.
+
+**Calculate reachability** startet die vorhandene Streckenberechnung ausdrücklich für das gewählte Band. Wird die Aktion aus der Benutzerliste aufgerufen, öffnet KST4Contest die Karte und zeigt dort Ladezustand, Ergebnis oder Fehler für genau dieses Ziel an.
 
 Die Kopfzeile ergänzt bei ausgewählter Station:
 
@@ -352,6 +400,10 @@ Die Kopfzeile ergänzt bei ausgewählter Station:
 - die zuletzt bekannten QRGs.
 
 Lange Inhalte werden in der Kopfzeile gekürzt. Der vollständige Text steht im Tooltip.
+
+**Filter zurücksetzen** führt dieselbe Aktion wie die Schaltfläche in der Benutzerliste aus. Dabei werden alle aktivierten Stationsfilter, die Rufzeichensuche und Richtungsfilter zurückgesetzt. Die reine Darstellungsoption **Grid color** bleibt ebenso unverändert wie Sortierung, Stationsauswahl, Zoom und Kartenausschnitt. **Immer im Vordergrund** wirkt ausschließlich auf das Kartenfenster, wird sofort angewendet und für dieses Operatorprofil automatisch gespeichert; ohne gespeicherten Wert ist die Option ausgeschaltet.
+
+Bei aktivem **Grid color** kennzeichnet die Karte dauerhaft bekannte, bereits gearbeitete vierstellige Maidenhead-Großfelder mit einem schwarzen Rahmen und einer schwarzen Flächenüberblendung von 30 Prozent. Die Darstellung stammt aus derselben persistenten Worked-Grid-Verwaltung wie **Only new grids** und bleibt deshalb auch sichtbar, wenn sich momentan keine Chatstation in dem Großfeld befindet. Bei ausgeschaltetem **Grid color** werden weder Rahmen noch Flächenüberblendung gezeichnet.
 
 ### Auswahl mit Reset view löschen
 
@@ -429,6 +481,8 @@ Der untere Bereich des Hauptfensters enthält drei globale Nachrichtentabs. Ihr 
 | **DXCluster messages** | Über ON4KST empfangene DX-Cluster-Meldungen |
 | **QSO of the other** | Gerichtete Nachrichten zwischen zwei anderen Stationen |
 
+Ein Klick auf eine Zeile unter **Public messages** oder **QSO of the other** wählt den Absender als aktuelle Station aus und scrollt die Benutzerliste zu dessen Rufzeichen und Chat-Kategorie. Der Inhalt der globalen Tabs bleibt dabei unverändert.
+
 ![Globale Nachrichtentabs im Hauptfenster](global_message_tabs.png)
 
 Im Tab **QSO of the other** werden Absender und Empfänger getrennt dargestellt. Die Spalten **Last QRG TX** und **Last QRG RX** enthalten die zuletzt für beide Stationen bekannten Frequenzen. Sie geben nicht zwingend die QRG der angezeigten Unterhaltung wieder.
@@ -493,6 +547,8 @@ Die serverbezogenen Funktionen sind nur bei vollständig aufgebauter ON4KST-Verb
 ## Fenstergrößen und Divider
 
 KST4Contest speichert Größen und Positionen der Programmfenster, die relevanten Divider sowie manuell geänderte Tabellenbreiten automatisch nach einer kurzen Verzögerung in der Konfigurationsdatei. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben. **Save Settings** ist dafür nicht erforderlich, speichert aber weiterhin den vollständigen aktuellen Stand einschließlich Layout.
+
+Dazu gehört der horizontale Divider zwischen der Nachrichtentabelle und den Stationsfunktionen im Further-Info-Bereich. Sein Wert gilt für das aktive Root- oder Operatorprofil; beim Wiederherstellen begrenzt KST4Contest ihn auf die im aktuellen Fenster nutzbare Höhe.
 
 Das Hauptfenster wird beim Start zusätzlich gegen den sichtbaren Bereich des primären Bildschirms geprüft. Ist die gespeicherte Größe zu groß, verkleinert und verschiebt KST4Contest das Fenster so, dass es wieder erreichbar bleibt. Die genaue Herleitung ist unter [Bildschirmgerechte Größe des Hauptfensters](de-Funktionen#bildschirmgerechte-größe-des-hauptfensters-ab-v141) beschrieben.
 

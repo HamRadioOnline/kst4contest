@@ -60,10 +60,30 @@ public record MapCallsignRawSnapshot(
     }
 
     public String markerLabel() {
-        String baseLabel = bandSummary.isBlank()
-                ? displayCallSign
-                : displayCallSign + " (" + bandSummary + ")";
-        return offersSelectedBand ? baseLabel + " B+" : baseLabel;
+        return displayCallSign;
+    }
+
+    /**
+     * Returns the details removed from the visible marker label for its hover text.
+     *
+     * @return multiline callsign, locator, band and frequency summary
+     */
+    public String tooltipText() {
+        StringJoiner joiner = new StringJoiner("\n");
+        joiner.add(displayCallSign);
+        if (!locator6.isBlank()) {
+            joiner.add("Locator: " + locator6);
+        }
+        if (!bandSummary.isBlank()) {
+            joiner.add("Bands: " + bandSummary);
+        }
+        if (offersSelectedBand) {
+            joiner.add("B+");
+        }
+        if (!lastKnownFrequenciesByBand.isEmpty()) {
+            joiner.add(detailFrequencyText());
+        }
+        return joiner.toString();
     }
 
     public String detailFrequencyText() {

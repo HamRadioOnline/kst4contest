@@ -2,13 +2,11 @@ package kst4contest.view.compose
 
 import kst4contest.view.i18n.LocalStrings
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -18,13 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
 import kst4contest.model.ChatMessage
 import kst4contest.model.ClusterMessage
 
@@ -40,6 +33,7 @@ fun MessageTabs(
     publicMessages: DataTableState<ChatMessage>,
     clusterMessages: DataTableState<ClusterMessage>,
     qsoOfTheOther: DataTableState<ChatMessage>,
+    onStationMessageClicked: (ChatMessage, StationSelectionSource) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var selected by remember { mutableStateOf(0) }
@@ -51,35 +45,20 @@ fun MessageTabs(
         strings.messagesQsoOfTheOther,
     )
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant)) {
             titles.forEachIndexed { index, title ->
                 val isSelected = index == selected
-                val underline = MaterialTheme.colorScheme.primary
 
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = Density.TAB_MIN_HEIGHT)
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                            else Color.Transparent
-                        )
-                        .clickable { selected = index }
-                        .drawBehind {
-                            if (isSelected) {
-                                val thickness = 2.dp.toPx()
-                                drawRect(
-                                    color = underline,
-                                    topLeft = Offset(0f, size.height - thickness),
-                                    size = Size(size.width, thickness),
-                                )
-                            }
-                        }
-                        .padding(horizontal = Density.TAB_HORIZONTAL_PADDING, vertical = 5.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                }
+                CompactTab(
+                    text = title,
+                    selected = isSelected,
+                    onClick = { selected = index },
+                )
             }
         }
 
@@ -87,9 +66,21 @@ fun MessageTabs(
 
         Box(modifier = Modifier.fillMaxSize()) {
             when (selected) {
-                0 -> DataTableView(publicMessages, modifier = Modifier.fillMaxSize())
+                0 -> DataTableView(
+                    publicMessages,
+                    modifier = Modifier.fillMaxSize(),
+                    onRowClick = { message ->
+                        onStationMessageClicked(message, StationSelectionSource.PUBLIC_MESSAGE)
+                    },
+                )
                 1 -> DataTableView(clusterMessages, modifier = Modifier.fillMaxSize())
-                else -> DataTableView(qsoOfTheOther, modifier = Modifier.fillMaxSize())
+                else -> DataTableView(
+                    qsoOfTheOther,
+                    modifier = Modifier.fillMaxSize(),
+                    onRowClick = { message ->
+                        onStationMessageClicked(message, StationSelectionSource.QSO_OF_THE_OTHER)
+                    },
+                )
             }
         }
     }

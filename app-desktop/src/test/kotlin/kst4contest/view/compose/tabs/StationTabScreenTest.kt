@@ -77,12 +77,44 @@ class StationTabScreenTest {
         showTab { StationTab(s.state) }
 
         listOf("Own station", "Chat category", "ON4KST server", "Active bands", "Defaults",
-            "PSTRotator", "Path analysis defaults").forEach { onNodeWithText(it).assertExists() }
+            "Manual antenna heading", "PSTRotator", "Path analysis defaults").forEach {
+            onNodeWithText(it).assertExists()
+        }
 
         fieldBeside("Callsign").assertTextEquals("DN9APW")
         fieldBeside("Server port").assertTextEquals("23001")
         checkBeside("144 MHz").assertIsOn()
         checkBeside("10 GHz").assertIsOff()
+    }
+
+    @Test
+    fun qtfFilterHeadingOptionFollowsTheDraftedPrimaryRotatorState() = runComposeUiTest {
+        val s = Session(preferences())
+        showTab { StationTab(s.state) }
+
+        val label = "Use QTF filter direction as antenna heading"
+        checkBeside(label).assertIsEnabled().assertIsOn()
+
+        toggle("Rotator sync enabled")
+
+        checkBeside(label).assertIsNotEnabled().assertIsOn()
+        toggle("Rotator sync enabled")
+        checkBeside(label).assertIsEnabled().assertIsOn()
+        runOnIdle { s.draft.apply() }
+        assertFalse(s.prefs.isStn_pstRotatorEnabled())
+        assertTrue(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading())
+    }
+
+    @Test
+    fun manualAntennaHeadingPanelRendersInEveningTheme() = runComposeUiTest {
+        val s = Session(preferences())
+
+        showTab(darkMode = true) { StationTab(s.state) }
+
+        onNodeWithText("Manual antenna heading").assertExists()
+        checkBeside("Use QTF filter direction as antenna heading")
+            .assertIsEnabled()
+            .assertIsOn()
     }
 
     /* The credentials write through; every other field waits for Apply. */
@@ -123,6 +155,18 @@ class StationTabScreenTest {
         type("QTF", "135,5")
         runOnIdle { s.draft.apply() }
         assertEquals(135.5, s.prefs.stn_qtfDefault, 1e-9)
+    }
+
+    @Test
+    fun invalidQtfDefaultsAreNotStaged() = runComposeUiTest {
+        val s = Session(preferences())
+        showTab { StationTab(s.state) }
+
+        listOf("360,1", "-0,1", "NaN", "Infinity").forEach { invalid ->
+            type("QTF", invalid)
+            runOnIdle { s.draft.apply() }
+            assertEquals(135.0, s.prefs.stn_qtfDefault, 1e-9, "accepted $invalid")
+        }
     }
 
     /*

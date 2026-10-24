@@ -7,14 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import kst4contest.view.i18n.LocalStrings
 import kst4contest.view.i18n.Strings
-import kst4contest.controller.ChatController
+import kst4contest.controller.On4KstConnectionState
 import kst4contest.model.ChatPreferences
-
-/**
- * The connection state the button bar shows. Derived from the controller rather than
- * held, because the session also connects and drops outside this window.
- */
-enum class ConnectionState { DISCONNECTED, CONNECTED_NOT_LOGGED_IN, LOGGED_IN }
 
 /**
  * The button bar at the bottom of the settings window.
@@ -26,15 +20,8 @@ enum class ConnectionState { DISCONNECTED, CONNECTED_NOT_LOGGED_IN, LOGGED_IN }
  */
 class ConnectionBarState(
     private val prefs: ChatPreferences,
-    private val controller: ChatController,
+    private val connectionState: () -> On4KstConnectionState,
 ) {
-
-    val connectionState: ConnectionState
-        get() = when {
-            controller.isConnectedAndLoggedIn -> ConnectionState.LOGGED_IN
-            controller.isConnectedAndNOTLoggedIn -> ConnectionState.CONNECTED_NOT_LOGGED_IN
-            else -> ConnectionState.DISCONNECTED
-        }
 
     /**
      * The label of the Connect button, which names the chat the station will land in —
@@ -62,13 +49,13 @@ class ConnectionBarState(
             return label
         }
 
-    /** Only a disconnected session can connect; the JavaFX button locked itself. */
+    /** A new attempt is safe only after the manager has completed its disconnect. */
     val canConnect: Boolean
-        get() = connectionState != ConnectionState.LOGGED_IN
+        get() = connectionState() == On4KstConnectionState.DISCONNECTED
 
-    /** Disconnecting needs a session that is actually logged in. */
+    /** A running attempt, online session or reconnect wait can be stopped by the operator. */
     val canDisconnect: Boolean
-        get() = connectionState == ConnectionState.LOGGED_IN
+        get() = connectionState().isConnectionAttemptActive
 }
 
 @OptIn(ExperimentalLayoutApi::class)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kst4contest.model.ContestSked
+import kst4contest.view.i18n.LocalStrings
 import kotlin.math.roundToInt
 
 /** The strip is read like a radar screen, so it stays dark in both designs. */
@@ -47,6 +49,8 @@ private val MARKER_SIZE = 12.dp
 private val LABEL_GAP = 4.dp
 private val CHIP_SHAPE = RoundedCornerShape(6.dp)
 private val CHIP_BACKGROUND = Color(0xA6000000)
+private val LANE_LABEL_WIDTH = 68.dp
+private val AXIS_LABEL_PADDING = 6.dp
 
 /**
  * The strip above the send field: what is coming in the next half hour.
@@ -82,6 +86,7 @@ fun TimelineView(
 
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
+    val strings = LocalStrings.current
 
     BoxWithConstraints(
         modifier
@@ -89,17 +94,60 @@ fun TimelineView(
             .background(STRIP_BACKGROUND),
     ) {
         val widthPx = with(density) { maxWidth.toPx() }
+        val labelGutterPx = with(density) { LANE_LABEL_WIDTH.toPx() }.coerceAtMost(widthPx)
+        val axisWidthPx = (widthPx - labelGutterPx).coerceAtLeast(0f)
         val axisY = with(density) { TimelineGeometry.AXIS_Y.dp.toPx() }
         val candidateMargin = with(density) { TimelineGeometry.CANDIDATE_MARGIN.dp.toPx() }
         val skedMargin = with(density) { TimelineGeometry.SKED_MARGIN.dp.toPx() }
+        val tickLabels = TimelineGeometry.minuteTicks(
+            axisWidth = axisWidthPx,
+            minimumLabelSpacing = measurer.measure("+30 ${strings.timelineMinuteSuffix}", AXIS_TEXT_STYLE)
+                .size.width.toFloat() + with(density) { AXIS_LABEL_PADDING.toPx() },
+        ).map { tick ->
+            tick to if (tick.minutes == 0) {
+                "0 ${strings.timelineMinuteSuffix}"
+            } else {
+                "+${tick.minutes} ${strings.timelineMinuteSuffix}"
+            }
+        }
 
         Canvas(Modifier.fillMaxSize()) {
-            drawLine(AXIS_COLOR, Offset(0f, axisY), Offset(size.width, axisY))
+            drawLine(AXIS_COLOR, Offset(labelGutterPx, axisY), Offset(size.width, axisY))
+            tickLabels.forEach { (tick, _) ->
+                val x = labelGutterPx + tick.x
+                drawLine(AXIS_COLOR, Offset(x, axisY - 2.dp.toPx()), Offset(x, axisY + 3.dp.toPx()))
+            }
+        }
+
+        val laneLabels = listOf(
+            strings.timelineInBeam1,
+            strings.timelineInBeam2,
+            strings.timelinePriority1,
+            strings.timelinePriority2,
+        )
+        laneLabels.forEachIndexed { index, label ->
+            TimelineAxisLabel(label, TimelineGeometry.laneY(index).dp)
+        }
+        TimelineAxisLabel(strings.timelineSkeds, TimelineGeometry.SKED_Y.dp)
+
+        tickLabels.forEach { (tick, label) ->
+            val labelWidthPx = measurer.measure(label, AXIS_TEXT_STYLE).size.width.toFloat()
+            val x = (labelGutterPx + tick.x - labelWidthPx / 2f)
+                .coerceIn(labelGutterPx, (widthPx - labelWidthPx).coerceAtLeast(labelGutterPx))
+            Text(
+                text = label,
+                modifier = Modifier.offset {
+                    IntOffset(x.roundToInt(), with(density) { TimelineGeometry.TICK_LABEL_Y.dp.toPx() }.roundToInt())
+                },
+                style = AXIS_TEXT_STYLE,
+                maxLines = 1,
+            )
         }
 
         // The candidate lanes, above the axis.
         state.candidates.forEach { candidate ->
-            val x = TimelineGeometry.xFor(candidate.timeUntilMs, widthPx, candidateMargin)
+            val x = TimelineGeometry.xFor(candidate.timeUntilMs, axisWidthPx, candidateMargin)
+                ?.plus(labelGutterPx)
                 ?: return@forEach
 
             TimelineMarker(
@@ -120,7 +168,8 @@ fun TimelineView(
         // above it, which is why their labels sat on top of the candidates'.
         val now = nowMillis.value
         state.skeds.forEach { sked ->
-            val x = TimelineGeometry.xFor(sked.skedTimeEpoch - now, widthPx, skedMargin)
+            val x = TimelineGeometry.xFor(sked.skedTimeEpoch - now, axisWidthPx, skedMargin)
+                ?.plus(labelGutterPx)
                 ?: return@forEach
 
             TimelineMarker(
@@ -156,6 +205,23 @@ private val CHIP_TEXT_STYLE = TextStyle(
     fontSize = 9.sp,
     fontWeight = FontWeight.Bold,
 )
+
+private val AXIS_TEXT_STYLE = TextStyle(
+    color = Color(0xFFB8B8B8),
+    fontSize = 8.sp,
+)
+
+@Composable
+private fun TimelineAxisLabel(text: String, top: Dp) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .offset(x = 4.dp, y = top)
+            .width(LANE_LABEL_WIDTH - 8.dp),
+        style = AXIS_TEXT_STYLE,
+        maxLines = 1,
+    )
+}
 
 /**
  * One marker: the symbol on the time axis and its callsign beside it.

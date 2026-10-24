@@ -146,6 +146,25 @@ class MessageHistoryRecorderTest {
         });
     }
 
+    @Test
+    void dedicatedDebugDirectoryIsCreatedWithoutMovingLegacyHistory()
+            throws Exception {
+        Path legacyHistory = historyFile();
+        Files.writeString(legacyHistory, "legacy history\n");
+        Path debugDirectory = temporaryDirectory.resolve("debug");
+
+        try (MessageHistoryRecorder recorder = new MessageHistoryRecorder(
+                debugDirectory,
+                true,
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC))) {
+            recorder.recordRx("OK|");
+        }
+
+        assertEquals("legacy history\n", Files.readString(legacyHistory));
+        assertTrue(Files.isRegularFile(
+                debugDirectory.resolve("Messagehistory.raw")));
+    }
+
     private MessageHistoryRecorder recorder(boolean enabled) {
         return new MessageHistoryRecorder(
                 temporaryDirectory,

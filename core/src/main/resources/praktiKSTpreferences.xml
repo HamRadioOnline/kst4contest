@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <praktiKST>
-    <configVersion>8</configVersion>
+    <configVersion>9</configVersion>
     <station>
         <LoginCallSign>DO5AMF</LoginCallSign>
         <LoginPassword>changeMe</LoginPassword>
@@ -13,6 +13,7 @@
         <stn_antennaBeamWidthDeg>60.0</stn_antennaBeamWidthDeg>
         <stn_maxQRBDefault>1333.0</stn_maxQRBDefault>
         <stn_qtfDefault>135.0</stn_qtfDefault>
+        <stn_qtfFilterDirectionAsAntennaHeadingOptedOut>false</stn_qtfFilterDirectionAsAntennaHeadingOptedOut>
         <stn_bandActive144>true</stn_bandActive144>
         <stn_bandActive432>true</stn_bandActive432>
         <stn_bandActive1240>true</stn_bandActive1240>

@@ -3,7 +3,6 @@ package kst4contest.view.compose
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,9 +35,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kst4contest.model.ChatPreferences
 
@@ -59,9 +56,13 @@ fun ShortcutButtonRow(
     modifier: Modifier = Modifier,
 ) {
     FlowRow(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .border(Density.HAIRLINE, MaterialTheme.colorScheme.outlineVariant)
+            .padding(horizontal = 2.dp, vertical = 1.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         shortcuts.forEach { shortcut ->
             when (shortcut) {
@@ -109,37 +110,8 @@ private fun ShortcutButton(label: String, accented: Boolean, onClick: () -> Unit
         return
     }
 
-    val palette = LocalJavaFxPalette.current
-    Box(
-        modifier = Modifier
-            .heightIn(min = Density.BUTTON_MIN_HEIGHT)
-            .background(
-                brush = if (palette.windowBackground.luminance() < 0.5f) {
-                    androidx.compose.ui.graphics.Brush.linearGradient(
-                        colors = listOf(Color(0xFF008000), Color(0xFF90EE90))
-                    )
-                } else {
-                    androidx.compose.ui.graphics.Brush.linearGradient(
-                        colors = listOf(Color(0xFF00FFFF), Color(0xFFFF99FF))
-                    )
-                },
-                shape = Density.BUTTON_SHAPE
-            )
-            .clickable { onClick() }
-            .padding(Density.BUTTON_CONTENT_PADDING),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = MYQRG_LABEL_COLOR,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-        )
-    }
+    Form.button(text = label, accented = true, onClick = onClick)
 }
-
-/** `-fx-text-fill: #395306` from `.buttonMyQrg1`; a dark olive that reads on the green. */
-private val MYQRG_LABEL_COLOR = Color(0xFF395306)
 
 /**
  * The send row: the message field, TX, clear, and the three small fields the operator
@@ -207,6 +179,7 @@ fun ChatInputRow(
             stored = antennaQtf.value?.toString().orEmpty(),
             onCommit = { text -> text.toDoubleOrNull()?.let { prefs.getActualQTF().set(it) } },
             tooltip = kst4contest.view.i18n.CurrentStrings.get().chatQtfTooltip,
+            width = QTF_FIELD_WIDTH,
         )
         if (so2rEnabled) {
             // Display only: rotator 2 writes it, the operator does not.
@@ -215,6 +188,7 @@ fun ChatInputRow(
                 onCommit = { },
                 tooltip = kst4contest.view.i18n.CurrentStrings.get().chatQtf2Tooltip,
                 editable = false,
+                width = QTF_FIELD_WIDTH,
             )
         }
     }
@@ -234,6 +208,7 @@ private fun InlineCommittedField(
     onCommit: (String) -> Unit,
     tooltip: String,
     editable: Boolean = true,
+    width: Dp = QRG_FIELD_WIDTH,
 ) {
     var draft by remember(stored) { mutableStateOf(stored) }
 
@@ -243,7 +218,7 @@ private fun InlineCommittedField(
             onValueChange = { draft = it },
             enabled = editable,
             modifier = Modifier
-                .width(QRG_FIELD_WIDTH)
+                .width(width)
                 .onFocusChanged { focus ->
                     if (!focus.isFocused && draft != stored) onCommit(draft)
                 },
@@ -267,7 +242,8 @@ private fun TooltipChip(text: String) {
     }
 }
 
-private val QRG_FIELD_WIDTH = 70.dp
+private val QRG_FIELD_WIDTH = 96.dp
+private val QTF_FIELD_WIDTH = 56.dp
 
 /**
  * The message field.
@@ -276,6 +252,7 @@ private val QRG_FIELD_WIDTH = 70.dp
  * both were on the scene in JavaFX, which means they worked wherever the focus was; here
  * they are on the field, and the window handles them for the rest of the surface.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageField(
     state: ChatInputState,
@@ -284,12 +261,21 @@ private fun MessageField(
 ) {
     val scheme = MaterialTheme.colorScheme
 
+    TooltipArea(
+        tooltip = {
+            if (state.value.text.isNotBlank()) {
+                TooltipChip(state.value.text)
+            }
+        },
+        modifier = modifier,
+    ) {
     Box(
-        modifier = modifier
-            .heightIn(min = Density.FIELD_MIN_HEIGHT)
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Density.CONTROL_HEIGHT)
             .border(1.5.dp, scheme.primary, Density.BUTTON_SHAPE)
             .background(scheme.surface, Density.BUTTON_SHAPE)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 6.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         BasicTextField(
@@ -307,9 +293,10 @@ private fun MessageField(
                     }
                 },
             singleLine = true,
-            textStyle = LocalTextStyle.current.copy(color = scheme.onSurface),
+            textStyle = compactControlTextStyle().copy(color = scheme.onSurface),
             cursorBrush = SolidColor(scheme.primary),
         )
+    }
     }
 }
 
@@ -319,7 +306,7 @@ private fun VerticalRule() {
     Box(
         Modifier
             .width(Density.HAIRLINE)
-            .height(Density.FIELD_MIN_HEIGHT)
+            .height(Density.CONTROL_HEIGHT)
             .background(MaterialTheme.colorScheme.outline),
     )
 }

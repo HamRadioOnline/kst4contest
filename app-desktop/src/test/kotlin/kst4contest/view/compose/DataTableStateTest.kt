@@ -35,6 +35,97 @@ class DataTableStateTest {
     )
 
     @Test
+    fun `an initial sort is applied once and keeps later rows in order`() {
+        val table = DataTableState(
+            columns = listOf(
+                DataColumn(
+                    id = "callsign",
+                    title = "Callsign",
+                    value = { station: Station -> station.callSign },
+                    comparator = compareBy(String.CASE_INSENSITIVE_ORDER) { station: Station ->
+                        station.callSign.trim()
+                    },
+                ),
+            ),
+            rowKey = RowKeys.byValue { station: Station -> station.callSign },
+            initialSortColumnId = "callsign",
+        )
+
+        table.replaceRows(listOf(Station("do5amf", 1), Station("DL1ABC", 2)))
+        assertEquals(listOf("DL1ABC", "do5amf"), table.visibleRows.map { it.callSign })
+
+        table.replaceRows(
+            listOf(Station("ZZ9ZZZ", 3), Station("do5amf", 1), Station("AA1AAA", 4), Station("DL1ABC", 2)),
+        )
+
+        assertEquals(
+            listOf("AA1AAA", "DL1ABC", "do5amf", "ZZ9ZZZ"),
+            table.visibleRows.map { it.callSign },
+        )
+    }
+
+    @Test
+    fun `a user sort replaces the initial sort and survives row and filter updates`() {
+        val table = DataTableState(
+            columns = listOf(
+                DataColumn(id = "callsign", title = "Callsign", value = { station: Station -> station.callSign }),
+                DataColumn(
+                    id = "qrb",
+                    title = "QRB",
+                    value = { station: Station -> station.qrb.toString() },
+                    comparator = compareBy { station: Station -> station.qrb },
+                ),
+            ),
+            rowKey = RowKeys.byValue { station: Station -> station.callSign },
+            initialSortColumnId = "callsign",
+        )
+        table.replaceRows(listOf(Station("B", 300), Station("A", 100)))
+
+        table.toggleSort("qrb")
+        table.rowFilter = { it.qrb >= 100 }
+        table.replaceRows(listOf(Station("C", 200), Station("B", 300), Station("A", 100)))
+
+        assertEquals("qrb", table.sortedColumnId)
+        assertEquals(listOf("A", "C", "B"), table.visibleRows.map { it.callSign })
+    }
+
+    @Test
+    fun `a selected filtered row can be pinned only in the table view`() {
+        val table = DataTableState(
+            columns = listOf(DataColumn(id = "callsign", title = "Callsign", value = { s: Station -> s.callSign })),
+            rowKey = RowKeys.byValue { station: Station -> station.callSign },
+            keepSelectionVisible = true,
+        )
+        val hidden = Station("DL1HIDE", 100)
+        val shown = Station("DL2SHOW", 500)
+        table.replaceRows(listOf(hidden, shown))
+        table.rowFilter = { it.qrb >= 300 }
+
+        table.select(hidden)
+
+        assertEquals(listOf("DL2SHOW"), table.filteredRows.map { it.callSign }, "the shared map filter changed")
+        assertEquals(
+            listOf("DL1HIDE", "DL2SHOW"),
+            table.visibleRows.map { it.callSign },
+            "the selected station was not made reachable in the table",
+        )
+    }
+
+    @Test
+    fun `the same selected row can request scrolling more than once`() {
+        val table = stationTable()
+        val selected = Station("DL1ABC", 100)
+        table.replaceRows(listOf(selected))
+        table.select(selected)
+
+        table.requestScrollToSelection()
+        val first = table.scrollRequestRevision
+        table.requestScrollToSelection()
+
+        assertTrue(table.scrollRequestRevision > first)
+    }
+
+    @Test
     fun `the selection follows the row, not its position`() {
         val table = stationTable()
         val dn9apw = Station("DN9APW", 100)
@@ -386,6 +477,24 @@ class DataTableColumnWidthTest {
         store.stored["dx-cluster-monitor/callsign"] = 140.0
 
         assertEquals(140.0, table(store).widthOf("callsign"))
+    }
+
+    @Test
+    fun `a stored narrow width wins over the automatic width`() {
+        val store = RecordingStore()
+        store.stored["dx-cluster-monitor/callsign"] = 36.0
+        val table = table(store)
+        val column = table.columns.first { it.id == "callsign" }
+
+        assertEquals(36f, effectiveColumnWidthDp(table, column, mapOf("callsign" to 140f)))
+    }
+
+    @Test
+    fun `the automatic width is used only without a stored width`() {
+        val table = table(RecordingStore())
+        val column = table.columns.first { it.id == "callsign" }
+
+        assertEquals(140f, effectiveColumnWidthDp(table, column, mapOf("callsign" to 140f)))
     }
 
     @Test

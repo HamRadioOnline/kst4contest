@@ -5,6 +5,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
 import kst4contest.view.map.MapCallsignRawSnapshot
+import kst4contest.view.map.MapViewport
 import kst4contest.view.map.TileFetcher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -15,6 +16,7 @@ import java.io.IOException
 import java.nio.file.Files
 import javax.imageio.ImageIO
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * What the map actually puts on the canvas.
@@ -44,6 +46,8 @@ class ComposeStationMapDrawingTest {
 
     private val darkMapBackground = 0x23282D
 
+    private val workedGridBorder = 0x000000
+
     /*
      * An empty cache and a source that always fails, so that "tiles never arrive" holds by
      * construction. The default fetcher read the user's disk cache and the real tile
@@ -64,6 +68,8 @@ class ComposeStationMapDrawingTest {
         zoom: Float,
         markers: List<MapCallsignRawSnapshot> = listOf(station("DN9APW", "JO50JP", 51.0, 10.0)),
         ownLocator6: String = "",
+        workedGrossFields: Set<String> = emptySet(),
+        darkMode: Boolean = true,
     ): BufferedImage {
         val scene = ImageComposeScene(canvasWidth, canvasHeight, Density(1f)) {
             ComposeStationMap(
@@ -77,7 +83,8 @@ class ComposeStationMapDrawingTest {
                 antennaBeamWidthDeg = 0.0,
                 maxQrbKm = 0.0,
                 onMarkerClicked = null,
-                darkMode = true,
+                workedGrossFields = workedGrossFields,
+                darkMode = darkMode,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -226,6 +233,49 @@ class ComposeStationMapDrawingTest {
         assertTrue(atFour > 0 && atSix > 0) { "labels missing: zoom 4 -> $atFour, zoom 6 -> $atSix" }
         assertTrue(atSix > atFour) {
             "a four-digit grid should show more labels than a two-digit one: $atSix vs $atFour"
+        }
+    }
+
+    @Test
+    fun `worked gross fields use a visible black border in both themes`() {
+        val dark = render(6f, markers = emptyList(), workedGrossFields = setOf("JO51"))
+        val light = render(6f, markers = emptyList(), workedGrossFields = setOf("JO51"), darkMode = false)
+
+        assertTrue(countColour(dark, workedGridBorder) > 0) {
+            "the Evening map has no black Worked-grid border"
+        }
+        assertTrue(countColour(light, workedGridBorder) > 0) {
+            "the Day map has no black Worked-grid border"
+        }
+    }
+
+    @Test
+    fun `worked gross field interior is covered by thirty percent black`() {
+        val viewport = MapViewport(10.0, 51.0, 6.0, canvasWidth.toDouble(), canvasHeight.toDouble())
+        val cell = visibleWorkedGrossFieldCells(viewport, setOf("JO51")).single()
+        val x = viewport.screenX(cell.westLon() + (cell.eastLon() - cell.westLon()) * 0.25).toInt()
+        val y = viewport.screenY(cell.northLat() + (cell.southLat() - cell.northLat()) * 0.25).toInt()
+
+        for (darkMode in listOf(false, true)) {
+            val withoutWorked = render(6f, markers = emptyList(), darkMode = darkMode)
+            val withWorked = render(
+                6f,
+                markers = emptyList(),
+                workedGrossFields = setOf("JO51"),
+                darkMode = darkMode,
+            )
+            val before = withoutWorked.getRGB(x, y)
+            val after = withWorked.getRGB(x, y)
+
+            for (shift in listOf(16, 8, 0)) {
+                val beforeChannel = (before shr shift) and 0xFF
+                val afterChannel = (after shr shift) and 0xFF
+                val expected = (beforeChannel * 0.70).roundToInt()
+                assertTrue(abs(afterChannel - expected) <= 2) {
+                    "Worked fill in darkMode=$darkMode changed channel $shift from " +
+                        "$beforeChannel to $afterChannel; expected $expected for 30% black"
+                }
+            }
         }
     }
 

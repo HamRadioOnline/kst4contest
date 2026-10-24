@@ -181,6 +181,8 @@ class ChatPreferencesRoundTripTest {
         assertTrue(fromTemplate.getLst_txtShortCutBtnList().snapshot().contains("sked"));
         assertTrue(fromTemplate.isStn_bandActive144());
         assertFalse(fromTemplate.isStn_bandActive10G());
+        assertTrue(fromTemplate.isStn_useQtfFilterDirectionAsAntennaHeading());
+        assertTrue(fromTemplate.isQtfFilterDirectionAsAntennaHeadingEnabled());
     }
 
     @Test
@@ -211,6 +213,8 @@ class ChatPreferencesRoundTripTest {
         assertEquals("JO31AA", legacy.getStn_loginLocatorMainCat());
         assertEquals(3, legacy.getLoginChatCategoryMain().getCategoryNumber());
         assertEquals(8123, legacy.getNotify_dxclusterServerPort());
+        assertTrue(legacy.isStn_useQtfFilterDirectionAsAntennaHeading());
+        assertTrue(legacy.isQtfFilterDirectionAsAntennaHeadingEnabled());
         // A tag that is missing keeps the compiled-in default.
         assertEquals(new ChatPreferences(legacyFile).getStn_on4kstServersPort(),
                 legacy.getStn_on4kstServersPort());

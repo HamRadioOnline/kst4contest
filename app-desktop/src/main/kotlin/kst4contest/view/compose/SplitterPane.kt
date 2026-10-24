@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
 
@@ -41,6 +42,7 @@ fun SplitterPane(
     orientation: SplitterOrientation,
     panes: List<@Composable () -> Unit>,
     modifier: Modifier = Modifier,
+    minimumPaneSizes: List<Dp> = emptyList(),
 ) {
     BoxWithConstraints(modifier) {
         val density = LocalDensity.current
@@ -55,7 +57,10 @@ fun SplitterPane(
          * cursor rather than drifting from it by a handle width per divider.
          */
         val totalPx = SplitterState.availableFor(fullPx, handlePx, state.paneCount)
-        val sizes = state.paneSizes(totalPx)
+        val minimumPaneSizesPx = FloatArray(minimumPaneSizes.size) { index ->
+            with(density) { minimumPaneSizes[index].toPx() }
+        }
+        val sizes = state.paneSizes(totalPx, minimumPaneSizesPx)
 
         val body: @Composable () -> Unit = {
             panes.forEachIndexed { index, pane ->
@@ -77,6 +82,7 @@ fun SplitterPane(
                         index = index,
                         orientation = orientation,
                         totalPx = totalPx,
+                        minimumPaneSizesPx = minimumPaneSizesPx,
                     )
                 }
             }
@@ -100,6 +106,7 @@ private fun SplitterHandle(
     index: Int,
     orientation: SplitterOrientation,
     totalPx: Float,
+    minimumPaneSizesPx: FloatArray,
 ) {
     val horizontal = orientation == SplitterOrientation.HORIZONTAL
     val cursor = if (horizontal) Cursor.E_RESIZE_CURSOR else Cursor.N_RESIZE_CURSOR
@@ -111,15 +118,20 @@ private fun SplitterHandle(
                 else Modifier.height(Density.COLUMN_HANDLE_WIDTH).fillMaxWidth(),
             )
             .pointerHoverIcon(PointerIcon(Cursor(cursor)))
-            .pointerInput(index, totalPx) {
+            .pointerInput(index, totalPx, minimumPaneSizesPx.contentHashCode()) {
                 detectDragGestures(
                     onDragEnd = { state.dragFinished() },
                     onDragCancel = { state.dragFinished() },
                 ) { _, dragAmount ->
                     if (totalPx <= 0f) return@detectDragGestures
                     val delta = if (horizontal) dragAmount.x else dragAmount.y
-                    val current = state.positions.getOrElse(index) { 0f }
-                    state.drag(index, current + delta / totalPx, totalPx)
+                    val current = state.dividerPosition(index, totalPx, minimumPaneSizesPx)
+                    state.drag(
+                        index = index,
+                        to = current + delta / totalPx,
+                        totalPx = totalPx,
+                        minimumPaneSizesPx = minimumPaneSizesPx,
+                    )
                 }
             },
         contentAlignment = Alignment.Center,

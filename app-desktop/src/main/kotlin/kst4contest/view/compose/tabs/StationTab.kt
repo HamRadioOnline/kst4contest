@@ -1,12 +1,15 @@
 package kst4contest.view.compose.tabs
 
 import kst4contest.view.i18n.LocalStrings
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kst4contest.view.compose.Form
+import kst4contest.view.compose.TooltipCard
 
 /**
  * The Station tab: own station, server, active bands and path-analysis defaults.
@@ -16,6 +19,7 @@ import kst4contest.view.compose.Form
  *
  * @param onRefused shows why a committed entry was refused (the own ground height)
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StationTab(state: StationTabState, onRefused: (String) -> Unit = {}) {
     val strings = LocalStrings.current
@@ -86,8 +90,30 @@ fun StationTab(state: StationTabState, onRefused: (String) -> Unit = {}) {
 
         Form.section(strings.stationDefaultsSection) {
             Form.decimal(strings.stationMaxQrb, state.stn_maxQRBDefault) { state.stn_maxQRBDefault = it }
-            Form.decimal(strings.stationQtf, state.stn_qtfDefault) { state.stn_qtfDefault = it }
+            Form.decimal(
+                label = strings.stationQtf,
+                value = state.stn_qtfDefault,
+                isValid = { it.isFinite() && it in 0.0..360.0 },
+            ) { state.stn_qtfDefault = it }
             Form.decimal(strings.stationBeamWidth, state.stn_antennaBeamWidthDeg) { state.stn_antennaBeamWidthDeg = it }
+        }
+
+        Form.panelSection(strings.stationManualAntennaHeadingSection) {
+            val headingOption: @Composable () -> Unit = {
+                Form.check(
+                    strings.stationUseQtfFilterDirectionAsAntennaHeading,
+                    state.stn_useQtfFilterDirectionAsAntennaHeading,
+                    enabled = !state.stn_pstRotatorEnabled,
+                ) { state.stn_useQtfFilterDirectionAsAntennaHeading = it }
+            }
+            if (state.stn_pstRotatorEnabled) {
+                TooltipArea(
+                    tooltip = { TooltipCard(strings.stationManualAntennaHeadingRotatorHint) },
+                    content = headingOption,
+                )
+            } else {
+                headingOption()
+            }
         }
 
         Form.section(strings.stationRotatorSection) {

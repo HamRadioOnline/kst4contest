@@ -733,12 +733,14 @@ Sind die allgemeine und die QRG-bezogene Antwort gleichzeitig aktiviert, hat die
 
 ### Debug- und Contest-History
 
-**Enable debug mode to file** ist standardmäßig aktiviert und wirkt ohne Neustart. Der Schalter steuert zwei getrennte Dateien im Verzeichnis `.praktiKST` des Benutzerprofils:
+**Enable debug mode to file** ist standardmäßig aktiviert und wirkt ohne Neustart. Neue Diagnosedateien liegen im Unterverzeichnis `.praktiKST/debug` des Benutzerprofils:
 
 - `kst4contest-errors.log` enthält bei aktiviertem Debug-Modus zusätzliche `INFO`- und `FINE`-Diagnosen. Warnungen, Fehler und Exceptions werden unabhängig vom Schalter immer geschrieben.
 - `Messagehistory.raw` zeichnet den vollständigen ON4KST-Verkehr der aktuellen Programmsitzung auf. Dazu gehören RX und TX, also neben Chat- und Privatnachrichten auch Benutzer-, Status-, Control- und Keepalive-Frames.
 
-Unter Windows liegt die History beispielsweise unter `C:\Users\<Benutzername>\.praktiKST\Messagehistory.raw`, unter Linux und macOS unter `~/.praktiKST/Messagehistory.raw`.
+Unter Windows liegt die History beispielsweise unter `C:\Users\<Benutzername>\.praktiKST\debug\Messagehistory.raw`, unter Linux und macOS unter `~/.praktiKST/debug/Messagehistory.raw`. KST4Contest legt das Verzeichnis bei Bedarf an. Vorhandene Diagnosedateien direkt unter `.praktiKST` werden weder verschoben noch gelöscht.
+
+Die Datei `kst4contest-errors.log` rotiert bei 20 MiB. Einschließlich der aktiven Datei bleiben höchstens fünf Generationen erhalten.
 
 Jede Zeile enthält genau ein Ereignis:
 
@@ -834,6 +836,7 @@ Die Einstellungen befinden sich im Reiter **Station**:
 | Einstellung | Standardwert | Verwendung |
 |---|---:|---|
 | **Enable PSTRotator** | deaktiviert | Startet die UDP-Kommunikation mit PSTRotator |
+| **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** | aktiviert, wenn PSTRotator 1 deaktiviert ist | Übernimmt bewusste Richtungseingaben im QTF-Filter als aktuelle eigene Antennenrichtung |
 | **PSTRotator host** | `127.0.0.1` | Hostname oder IP-Adresse des Rechners, auf dem PSTRotator läuft |
 | **PSTRotator UDP port** | `12000` | UDP-Port, auf dem PSTRotator die Steuerbefehle empfängt |
 
@@ -860,6 +863,8 @@ Das vollständige UDP-Protokoll ist im [PSTRotatorAz User Manual](https://www.qs
 
 ### Übernahme der aktuellen QTF
 
+Beim Programmstart wird die aktuelle eigene QTF mit der im aktiven Root- oder Operatorprofil gespeicherten Vorgabe **QTF** initialisiert. Sie dient nur als Startwert. Änderungen während des Betriebs verändern diese gespeicherte Vorgabe nicht.
+
 KST4Contest fragt PSTRotator alle zwei Sekunden nach der aktuellen Azimutposition und dem Betriebsmodus. Die zurückgemeldete Azimutposition wird als `actualQTF` übernommen.
 
 Bei aktivierter PSTRotator-Integration ist das QTF-Feld im Hauptfenster deshalb nicht manuell editierbar. Es zeigt die zuletzt von PSTRotator gemeldete Position.
@@ -874,6 +879,10 @@ Diese QTF wird unter anderem verwendet für:
 - die Variable `MYQTF`.
 
 Eine empfangene Rotatorposition ist damit nicht nur eine Anzeige. Sie verändert mehrere Funktionen, die auf der aktuellen Antennenrichtung beruhen.
+
+Ohne PSTRotator 1 kann **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** einen direkt in den QTF-Filter eingetragenen Winkel oder eine über dessen Richtungstasten gewählte Richtung in dasselbe `actualQTF` übernehmen. Das funktioniert auch, wenn **Show only QTF** ausgeschaltet ist. **Reset filters**, das Ausschalten des Filters und ein automatisch wiederhergestellter Filterzustand verändern die Antennenrichtung nicht. Die Übernahme erfolgt nur vom Filter zur Antennenrichtung und sendet keinen PSTRotator-Befehl.
+
+Die Option steht im Abschnitt **Manuelle Antennenrichtung** und ist standardmäßig aktiviert. Das gilt nach dem Update auch für bestehende Root- und Operatorprofile. Wer die Kopplung nicht verwenden möchte, schaltet sie aus; diese Entscheidung wird im jeweiligen Profil gespeichert. Bei aktiviertem PSTRotator 1 ist die Checkbox nicht bedienbar und die Übernahme vorübergehend unwirksam. Die gespeicherte Auswahl bleibt dabei erhalten und gilt wieder, sobald PSTRotator 1 deaktiviert wird. PSTRotator 2 unter SO2R ist von dieser Regel unabhängig.
 
 KST4Contest verwendet derzeit nur den Azimut. Eine Elevationssteuerung oder eine vollständige Azimut-/Elevationsnachführung ist nicht Bestandteil dieser Integration.
 
@@ -986,11 +995,12 @@ Für einen kurzen Wechsel während des Betriebs gibt es **Windows → Use dark m
 
 ## Einstellungen speichern
 
-**Save Settings** übernimmt zuerst offene Änderungen und speichert dann die fachlichen Einstellungen und den vollständigen aktuellen Layoutstand. Änderungen an Fenstergrößen und -positionen, relevanten Dividern, verwalteten Tabellenbreiten sowie der Karteneinstellung **Group nearby stations** werden zusätzlich automatisch mit kurzer Verzögerung gespeichert. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben.
+**Save Settings** übernimmt zuerst offene Änderungen und speichert dann die fachlichen Einstellungen und den vollständigen aktuellen Layoutstand. Änderungen an Fenstergrößen und -positionen, relevanten Dividern, verwalteten Tabellenbreiten sowie den Karteneinstellungen **Gruppierung** und **Immer im Vordergrund** werden zusätzlich automatisch mit kurzer Verzögerung gespeichert. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben.
 
 - Speicherort: unter Linux und macOS `~/.praktiKST/preferences.xml` und unter Windows `%USERPROFILE%\.praktiKST\preferences.xml` (bzw. `C:\Users\<Benutzername>\.praktiKST\preferences.xml`)
 - Der automatische Layout-Writer übernimmt keine noch nicht mit **Save Settings** bestätigten fachlichen Änderungen.
 - Die Konfigurationsversion 6 ergänzt optionale Spaltenbreiten unter `guiOptions`. Ältere `preferences.xml`-Dateien bleiben lesbar; fehlen Breiten oder sind Einträge ungültig, ermittelt KST4Contest wieder brauchbare Anfangsbreiten.
 - Die Konfigurationsversion 7 ergänzt `GUIstationMapClusteringEnabled` unter `guiOptions`. Fehlt der Eintrag oder ist sein Wert unbrauchbar, bleibt die räumliche Kartengruppierung aktiviert.
-- Ältere Programmversionen ignorieren die zusätzlichen XML-Einträge. Wenn eine ältere Version die Datei vollständig neu speichert, können die Spaltenbreiten und die gespeicherte Auswahl für **Group nearby stations** verloren gehen.
+- `GUIstationMapAlwaysOnTop` ist ein optionaler Layoutwert unter `guiOptions`. Fehlt der Eintrag oder ist sein Wert unbrauchbar, verhält sich das Kartenfenster normal und bleibt nicht dauerhaft im Vordergrund.
+- Ältere Programmversionen ignorieren die zusätzlichen XML-Einträge. Wenn eine ältere Version die Datei vollständig neu speichert, können die Spaltenbreiten sowie die gespeicherten Einstellungen für **Gruppierung** und **Immer im Vordergrund** verloren gehen.
 - Bei Problemen: Konfigurationsdatei löschen → KST4Contest erstellt eine neue mit Standardwerten.

@@ -1,15 +1,18 @@
-package kst4contest.view.compose.map
+﻿package kst4contest.view.compose.map
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.MouseButton
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.text.input.TextFieldValue
 import kst4contest.locatorUtils.Location
@@ -32,6 +35,10 @@ import kst4contest.view.compose.SelectedStationState
 import kst4contest.view.compose.SplitterState
 import kst4contest.view.compose.StationColumns
 import kst4contest.view.compose.StationFilterState
+import kst4contest.view.compose.StationSelectionSource
+import kst4contest.view.compose.StationSelectionState
+import kst4contest.view.compose.STATION_CONTEXT_MENU_TAG
+import kst4contest.view.compose.STATION_CONTEXT_TARGET_CHOOSER_TAG
 import kst4contest.view.compose.ThreadStatusButtons
 import kst4contest.view.compose.TimelineState
 import kst4contest.view.compose.TopPriorityState
@@ -41,6 +48,7 @@ import kst4contest.view.map.PathAnalysisResult
 import kst4contest.view.map.TileFetcher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -136,6 +144,7 @@ class StationMapWindowScreenTest {
     }
 
     private fun windowState(prefs: ChatPreferences): MainWindowState {
+        val stationSelection = StationSelectionState()
         val stations = DataTableState(
             StationColumns.all(
                 tropoOf = { "" },
@@ -143,6 +152,8 @@ class StationMapWindowScreenTest {
                 formatBand = { _, _, _ -> "" },
             ),
             RowKeys.byValue(StationColumns::rowKey),
+            selectionModel = stationSelection,
+            keepSelectionVisible = true,
         )
         val menu = MainMenuState()
         return MainWindowState(
@@ -158,6 +169,7 @@ class StationMapWindowScreenTest {
             selectedStation = SelectedStationState(
                 propagateNotQrv = {},
                 createSked = { _, _, _, _ -> false },
+                stationSelection = stationSelection,
             ),
             topPriority = TopPriorityState(topStations = { emptyList() }, onSelect = {}),
             timeline = TimelineState(),
@@ -185,6 +197,7 @@ class StationMapWindowScreenTest {
         mapState: MapState,
         pathAnalysis: MapPathAnalysis? = null,
         onPathAnalysisAsked: () -> Unit = {},
+        onAlwaysOnTopChanged: (Boolean) -> Unit = {},
     ) {
         state.stations.replaceRows(members)
         setContent {
@@ -195,6 +208,7 @@ class StationMapWindowScreenTest {
                     chatMembers = { members },
                     mapState = mapState,
                     pathAnalysis = { onPathAnalysisAsked(); pathAnalysis },
+                    onAlwaysOnTopChanged = onAlwaysOnTopChanged,
                 )
             }
         }
@@ -217,7 +231,7 @@ class StationMapWindowScreenTest {
         val dl1abc = station("DL1ABC", 2)
         state.selectedStation.select(dl1abc)
         val selectorCalls = mutableListOf<ChatMember?>()
-        state.stationSelector = { selectorCalls += it }
+        state.stationSelector = { member, _ -> selectorCalls += member }
         val mapState = mapLookingAt("JO50JP", zoom = 15f)
 
         show(state, listOf(dl1abc), mapState)
@@ -266,7 +280,7 @@ class StationMapWindowScreenTest {
         state.selectedStation.select(inSecond)
         state.chatInput.value = TextFieldValue("half typed")
         val selectorCalls = mutableListOf<ChatMember?>()
-        state.stationSelector = { selectorCalls += it }
+        state.stationSelector = { member, _ -> selectorCalls += member }
         val mapState = mapLookingAt("JO50JP", zoom = 12f)
 
         show(state, listOf(inMain, inSecond), mapState)
@@ -281,19 +295,78 @@ class StationMapWindowScreenTest {
     }
 
     @Test
-    fun aMarkerClickWithNothingSelectedTakesTheFirstVariant() = runComposeUiTest {
+    fun aMarkerClickWithNothingSelectedTakesTheMainCategory() = runComposeUiTest {
         val state = windowState(prefs())
         val inMain = station("DL1ABC", 2)
         val inSecond = station("DL1ABC", 3)
-        val selectorCalls = mutableListOf<ChatMember?>()
-        state.stationSelector = { selectorCalls += it }
+        val scrollRevision = state.stations.scrollRequestRevision
 
         show(state, listOf(inMain, inSecond), mapLookingAt("JO50JP", zoom = 12f))
 
         onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performClick()
         waitForIdle()
 
-        assertSame(inMain, selectorCalls.single())
+        assertSame(inMain, state.stations.selectedRow)
+        assertEquals(StationSelectionSource.MAP, state.stationSelection.lastSource)
+        assertTrue(state.stations.scrollRequestRevision > scrollRevision)
+    }
+
+    @Test
+    fun aMarkerContextClickSelectsItsOnlyTargetAndOpensTheSharedMenu() = runComposeUiTest {
+        val state = windowState(prefs())
+        val member = station("DL1ABC", 2)
+        val scrollRevision = state.stations.scrollRequestRevision
+
+        show(state, listOf(member), mapLookingAt("JO50JP", zoom = 12f))
+
+        onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performMouseInput {
+            click(button = MouseButton.Secondary)
+        }
+        waitForIdle()
+
+        onNodeWithTag(STATION_CONTEXT_MENU_TAG).assertExists()
+        assertSame(member, state.stations.selectedRow)
+        assertEquals(StationSelectionSource.MAP_CONTEXT_MENU, state.stationSelection.lastSource)
+        assertTrue(state.stations.scrollRequestRevision > scrollRevision)
+    }
+
+    @Test
+    fun aMarkerContextClickRequiresCategoryChoiceForAmbiguousTargets() = runComposeUiTest {
+        val state = windowState(prefs())
+        val inMain = station("DL1ABC", 2)
+        val inSecond = station("DL1ABC", 3)
+
+        show(state, listOf(inMain, inSecond), mapLookingAt("JO50JP", zoom = 12f))
+
+        onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performMouseInput {
+            click(button = MouseButton.Secondary)
+        }
+        waitForIdle()
+
+        onNodeWithTag(STATION_CONTEXT_TARGET_CHOOSER_TAG).assertExists()
+        assertEquals(null, state.stations.selectedRow)
+    }
+
+    @Test
+    fun workedGrossFieldsAreReadOnlyWhileGridColouringIsEnabled() = runComposeUiTest {
+        val state = windowState(prefs())
+        var reads = 0
+        state.workedGrossFieldsProvider = {
+            reads++
+            setOf("JO50")
+        }
+
+        show(state, emptyList(), mapLookingAt("JO50JP", zoom = 6f))
+        assertEquals(0, reads)
+
+        runOnIdle { state.stationFilter.gridColouring = true }
+        waitForIdle()
+        assertTrue(reads > 0, "enabling Grid color did not request the persistent worked fields")
+
+        val readsWhileEnabled = reads
+        runOnIdle { state.stationFilter.gridColouring = false }
+        waitForIdle()
+        assertEquals(readsWhileEnabled, reads, "disabled Grid color still read worked fields")
     }
 
     /**
@@ -377,11 +450,53 @@ class StationMapWindowScreenTest {
         assertEquals(true, prefs.isGUIstationMapPathAnalysisVisible)
 
         // The grouping checkbox sits beside its label; the label itself is not clickable.
-        onNodeWithText("Group nearby stations").assertExists()
-        onNode(isToggleable()).assertIsOff().performClick()
+        onNodeWithText("Grouping").assertExists()
+        onNodeWithTag(StationMapWindow.GROUPING_TAG).assertIsOff().performClick()
         waitForIdle()
-        onNode(isToggleable()).assertIsOn()
+        onNodeWithTag(StationMapWindow.GROUPING_TAG).assertIsOn()
         assertEquals(true, prefs.isGUIstationMapClusteringEnabled)
+    }
+
+    @Test
+    fun alwaysOnTopWritesThePreferenceAndAppliesBothStatesImmediately() = runComposeUiTest {
+        val prefs = prefs()
+        val state = windowState(prefs)
+        val applied = mutableListOf<Boolean>()
+
+        show(state, emptyList(), MapState(), onAlwaysOnTopChanged = applied::add)
+
+        onNodeWithText("Always on top").assertExists()
+        onNodeWithTag(StationMapWindow.ALWAYS_ON_TOP_TAG).assertIsOff().performClick()
+        waitForIdle()
+        assertEquals(true, prefs.isGUIstationMapAlwaysOnTop)
+        assertEquals(listOf(true), applied)
+
+        onNodeWithTag(StationMapWindow.ALWAYS_ON_TOP_TAG).assertIsOn().performClick()
+        waitForIdle()
+        assertEquals(false, prefs.isGUIstationMapAlwaysOnTop)
+        assertEquals(listOf(true, false), applied)
+    }
+
+    @Test
+    fun resetFiltersUsesTheSharedActionAndDoesNotResetTheView() = runComposeUiTest {
+        val state = windowState(prefs())
+        state.stationFilter.minQrbKm = 300.0
+        state.stationFilter.minQrbEnabled = true
+        var resets = 0
+        state.stationFiltersChanged = { resets++ }
+        val mapState = mapLookingAt("JO50JP", zoom = 14f)
+        val beforeLon = mapState.centerLon
+        val beforeLat = mapState.centerLat
+
+        show(state, emptyList(), mapState)
+        onNodeWithText("Reset filters").performClick()
+        waitForIdle()
+
+        assertEquals(false, state.stationFilter.minQrbEnabled)
+        assertEquals(1, resets)
+        assertEquals(beforeLon, mapState.centerLon)
+        assertEquals(beforeLat, mapState.centerLat)
+        assertEquals(14f, mapState.zoom)
     }
 
     /**
@@ -396,7 +511,7 @@ class StationMapWindowScreenTest {
         val near = station("DL1NEAR", 2, locator = "JO50JP").apply { qrb = 150.0 }
         val far = station("DL2FAR", 2, locator = "JO62QM").apply { qrb = 600.0 }
         val selectorCalls = mutableListOf<ChatMember?>()
-        state.stationSelector = { selectorCalls += it }
+        state.stationSelector = { member, _ -> selectorCalls += member }
 
         show(state, listOf(near, far), mapLookingAt("JO50JP", zoom = 12f))
         onNodeWithText("Showing 2 visible stations").assertExists()

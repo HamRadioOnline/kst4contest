@@ -49,6 +49,23 @@ data class TimelineCandidate(
     val tooltipText: String?,
 )
 
+/** The four candidate groups produced for every minute bucket, in display order. */
+enum class TimelineLane(val index: Int) {
+    IN_BEAM_1(0),
+    IN_BEAM_2(1),
+    PRIORITY_1(2),
+    PRIORITY_2(3);
+
+    companion object {
+        fun forIndex(index: Int): TimelineLane = entries[index.coerceIn(0, entries.lastIndex)]
+    }
+}
+
+data class TimelineTick(
+    val minutes: Int,
+    val x: Float,
+)
+
 /**
  * Where things sit on the strip.
  *
@@ -67,27 +84,27 @@ object TimelineGeometry {
      * is why the candidate labels and the sked labels landed on top of each other. The
      * lanes below are laid out for the real height.
      */
-    const val HEIGHT: Float = 80f
+    const val HEIGHT: Float = 104f
 
     /** The time axis, with the candidate lanes above it and the skeds below. */
-    const val AXIS_Y: Float = 44f
+    const val AXIS_Y: Float = 70f
+    const val TICK_LABEL_Y: Float = 72f
 
     /** Candidates keep further from the edges than skeds do, because their labels are wider. */
     const val CANDIDATE_MARGIN: Float = 30f
     const val SKED_MARGIN: Float = 10f
 
     const val LANE_BASE_Y: Float = 2f
-    const val LANE_HEIGHT: Float = 20f
+    const val LANE_HEIGHT: Float = 16f
 
     /**
-     * How many candidate lanes fit above the axis. The producer keeps at most two
-     * candidates per minute, so this is a guard rather than a limit in practice: a third
-     * lane shares the second one instead of being drawn across the axis.
+     * How many candidate lanes the producer defines: two in-beam choices followed by
+     * two global priority choices.
      */
-    const val LANE_COUNT: Int = 2
+    const val LANE_COUNT: Int = 4
 
     /** Skeds get their own lane below the axis, which is what frees the labels. */
-    const val SKED_Y: Float = 52f
+    const val SKED_Y: Float = 86f
 
     const val DEFAULT_BEAM_WIDTH_DEG: Double = 50.0
 
@@ -124,6 +141,23 @@ object TimelineGeometry {
 
     fun laneY(laneIndex: Int): Float =
         LANE_BASE_Y + LANE_HEIGHT * laneIndex.coerceIn(0, LANE_COUNT - 1)
+
+    /**
+     * Relative minute ticks for the current preview window. Five-minute ticks are used
+     * whenever their labels fit; compact layouts increase the interval instead of
+     * drawing overlapping text.
+     */
+    fun minuteTicks(axisWidth: Float, minimumLabelSpacing: Float): List<TimelineTick> {
+        if (axisWidth <= 0f) return emptyList()
+
+        val previewMinutes = (PREVIEW_MILLIS / 60_000L).toInt()
+        val interval = listOf(5, 10, 15, previewMinutes).first { minutes ->
+            axisWidth * minutes / previewMinutes >= minimumLabelSpacing
+        }
+        return (0..previewMinutes step interval).map { minutes ->
+            TimelineTick(minutes, axisWidth * minutes / previewMinutes)
+        }
+    }
 }
 
 /**

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 
-class StationTabStateTest(@TempDir private val tempDir: Path) {
+class StationTabStateTest(@param:TempDir private val tempDir: Path) {
 
     private inner class Session {
         val prefs = ChatPreferences(tempDir.resolve("preferences.xml"))
@@ -147,6 +147,76 @@ class StationTabStateTest(@TempDir private val tempDir: Path) {
         assertTrue(s.prefs.isStn_pstRotatorEnabled())
         assertEquals(135.0, s.prefs.getStn_qtfDefault(), 0.001)
         assertEquals(23002, s.prefs.getStn_on4kstServersPort())
+    }
+
+    @Test
+    fun `QTF filter heading synchronization waits in the draft until apply`() {
+        val s = Session()
+
+        s.state.stn_useQtfFilterDirectionAsAntennaHeading = false
+
+        assertFalse(s.state.stn_useQtfFilterDirectionAsAntennaHeading)
+        assertTrue(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading())
+
+        s.draft.apply()
+
+        assertFalse(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading())
+    }
+
+    @Test
+    fun `enabling primary rotator preserves QTF filter heading preference in the draft`() {
+        val s = Session()
+
+        s.state.stn_pstRotatorEnabled = true
+
+        assertTrue(s.state.stn_useQtfFilterDirectionAsAntennaHeading)
+        assertTrue(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading(), "an edit took effect before Apply")
+
+        s.draft.apply()
+
+        assertTrue(s.prefs.isStn_pstRotatorEnabled())
+        assertTrue(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading())
+        assertFalse(s.prefs.isQtfFilterDirectionAsAntennaHeadingEnabled())
+    }
+
+    @Test
+    fun `disabling primary rotator restores QTF filter heading synchronization`() {
+        val s = Session()
+
+        s.state.stn_pstRotatorEnabled = true
+        s.state.stn_pstRotatorEnabled = false
+
+        assertTrue(s.state.stn_useQtfFilterDirectionAsAntennaHeading)
+
+        s.draft.apply()
+
+        assertTrue(s.prefs.isQtfFilterDirectionAsAntennaHeadingEnabled())
+    }
+
+    @Test
+    fun `explicit QTF heading opt out survives primary rotator changes`() {
+        val s = Session()
+        s.state.stn_useQtfFilterDirectionAsAntennaHeading = false
+        s.state.stn_pstRotatorEnabled = true
+        s.state.stn_pstRotatorEnabled = false
+
+        assertFalse(s.state.stn_useQtfFilterDirectionAsAntennaHeading)
+
+        s.draft.apply()
+
+        assertFalse(s.prefs.isQtfFilterDirectionAsAntennaHeadingEnabled())
+    }
+
+    @Test
+    fun `rotator 2 does not disable QTF filter heading synchronization`() {
+        val s = Session()
+
+        s.state.stn_useQtfFilterDirectionAsAntennaHeading = true
+        s.state.stn_pstRotator2Enabled = true
+        s.draft.apply()
+
+        assertTrue(s.prefs.isStn_useQtfFilterDirectionAsAntennaHeading())
+        assertTrue(s.prefs.isQtfFilterDirectionAsAntennaHeadingEnabled())
     }
 
     @Test

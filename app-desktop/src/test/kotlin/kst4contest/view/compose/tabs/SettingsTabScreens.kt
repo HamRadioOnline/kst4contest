@@ -36,9 +36,12 @@ import kst4contest.view.compose.Kst4ContestTheme
  * control further down can be scrolled to and clicked.
  */
 @OptIn(ExperimentalTestApi::class)
-internal fun ComposeUiTest.showTab(content: @Composable () -> Unit) {
+internal fun ComposeUiTest.showTab(
+    darkMode: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     setContent {
-        Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
+        Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 content()
             }

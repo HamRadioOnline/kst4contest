@@ -10,6 +10,7 @@ import kst4contest.view.compose.DataTableState;
 import kst4contest.view.compose.MonitorColumns;
 import kst4contest.view.compose.MonitorWindow;
 import kst4contest.view.compose.RowKeys;
+import kst4contest.view.compose.ReachabilityState;
 import kst4contest.view.compose.BlinkingNotice;
 import kst4contest.view.compose.ThreadStatusButtons;
 import kst4contest.view.compose.StationColumns;
@@ -18,9 +19,16 @@ import kst4contest.view.compose.DirectedMessageColumns;
 import kst4contest.view.compose.PublicMessageColumns;
 import kst4contest.view.compose.SelectedMessageFilter;
 import kst4contest.view.compose.SelectedStationMessageColumns;
+import kst4contest.view.compose.SelectedStationMessagePredicate;
 import kst4contest.view.compose.SelectedStationState;
+import kst4contest.view.compose.DirectedMessageStationTarget;
+import kst4contest.view.compose.StationIdentity;
+import kst4contest.view.compose.StationSelectionSource;
+import kst4contest.view.compose.StationSelectionState;
 import kst4contest.view.compose.TopPriorityCandidatesWindow;
 import kst4contest.view.compose.TopPriorityState;
+import kst4contest.view.compose.NewJoinedState;
+import kst4contest.view.compose.SkedRequest;
 import kst4contest.view.compose.TimelineState;
 import kst4contest.view.compose.ChatInputState;
 import kst4contest.view.compose.MainMenuState;
@@ -77,6 +85,9 @@ import kst4contest.controller.OperatorProfilePaths;
 import kst4contest.model.OperatorProfile;
 import kst4contest.model.OperatorProfileSelection;
 import kst4contest.view.map.OfflineDemImportService;
+import kst4contest.view.map.MapCallsignRawSnapshot;
+import kst4contest.view.map.MapCallsignRawSnapshotBuilder;
+import kst4contest.view.map.PathAnalysisResult;
 import kst4contest.controller.WorkedGrossFieldCache;
 
 
@@ -120,8 +131,6 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 	 */
 	private Predicate<ChatMember> lastAppliedChatMemberFilterPredicate = null;
 
-
-	private Band selectedReachabilityBandOverride = null;
 
 	private kst4contest.view.feed.TimelineFeed timelineFeed;
 	private kst4contest.view.feed.SelectedStationMessagesFeed selectedStationMessagesFeed;
@@ -262,6 +271,20 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 				}
 			});
 		}
+	}
+
+	/** Applies one radio mode to one exact station identity. */
+	private void applySelectedStationMessageFilter(
+			SelectedMessageFilter filter,
+			ChatMember selectedMember) {
+		if (filter == null) {
+			return;
+		}
+
+		applySelectedCallSignInfoFilter(SelectedStationMessagePredicate.forSelection(
+				filter,
+				selectedMember,
+				chatcontroller.getChatPreferences().getStn_loginCallSign()));
 	}
 
 	/** Follows the PSTRotator QTF in the text field; replaces a JavaFX string binding. */
@@ -2520,7 +2543,7 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 			return;
 		}
 		try {
-			Path logFile = Path.of(ApplicationFileUtils.getFilePath(
+			Path logFile = Path.of(ApplicationFileUtils.getDebugFilePath(
 					ApplicationConstants.APPLICATION_NAME,
 					"kst4contest-errors.log"));
 			// Start conservatively until the persisted preference has been loaded.
@@ -3005,6 +3028,7 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 	 */
 	private kst4contest.view.i18n.LanguageStore languageStore;
 	private java.util.function.Consumer<java.util.List<ChatMember>> composeMemberListener;
+	private java.util.function.Consumer<java.util.List<RecentChatJoin>> composeRecentJoinListener;
 	private java.util.function.Consumer<java.util.List<ChatMessage>> composeChatListener;
 	private java.util.function.Consumer<java.util.List<ClusterMessage>> composeClusterListener;
 
@@ -3050,20 +3074,45 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		 * arrange separately while both windows are on screen; sharing the ids would let a
 		 * drag in one silently rearrange the other.
 		 */
+		EnumSet<Band> enabledStationBands =
+				BandOpportunityResolver.getEnabledStationBands(chatcontroller.getChatPreferences());
+		ReachabilityState reachability = new ReachabilityState(
+				enabledStationBands,
+				member -> chatcontroller.getReachabilityService().resolveAutoBand(member),
+				() -> composeMainWindowState == null
+						? null : composeMainWindowState.getSelectedStation().getSelected(),
+				(member, band) -> {
+					chatcontroller.getReachabilityService()
+							.calculateSelectedStationOnDemand(member, band);
+					return kotlin.Unit.INSTANCE;
+				},
+				() -> {
+					forceChatMemberFilterRefresh();
+					if (composeMainWindowState != null) {
+						composeMainWindowState.getStations().forceRedraw();
+					}
+					return kotlin.Unit.INSTANCE;
+				});
+		StationSelectionState stationSelection = new StationSelectionState();
+
 		DataTableState<ChatMember> stations = new DataTableState<>(
 				StationColumns.INSTANCE.all(
 						member -> {
-							Band band = resolveReachabilityBandForUi(member);
+							Band band = reachability.resolveBand(member);
 							chatcontroller.getReachabilityService()
 									.ensureTropoMarginCalculated(member, band);
 							return member.formatTropoSsbMarginForBand(band);
 						},
 						member -> parseTableDouble(formatPriorityScore(member)),
 						(member, band, worked) -> formatBandCellStatus(member, band, worked),
-						BandOpportunityResolver.getEnabledStationBands(chatcontroller.getChatPreferences())),
+						enabledStationBands),
 				RowKeys.INSTANCE.byValue(StationColumns.INSTANCE::rowKey),
 				"compose-stations",
-				widths);
+				widths,
+				"callsign",
+				true,
+				stationSelection,
+				true);
 
 		DataTableState<ChatMessage> directed = new DataTableState<>(
 				DirectedMessageColumns.INSTANCE.all(
@@ -3115,44 +3164,7 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					if (filter == null) {
 						return kotlin.Unit.INSTANCE;
 					}
-					Predicate<ChatMessage> predicate;
-					switch (filter) {
-						case PM_TO_ME:
-							predicate = chatMessage -> {
-								try {
-									if (chatMessage.getReceiver().getCallSign().equals("ALL") && !(chatMessage.getMessageText().toLowerCase().contains(chatcontroller.getChatPreferences().getStn_loginCallSign().toLowerCase()))) {
-										return false;
-									}
-									return ((chatMessage.getReceiver().getCallSign().equals(chatcontroller.getChatPreferences().getStn_loginCallSign())) || (chatMessage.getSender().getCallSign().equals(chatcontroller.getChatPreferences().getStn_loginCallSign()))) &&
-											((chatMessage.getReceiver().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign())) || (chatMessage.getSender().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign())));
-								} catch (Exception e) { return false; }
-							};
-							break;
-						case PM_TO_OTHER:
-							predicate = chatMessage -> {
-								try {
-									return (chatMessage.getSender().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign()) && !chatMessage.getReceiver().getCallSign().equals("ALL") && !chatMessage.getReceiver().getCallSign().equals(chatcontroller.getChatPreferences().getStn_loginCallSign())) ||
-											(chatMessage.getReceiver().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign()) && !chatMessage.getReceiver().getCallSign().equals("ALL") && !chatMessage.getReceiver().getCallSign().equals(chatcontroller.getChatPreferences().getStn_loginCallSign()));
-								} catch (Exception e) { return false; }
-							};
-							break;
-						case PUBLIC:
-							predicate = chatMessage -> {
-								try {
-									return chatMessage.getSender().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign()) && chatMessage.getReceiver().getCallSign().equals("ALL");
-								} catch (Exception e) { return false; }
-							};
-							break;
-						case NOTHING:
-						default:
-							predicate = chatMessage -> {
-								try {
-									return chatMessage.getSender().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign()) || chatMessage.getReceiver().getCallSign().equals(selectedCallSignInfoStageChatMember.getCallSign());
-								} catch (Exception e) { return false; }
-							};
-							break;
-					}
-					applySelectedCallSignInfoFilter(predicate);
+					applySelectedStationMessageFilter(filter, selectedCallSignInfoStageChatMember);
 					return kotlin.Unit.INSTANCE;
 				},
 				member -> {
@@ -3174,24 +3186,25 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					chatcontroller.rotateTo(kst4contest.controller.RadioSlot.SECOND, azimuth);
 					return kotlin.Unit.INSTANCE;
 				},
-				surroundings::getSecondAntennaOffered);
+				surroundings::getSecondAntennaOffered,
+				stationSelection);
+		selectedStation.setSkedRequestSubmitter(this::createSkedFromCompose);
 
-		if (chatcontroller.getChatPreferences().isGuiOptions_defaultFilterPmToMe()) {
-			selectedStation.setMessageFilter(SelectedMessageFilter.PM_TO_ME);
-		} else if (chatcontroller.getChatPreferences().isGuiOptions_defaultFilterPmToOther()) {
-			selectedStation.setMessageFilter(SelectedMessageFilter.PM_TO_OTHER);
-		} else {
-			selectedStation.setMessageFilter(SelectedMessageFilter.NOTHING);
-		}
+		selectedStation.setMessageFilter(
+				SelectedMessageFilter.fromPreferences(chatcontroller.getChatPreferences()));
 
 		TopPriorityState topPriority = new TopPriorityState(
 				this::composeTopStations,
-				member -> selectStationInCompose(selectedStation, stations, member));
+				member -> selectStationInCompose(selectedStation, member, StationSelectionSource.PRIORITY));
+		NewJoinedState newJoined = new NewJoinedState(
+				System::currentTimeMillis,
+				member -> selectStationInCompose(
+						selectedStation, member, StationSelectionSource.NEW_JOINED));
 
 		ChatInputState chatInput = new ChatInputState(new ComposeChatInputActions(this));
 
 		composeMainWindowState = new MainWindowState(
-				BandOpportunityResolver.getEnabledStationBands(chatcontroller.getChatPreferences()),
+				enabledStationBands,
 				chatcontroller.getChatPreferences(),
 				stations,
 				new StationFilterState(),
@@ -3238,7 +3251,19 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 									.setGUImainWindowRightSplitPane_dividerposition(positions);
 							requestLayoutSave();
 							return kotlin.Unit.INSTANCE;
-						}));
+						}),
+				new SplitterState(
+						MainWindowState.SELECTED_STATION_PANE_COUNT,
+						chatcontroller.getChatPreferences().getGUIselectedCallSignSplitPane_dividerposition(),
+						SplitterState.DEFAULT_MIN_PANE_PX,
+						positions -> {
+							chatcontroller.getChatPreferences()
+									.setGUIselectedCallSignSplitPane_dividerposition(positions);
+							requestLayoutSave();
+							return kotlin.Unit.INSTANCE;
+						}),
+				newJoined,
+				reachability);
 
 		/*
 		 * The feed, not the window construction, owns the timeline's data from here.
@@ -3249,6 +3274,14 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 				composeMainWindowState.getTimeline(), uiDispatcher);
 		selectedStationMessagesFeed = new kst4contest.view.feed.SelectedStationMessagesFeed(
 				composeMainWindowState.getSelectedStationMessages(), uiDispatcher);
+		/*
+		 * Build the live message mirror before the first Compose selection. The
+		 * selection path already records the selected member before its legacy focus
+		 * callback runs, so waiting for that callback leaves the mirror null and the
+		 * table cannot receive either existing or newly arriving messages.
+		 */
+		rebuildSelectedCallSignInfoMessageBinding();
+		selectedStationMessagesFeed.push(selectedCallSignInfoMessageBinding.list());
 		connectionStateFeed = new kst4contest.view.feed.ConnectionStateFeed(
 				composeMainWindowState.getSurroundings(), uiDispatcher);
 
@@ -3258,11 +3291,54 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		 * Subscribed first and seeded afterwards, so a message arriving in between is not
 		 * missed — the order RosterListBinding uses for the same reason.
 		 */
-		composeMemberListener = rows -> uiDispatcher.runOnUi(() -> stations.replaceRows(rows));
+		composeMemberListener = rows -> uiDispatcher.runOnUi(() -> {
+			stations.replaceRows(rows);
+			newJoined.updateActiveMembers(rows);
+		});
 		chatcontroller.getLst_chatMemberList().addListener(composeMemberListener);
+		composeRecentJoinListener = rows -> uiDispatcher.runOnUi(() -> newJoined.updateEvents(rows));
+		chatcontroller.getRecentChatJoins().addListener(composeRecentJoinListener);
 
-		composeMainWindowState.setStationSelector(member -> {
-			selectStationInCompose(selectedStation, stations, member);
+		composeMainWindowState.setStationSelector((member, source) -> {
+			selectStationInCompose(selectedStation, member, source);
+			return kotlin.Unit.INSTANCE;
+		});
+		composeMainWindowState.setStationFiltersChanged(() -> {
+			updateComposeFilters();
+			return kotlin.Unit.INSTANCE;
+		});
+		composeMainWindowState.setLayoutSaveRequested(() -> {
+			requestLayoutSave();
+			return kotlin.Unit.INSTANCE;
+		});
+		composeMainWindowState.setMarkStationWorked(
+				(member, band) -> chatcontroller.markStationWorkedOnBand(member, band));
+		composeMainWindowState.setWorkedGrossFieldsProvider(
+				() -> chatcontroller.getWorkedGrossFieldCache().snapshotWorkedGrossFieldsAny());
+		composeMainWindowState.getMapReachability().setRequester((member, band, callback) -> {
+			java.util.List<ChatMember> variants = chatcontroller.getLst_chatMemberList().snapshot()
+					.stream()
+					.filter(candidate -> candidate != null
+							&& java.util.Objects.equals(candidate.getCallSignRaw(), member.getCallSignRaw()))
+					.toList();
+			java.util.EnumSet<Band> bands = java.util.EnumSet.noneOf(Band.class);
+			bands.addAll(enabledStationBands);
+			MapCallsignRawSnapshot snapshot = new MapCallsignRawSnapshotBuilder()
+					.buildSnapshots(variants, member, bands)
+					.stream()
+					.findFirst()
+					.orElse(null);
+			if (snapshot == null) {
+				callback.invoke(PathAnalysisResult.waitingForValidTarget(
+						chatcontroller.getChatPreferences().getStn_loginLocatorMainCat(),
+						member.getQra()));
+				return kotlin.Unit.INSTANCE;
+			}
+			chatcontroller.getReachabilityService().requestPathAnalysisForMap(
+					member,
+					snapshot,
+					band,
+					result -> callback.invoke(result));
 			return kotlin.Unit.INSTANCE;
 		});
 
@@ -3281,7 +3357,10 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		}
 		uiDispatcher.runOnUi(() -> topPriority.refresh());
 
-		stations.replaceRows(chatcontroller.getLst_chatMemberList().snapshot());
+		java.util.List<ChatMember> initialMembers = chatcontroller.getLst_chatMemberList().snapshot();
+		stations.replaceRows(initialMembers);
+		newJoined.updateActiveMembers(initialMembers);
+		newJoined.updateEvents(chatcontroller.getRecentChatJoins().snapshot());
 		directed.replaceRows(chatcontroller.toMeMessages());
 		publicMessages.replaceRows(chatcontroller.getLst_globalChatMessageList().snapshot());
 		cluster.replaceRows(chatcontroller.getLst_clusterMemberList().snapshot());
@@ -3336,7 +3415,6 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					closeWindowEvent();
 					return kotlin.Unit.INSTANCE;
 				},
-				() -> composeSkedBands(selectedStation.getSelected()),
 				address -> runOnUi(() -> ExternalDocuments.open(address)),
 				() -> {
 					runOnUi(() -> showSelectedCallsignOnMap());
@@ -3348,8 +3426,9 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					}
 					return kotlin.Unit.INSTANCE;
 				},
-				member -> selectStationInCompose(selectedStation, stations, member),
-				message -> onDirectedMessageClickedInCompose(selectedStation, stations, composeMainWindowState.getChatInput(), message),
+				member -> selectStationInCompose(selectedStation, member, StationSelectionSource.STATION_TABLE),
+				message -> onDirectedMessageClickedInCompose(selectedStation, composeMainWindowState.getChatInput(), message),
+				(message, source) -> onMessageSenderClickedInCompose(selectedStation, message, source),
 				this::isOwnChatMessage,
 				this::chatMessageAgeSeconds,
 				() -> {
@@ -3367,7 +3446,7 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					ChatMember resolved = resolveChatMemberForCallRawAndCategory(
 							candidate.getCallSignRaw(), candidate.getPreferredChatCategory());
 					if (resolved != null) {
-						selectStationInCompose(selectedStation, stations, resolved);
+						selectStationInCompose(selectedStation, resolved, StationSelectionSource.TIMELINE);
 						composeMainWindowState.getChatInput().prepareCq(resolved.getCallSign(), false);
 						
 						// Sync with JavaFX state just in case
@@ -3391,6 +3470,29 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 			final int minutes,
 			final Band band,
 			final String mode) {
+		boolean remindPm = false;
+		String reminderOffsets = SelectedStationState.Companion.getREMINDER_OFFSETS().get(0);
+		if (composeMainWindowState != null) {
+			SelectedStationState state = composeMainWindowState.getSelectedStation();
+			remindPm = state.getRemindPm();
+			reminderOffsets = state.getReminderOffsets();
+		}
+		return createSkedFromCompose(new SkedRequest(
+				selectedMember,
+				minutes,
+				band,
+				mode,
+				remindPm,
+				reminderOffsets));
+	}
+
+	private boolean createSkedFromCompose(final SkedRequest request) {
+		if (request == null) {
+			return false;
+		}
+		final ChatMember selectedMember = request.getTarget();
+		final int minutes = request.getMinutes();
+		final Band band = request.getBand();
 
 		if (selectedMember == null || band == null) {
 			return false;
@@ -3412,17 +3514,14 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		chatcontroller.getScoreService().requestRecompute("sked-created");
 
 		// Arm PM reminders, exactly as the JavaFX Create sked handler does
-		if (composeMainWindowState != null) {
-			SelectedStationState ssState = composeMainWindowState.getSelectedStation();
-			if (ssState.getRemindPm()) {
-				List<Integer> offsets = parseMinuteOffsets(ssState.getReminderOffsets());
+		if (request.getRemindPm()) {
+				List<Integer> offsets = parseMinuteOffsets(request.getReminderOffsets());
 				chatcontroller.getSkedReminderService().armReminders(
 						sked.getTargetChatCallsign(),
 						sked.getTargetChatCategory(),
 						skedTime,
 						offsets
 				);
-			}
 		}
 
 		return true;
@@ -3462,28 +3561,6 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		return activeProfile.getProfile().getDisplayName();
 	}
 
-	/** The bands a sked can be arranged on for this station: enabled here, available there. */
-	private java.util.List<Band> composeSkedBands(ChatMember selectedMember) {
-		if (selectedMember == null) {
-			return java.util.List.of();
-		}
-
-		java.util.List<ChatMember> variants =
-				chatcontroller.findActiveChatMembersByRawCall(selectedMember.getCallSignRaw());
-		if (variants.isEmpty()) {
-			variants = java.util.List.of(selectedMember);
-		}
-
-		BandOpportunityResolver.Resolution resolution =
-				BandOpportunityResolver.resolve(variants, System.currentTimeMillis());
-		EnumSet<Band> enabledBands =
-				BandOpportunityResolver.getEnabledStationBands(chatcontroller.getChatPreferences());
-
-		EnumSet<Band> available = EnumSet.copyOf(resolution.getAvailableBands());
-		available.retainAll(enabledBands);
-		return new ArrayList<>(available);
-	}
-
 	/** The score service's ranking, as the Compose priority bar wants it. */
 	private java.util.List<kotlin.Pair<ChatMember, Double>> composeTopStations() {
 		java.util.List<kotlin.Pair<ChatMember, Double>> out = new ArrayList<>();
@@ -3515,21 +3592,13 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 	 */
 	private kotlin.Unit selectStationInCompose(
 			SelectedStationState panel,
-			DataTableState<ChatMember> table,
-			ChatMember member) {
+			ChatMember member,
+			StationSelectionSource source) {
 
-		panel.select(member);
-		table.select(member);
+		panel.select(member, source);
 		
 		selectedCallSignInfoStageChatMember = member;
-		if (selectedCallSignInfoMessageBinding != null) {
-			selectedCallSignInfoMessageBinding.refresh();
-			uiDispatcher.runOnUi(() -> {
-				if (selectedStationMessagesFeed != null) {
-					selectedStationMessagesFeed.push(selectedCallSignInfoMessageBinding.list());
-				}
-			});
-		}
+		applySelectedStationMessageFilter(panel.getMessageFilter(), member);
 
 		if (member != null && chatcontroller.getScoreService() != null) {
 			chatcontroller.getScoreService().setSelectedChatMember(member);
@@ -3545,26 +3614,41 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 
 	private kotlin.Unit onDirectedMessageClickedInCompose(
 			SelectedStationState panel,
-			DataTableState<ChatMember> stationsTable,
 			ChatInputState chatInput,
 			ChatMessage message) {
-		
+
+		String ownCall = chatcontroller.getChatPreferences().getStn_loginCallSign();
+		StationIdentity target = DirectedMessageStationTarget.forMessage(message, ownCall);
+		if (target == null) {
+			return kotlin.Unit.INSTANCE;
+		}
+
+		ChatMember activeTarget = chatcontroller.findActiveChatMember(target.getCallSign(), message.getChatCategory());
+		if (activeTarget != null) {
+			selectStationInCompose(panel, activeTarget, StationSelectionSource.DIRECTED_MESSAGE);
+		} else {
+			chatInput.prepareCq(target.getCallSign(), false);
+			if (message.getSender() != null && message.getSender().getCallSign().equalsIgnoreCase(ownCall)) {
+				rememberAutoPreparedCqTarget(target.getCallSign(), message.getChatCategory());
+			}
+		}
+
+		return kotlin.Unit.INSTANCE;
+	}
+
+	private kotlin.Unit onMessageSenderClickedInCompose(
+			SelectedStationState panel,
+			ChatMessage message,
+			StationSelectionSource source) {
 		if (message == null || message.getSender() == null) {
 			return kotlin.Unit.INSTANCE;
 		}
 
-		if (message.getSender().getCallSign().equals(chatcontroller.getChatPreferences().getStn_loginCallSign())) {
-			String receiverCallsign = message.getMessageText().substring(2, message.getMessageText().indexOf(")"));
-			chatInput.prepareCq(receiverCallsign, false);
-			rememberAutoPreparedCqTarget(receiverCallsign, message.getChatCategory());
-		} else {
-			selectStationInCompose(panel, stationsTable, message.getSender());
-			
-			chatInput.prepareCq(message.getSender().getCallSign(), false);
-			prepareCqTextForSelectedChatMember(message.getSender(), false);
-			focusChatMemberAndPrepareCq(message.getSender(), false);
+		ChatMember sender = chatcontroller.findActiveChatMember(
+				message.getSender().getCallSign(), message.getChatCategory());
+		if (sender != null) {
+			selectStationInCompose(panel, sender, source);
 		}
-
 		return kotlin.Unit.INSTANCE;
 	}
 
@@ -3619,6 +3703,10 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		if (composeMemberListener != null) {
 			chatcontroller.getLst_chatMemberList().removeListener(composeMemberListener);
 			composeMemberListener = null;
+		}
+		if (composeRecentJoinListener != null) {
+			chatcontroller.getRecentChatJoins().removeListener(composeRecentJoinListener);
+			composeRecentJoinListener = null;
 		}
 		if (composeChatListener != null) {
 			chatcontroller.getLst_globalChatMessageList().removeListener(composeChatListener);
@@ -3825,7 +3913,12 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 					requestLayoutSave();
 					return kotlin.Unit.INSTANCE;
 				},
-				SettingsTabsKt.settingsButtons(chatcontroller, this, settingsNotices, draft));
+				SettingsTabsKt.settingsButtons(
+						chatcontroller,
+						this,
+						settingsNotices,
+						draft,
+						this::settingsConnectionState));
 	}
 
 	/*
@@ -4222,29 +4315,10 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 	 * @return manually selected band or automatic band
 	 */
 	private Band resolveReachabilityBandForUi(ChatMember member) {
-		if (selectedReachabilityBandOverride != null) {
-			return selectedReachabilityBandOverride;
+		if (composeMainWindowState != null) {
+			return composeMainWindowState.getReachability().resolveBand(member);
 		}
 		return chatcontroller.getReachabilityService().resolveAutoBand(member);
-	}
-
-	/**
-	 * Parses the reachability ComboBox selection.
-	 *
-	 * @param selectedLabel selected UI text
-	 * @return selected band, or null for Auto
-	 */
-	private Band parseReachabilityBandSelection(String selectedLabel) {
-		if (selectedLabel == null || selectedLabel.isBlank() || "Auto".equalsIgnoreCase(selectedLabel)) {
-			return null;
-		}
-
-		for (Band band : Band.values()) {
-			if (selectedLabel.equalsIgnoreCase(band.getDisplayLabel())) {
-				return band;
-			}
-		}
-		return null;
 	}
 
 	/**

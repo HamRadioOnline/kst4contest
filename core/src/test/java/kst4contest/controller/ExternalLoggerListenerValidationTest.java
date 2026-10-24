@@ -41,7 +41,7 @@ class ExternalLoggerListenerValidationTest {
 
 		assertDoesNotThrow(() -> listener.processUCXUDPMessage(packet));
 
-		verify(controller, never()).applyExternalLoggedQso(any());
+		verify(controller, never()).recordLoggedQso(any(), any());
 		verify(controller, never()).getDbHandler();
 	}
 
@@ -55,7 +55,7 @@ class ExternalLoggerListenerValidationTest {
 
 		assertDoesNotThrow(() -> listener.processWinTestMessage(packet));
 
-		verify(controller, never()).applyExternalLoggedQso(any());
+		verify(controller, never()).recordLoggedQso(any(), any());
 		verify(controller, never()).getDbHandler();
 	}
 }

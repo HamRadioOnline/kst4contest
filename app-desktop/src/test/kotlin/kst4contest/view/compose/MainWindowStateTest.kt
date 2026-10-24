@@ -120,6 +120,15 @@ class MainWindowSplitterDefaultsTest(@TempDir private val tempDir: Path) {
         val splitter = SplitterState(paneCount = 2, stored = stored) {}
         assertEquals(stored.map { it.toFloat() }, splitter.positions)
     }
+
+    @Test
+    fun `the selected station content splitter takes the one stored profile position`() {
+        val stored = prefs.getGUIselectedCallSignSplitPane_dividerposition()
+        assertEquals(1, stored.size)
+
+        val splitter = SplitterState(paneCount = MainWindowState.SELECTED_STATION_PANE_COUNT, stored = stored) {}
+        assertEquals(stored.map { it.toFloat() }, splitter.positions)
+    }
 }
 
 /**

@@ -56,6 +56,14 @@ Several operators sharing one computer can now use their own callsigns, locators
 
 ### Fixed
 
+- **Reconnect from Settings:** after **Disconnect**, **Connect to ...** remained disabled in the open Settings window. The buttons now follow the Connection Manager state, prevent duplicate attempts and become available again after a completed disconnect or failed attempt.
+
+- **Reachability controls restored:** the Compose filter bar again contains **Reachability** with **Auto** and the locally enabled bands, plus **Calc selected**. Only an explicit calculation for the selected station may request online elevation data; table rendering, sorting and band selection use existing results only.
+
+- **More usable on small screens:** the Further Info area is scrollable, empty tables show a clear empty state, filter rows wrap when required and the complete send text is available as a tooltip. Controls and the right-hand window areas are more clearly separated.
+
+- **Diagnostic files grouped and bounded:** new error logs and ON4KST message-history files are created below `.praktiKST/debug`. Existing files in the former location remain unchanged. The error log rotates at 20 MiB and retains at most five generations including the active file.
+
 - **Consistent font size:** on macOS and Linux JavaFX uses a slightly larger default font than on Windows, which cut off labels in fixed-size controls. KST4Contest now uses the same base font size on all systems; nothing changes on Windows.
 
 - **Dark mode after a restart:** the main window always started light, even if dark mode had been active, while the station map stayed dark. All windows now start consistently with the profile's colour scheme.

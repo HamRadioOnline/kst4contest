@@ -758,8 +758,15 @@ public class MessageBusManagementThread extends Thread {
 
 		// Built only now: the receiver field has always been read after the sender.
 		InboundChatFrame frame = InboundChatFrame.of(fields);
+		boolean publicMessage = frame.receiverField().equals("0");
+		newMessageArrived.setMessageDirectedToCommunity(publicMessage);
+		newMessageArrived.setMessageDirectedToMe(
+				publicMessage
+						&& isPublicMessageExplicitlyAddressedTo(
+								frame.text(),
+								prefs.getStn_loginCallSign()));
 
-		if (frame.receiverField().equals("0")) {
+		if (publicMessage) {
 			// message is not directed to anyone, move it to the cq messages.
 			newMessageArrived.setReceiver(createAllReceiver());
 
@@ -778,6 +785,7 @@ public class MessageBusManagementThread extends Thread {
 						newMessageArrived.getSender().getCallSign(),
 						newMessageArrived.getReceiver().getCallSign(),
 						prefs.getStn_loginCallSign());
+				newMessageArrived.setMessageDirectedToMe(route == ChatRoute.TO_ME);
 
 				DirectionalOpportunity opportunity = null;
 				boolean senderAlreadyInAngleAndRange = false;
@@ -1137,7 +1145,7 @@ public class MessageBusManagementThread extends Thread {
 //				System.out.println("MSGBUS: User detected");
 
 
-					if (!client.getChatPreferences().getStn_loginCallSign().equals(splittedMessageLine[2])) { //own call ignore
+					if (!client.getChatPreferences().getStn_loginCallSign().equalsIgnoreCase(splittedMessageLine[2])) { //own call ignore
 
 						ChatMember newMember = new ChatMember();
 
@@ -1156,7 +1164,8 @@ public class MessageBusManagementThread extends Thread {
 
 						newMember = this.client.getDbHandler().fetchChatMemberWkdDataForOnlyOneCallsignFromDB(newMember);
 
-						this.client.addOrUpdateActiveChatMember(newMember);
+						this.client.addOrUpdateActiveChatMember(
+								newMember, millisClock.getAsLong());
 //					this.client.getReachabilityService().ensureAutoTropoMarginCalculated(newMember);
 
 						this.client.getDbHandler().storeChatMember(newMember);
@@ -1712,6 +1721,33 @@ public class MessageBusManagementThread extends Thread {
 			return ChatRoute.FROM_ME;
 		}
 		return ChatRoute.BETWEEN_OTHERS;
+	}
+
+	/**
+	 * Recognizes the structured address prefix produced by ON4KST for a public
+	 * {@code /cq CALL ...} message.
+	 *
+	 * <p>The address must be the first non-whitespace token and occupy the complete
+	 * parenthesized prefix. A callsign occurring later in ordinary prose is therefore
+	 * not treated as an address.</p>
+	 */
+	static boolean isPublicMessageExplicitlyAddressedTo(String messageText, String ownCall) {
+		if (messageText == null || ownCall == null || ownCall.isBlank()) {
+			return false;
+		}
+
+		String text = messageText.stripLeading();
+		if (!text.startsWith("(")) {
+			return false;
+		}
+
+		int closingParenthesis = text.indexOf(')');
+		if (closingParenthesis <= 1) {
+			return false;
+		}
+
+		String addressedCall = text.substring(1, closingParenthesis).trim();
+		return addressedCall.equalsIgnoreCase(ownCall.trim());
 	}
 
 	/**

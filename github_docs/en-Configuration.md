@@ -733,12 +733,14 @@ When both automatic-reply functions are enabled, the QRG reply takes precedence.
 
 ### Debug and contest history
 
-**Enable debug mode to file** is enabled by default and takes effect without restarting the application. The setting controls two separate files in the `.praktiKST` directory of the user profile:
+**Enable debug mode to file** is enabled by default and takes effect without restarting the application. New diagnostic files are stored in the `.praktiKST/debug` subdirectory of the user profile:
 
 - `kst4contest-errors.log` includes additional `INFO` and `FINE` diagnostics while debug mode is enabled. Warnings, errors and exceptions are written regardless of this setting.
 - `Messagehistory.raw` records the complete ON4KST traffic of the current program session. It contains RX and TX traffic, including chat, private-message, user, status, control and keepalive frames.
 
-On Windows, the history is stored at `C:\Users\<YourName>\.praktiKST\Messagehistory.raw`; on Linux and macOS it is stored at `~/.praktiKST/Messagehistory.raw`.
+On Windows, the history is stored at `C:\Users\<YourName>\.praktiKST\debug\Messagehistory.raw`; on Linux and macOS it is stored at `~/.praktiKST/debug/Messagehistory.raw`. KST4Contest creates the directory when needed. Existing diagnostic files directly below `.praktiKST` are neither moved nor deleted.
+
+The `kst4contest-errors.log` file rotates at 20 MiB. At most five generations are retained, including the active file.
 
 Each line contains exactly one event:
 
@@ -836,6 +838,7 @@ The settings are located in the **Station** tab:
 | Setting | Default | Purpose |
 |---|---:|---|
 | **Enable PSTRotator** | disabled | Starts UDP communication with PSTRotator |
+| **Use QTF filter direction as antenna heading** | enabled when PSTRotator 1 is disabled | Copies deliberate QTF-filter direction entries to the current local antenna heading |
 | **PSTRotator host** | `127.0.0.1` | Hostname or IP address of the computer running PSTRotator |
 | **PSTRotator UDP port** | `12000` | UDP port on which PSTRotator receives control commands |
 
@@ -862,6 +865,8 @@ The complete UDP protocol is documented in the [PSTRotatorAz User Manual](https:
 
 ### Updating the local QTF
 
+At program start, the current local QTF is initialised from the **QTF** default stored in the active root or operator profile. This is a start value only. It does not change the stored default during operation.
+
 KST4Contest asks PSTRotator for the current azimuth and operating mode every two seconds. The reported azimuth becomes `actualQTF`.
 
 While PSTRotator integration is enabled, the QTF field in the main window is therefore read-only. It displays the most recent position reported by PSTRotator.
@@ -876,6 +881,10 @@ This QTF is used by:
 - the `MYQTF` variable.
 
 A received rotator position is therefore more than a displayed value. It changes several functions which depend on the current antenna direction.
+
+Without PSTRotator 1, **Use QTF filter direction as antenna heading** can apply a direction entered in the QTF filter, or selected with one of its compass buttons, to the same `actualQTF`. This also works while **Show only QTF** is switched off. **Reset filters**, switching the filter off and restored filter state do not alter the antenna heading. The transfer is one-way and does not issue a PSTRotator command.
+
+The option is grouped under **Manual antenna heading** and is enabled by default, including for existing root and operator profiles after updating. Clear it to store a profile-specific opt-out. While PSTRotator 1 is enabled, the checkbox is unavailable and the transfer is temporarily inactive. Its stored state is retained, so disabling PSTRotator 1 restores the previous choice. PSTRotator 2 under SO2R is independent of this rule.
 
 The current integration uses azimuth only. Elevation control and complete azimuth/elevation tracking are outside its present scope.
 
@@ -1043,11 +1052,12 @@ For a quick change during operation, use **Windows → Use dark mode design** an
 
 ## Saving Settings
 
-**Save Settings** applies pending changes first, then stores functional settings and the complete current layout. Changes to window sizes and positions, relevant dividers, managed table-column widths and the **Group nearby stations** map setting are also saved automatically after a short delay. Any pending layout update is written when the programme exits.
+**Save Settings** applies pending changes first, then stores functional settings and the complete current layout. Changes to window sizes and positions, relevant dividers, managed table-column widths and the **Grouping** and **Always on top** map settings are also saved automatically after a short delay. Any pending layout update is written when the programme exits.
 
 - Storage location: `~/.praktiKST/preferences.xml` on Linux and macOS and `%USERPROFILE%\.praktiKST\preferences.xml` (or `C:\Users\<Username>\.praktiKST\preferences.xml`) on Windows
 - The automatic layout writer does not copy functional changes which have not yet been confirmed with **Save Settings**.
 - Configuration version 6 adds optional column-width entries below `guiOptions`. Older `preferences.xml` files remain readable. Missing or invalid widths simply cause KST4Contest to calculate useful initial widths again.
 - Configuration version 7 adds `GUIstationMapClusteringEnabled` below `guiOptions`. If the entry is missing or unusable, spatial map clustering remains enabled.
-- Older programme versions ignore the additional XML entries. If an older version rewrites the complete file, column widths and the stored **Group nearby stations** choice may be lost.
+- `GUIstationMapAlwaysOnTop` is an optional layout value below `guiOptions`. If the entry is missing or unusable, the map window uses normal window behaviour and does not remain permanently in front.
+- Older programme versions ignore the additional XML entries. If an older version rewrites the complete file, column widths and the stored **Grouping** and **Always on top** choices may be lost.
 - If you encounter problems: delete the configuration file → KST4Contest will create a new one with default values.
