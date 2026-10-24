@@ -286,8 +286,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # Also on cancelled(): the job timeout cancels a hanging run, and the reports of the
+      # classes that did finish carry the timed-out tests' full stacks.
       - name: Keep the test reports on a failure
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: test-results
