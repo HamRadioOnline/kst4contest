@@ -151,6 +151,11 @@ subprojects {
          */
         systemProperty("junit.jupiter.execution.timeout.default", "2m")
         systemProperty("junit.jupiter.execution.timeout.thread.mode.default", "SEPARATE_THREAD")
+        // The default short format prints only the first frame of each cause, which for a
+        // timed-out test is the line it hung in but not the call that blocked there.
+        testLogging {
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
         finalizedBy(checkTestUserHome)
     }
 
