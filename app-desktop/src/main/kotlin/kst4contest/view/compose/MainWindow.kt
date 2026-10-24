@@ -246,6 +246,10 @@ private fun StationColumn(
     onFiltersChanged: () -> Unit,
     onShowMorePriorities: () -> Unit,
 ) {
+    val stationContextMenu = remember(state) {
+        StationContextMenuState(state::selectStation)
+    }
+
     SplitterPane(
         state = state.rightSplitter,
         orientation = SplitterOrientation.VERTICAL,
@@ -264,19 +268,28 @@ private fun StationColumn(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     HorizontalDivider(thickness = Density.HAIRLINE)
-                    SnippetContextMenu(state.snippets.entries, state.chatInput) {
-                DataTableView(
-                    state = state.stations,
-                    modifier = Modifier.fillMaxSize(),
-                    onRowClick = onStationSelected,
-                    selectOnRowClick = false,
-                )
-                    }
+                    DataTableView(
+                        state = state.stations,
+                        modifier = Modifier.fillMaxSize(),
+                        emphasizeCell = { member, column ->
+                            column.id == "callsign" && state.newJoined.isRecent(member)
+                        },
+                        onRowClick = onStationSelected,
+                        onRowContextMenu = { member, position ->
+                            stationContextMenu.open(
+                                listOf(member),
+                                StationSelectionSource.STATION_CONTEXT_MENU,
+                                position,
+                            )
+                        },
+                        selectOnRowClick = false,
+                    )
                 }
             },
             {
                 TopPriorityBar(
                     state = state.topPriority,
+                    newJoined = state.newJoined,
                     onShowMore = onShowMorePriorities,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -286,6 +299,7 @@ private fun StationColumn(
                     state = state.selectedStation,
                     messages = state.selectedStationMessages,
                     activeBands = state.activeBands,
+                    contentSplitter = state.selectedStationSplitter,
                     openInBrowser = openInBrowser,
                     onShowOnMap = onShowOnMap,
                     onShowPathInAirScout = onShowPathInAirScout,
@@ -294,4 +308,5 @@ private fun StationColumn(
             },
         ),
     )
+    StationContextOverlays(stationContextMenu, state, onShowOnMap)
 }

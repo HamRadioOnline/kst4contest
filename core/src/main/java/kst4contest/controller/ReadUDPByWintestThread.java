@@ -774,30 +774,7 @@ public class ReadUDPByWintestThread extends Thread {
             }
 
             ChatMember workedCall = loggedQso.toWorkedChatMember();
-            if (loggedBand != null
-                    && loggedBand.getProjectBand() != null
-                    && locatorFromLogger != null) {
-                this.client.registerWorkedGrossField(
-                        loggedBand.getProjectBand(), locatorFromLogger, workedCall, loggedQso.getSource());
-            }
-
-            client.applyExternalLoggedQso(loggedQso);
-
-            boolean isInChat = this.client.getDbHandler().updateWkdInfoOnChatMember(workedCall);
-            // This will update the worked info on a worked chatmember. DBHandler will
-            // check, if an entry at the db had been modified. If not, then the worked
-            // station had not been stored. DBHandler will store the information then.
-            if (!isInChat) {
-
-                workedCall.setName("unknown");
-
-                if (workedCall.getQra() == null || workedCall.getQra().isBlank()) {
-                    workedCall.setQra("unknown");
-                }
-
-                workedCall.setLastActivity(new Utils4KST().time_generateActualTimeInDateFormat());
-                this.client.getDbHandler().storeChatMember(workedCall);
-            }
+            client.recordLoggedQso(loggedQso, workedCall);
 
             File logUDPMessageToThisFile = new File(this.client.getChatPreferences()
                     .getLogSynch_storeWorkedCallSignsFileNameUDPMessageBackup());

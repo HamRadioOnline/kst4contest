@@ -147,6 +147,22 @@ public final class WorkedGrossFieldCache {
     }
 
     /**
+     * Returns an immutable snapshot of all gross fields worked on at least one
+     * band. Map rendering uses the snapshot without holding this cache's monitor.
+     *
+     * @return immutable any-band gross-field snapshot
+     */
+    public synchronized Set<String> snapshotWorkedGrossFieldsAny() {
+        Set<String> snapshot = new HashSet<>();
+        for (Set<String> workedGrossFields : workedGrossFieldsByBand.values()) {
+            if (workedGrossFields != null) {
+                snapshot.addAll(workedGrossFields);
+            }
+        }
+        return Set.copyOf(snapshot);
+    }
+
+    /**
      * Tries to normalize a locator. Accepts a plain six-character locator or extracts
      * one from exchange strings such as "001JO41HK".
      *

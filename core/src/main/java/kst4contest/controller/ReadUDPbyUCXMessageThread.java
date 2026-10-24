@@ -3,7 +3,6 @@ package kst4contest.controller;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.Arrays;
 
 import javax.xml.XMLConstants;
@@ -366,118 +365,11 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 //						client.getChatPreferences().setBcn_contestScoreSum(Long.parseLong(points));
 
 						ChatMember workedCall = loggedQso.toWorkedChatMember();
-						Band workedBand = loggedBand == null ? null : loggedBand.getProjectBand();
 						if (loggedBand == null && !rawBand.isEmpty()) {
 							System.out.println("[ReadUDPFromUCX, warning]: unexpected band value: \"" + rawBand + "\"");
 						}
 
-						{
-							/**
-							 * That means, the station is worked already but maybe at another band. So we
-							 * have to get the worked ChatMember out of the list and to modify the worked
-							 * options.
-							 */
-
-//							modifyThat = (ChatMember) client.getMap_ucxLogInfoWorkedCalls().get(call);
-
-//							asd //TODO: Check if callsign and callsignraw is similar, then mark first and further via new checklistforchatmembermultiplemethod with array of indize
-
-							client.applyExternalLoggedQso(loggedQso);
-
-							/**
-							 * old mechanic to markup worked stations in the chatmember table
-							 */
-//							int indexOfChatMemberInTable = -1; //chatmember not in table
-//							indexOfChatMemberInTable = client.checkListForChatMemberIndexByCallSign(workedCall);
-//
-//							if (indexOfChatMemberInTable == -1) {
-//								// do nothing
-//							} else {
-//								modifyThat = client.getLst_chatMemberList().get(indexOfChatMemberInTable);
-//
-//								client.getLst_chatMemberList()
-//										.get(client.checkListForChatMemberIndexByCallSign(modifyThat)).setWorked(true);
-//
-//								if (workedCall.isWorked144()) {
-//									modifyThat.setWorked144(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked144(true);
-//
-//								} else if (workedCall.isWorked432()) {
-//									modifyThat.setWorked432(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked432(true);
-//
-//								} else if (workedCall.isWorked1240()) {
-//									modifyThat.setWorked1240(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked1240(true);
-//
-//								} else if (workedCall.isWorked2300()) {
-//									modifyThat.setWorked2300(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked2300(true);
-//
-//								} else if (workedCall.isWorked3400()) {
-//									modifyThat.setWorked3400(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked3400(true);
-//
-//								} else if (workedCall.isWorked5600()) {
-//									modifyThat.setWorked5600(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked5600(true);
-//
-//								} else if (workedCall.isWorked10G()) {
-//									modifyThat.setWorked10G(true);
-//									client.getLst_chatMemberList()
-//											.get(client.checkListForChatMemberIndexByCallSign(modifyThat))
-//											.setWorked10G(true);
-//								}
-							/**
-							 * //TODO: following line is a quick fix to making disappear worked chatmembers of the list
-							 * Thats uncomfortable due to this also causes selection changes,
-							 * Better way is to change all worked and qrv values to observables and then trigger the underlying
-							 * list to fire an invalidationevent. Really Todo!
-							 */
-//								try{
-//
-//									GuiUtils.triggerGUIFilteredChatMemberListChange(client); //not clean at all
-//								} catch (Exception IllegalStateException) {
-//									//do nothing, as it works...
-//								}
-//						}
-							/**
-							 * end -> old mechanic to markup worked stations in the chatmember table
-							 */
-						}
-
-						if (workedBand != null && gridSquare != null) {
-							this.client.registerWorkedGrossField(
-									workedBand, gridSquare, workedCall, loggedQso.getSource());
-						}
-
-						boolean isInChat = this.client.getDbHandler().updateWkdInfoOnChatMember(workedCall);
-						// This will update the worked info on a worked chatmember. DBHandler will
-						// check, if an entry at the db had been modified. If not, then the worked
-						// station had not been stored. DBHandler will store the information then.
-						if (!isInChat) {
-
-							workedCall.setName("unknown");
-
-							if (workedCall.getQra() == null || workedCall.getQra().isBlank()) {
-								workedCall.setQra("unknown");
-							}
-
-							workedCall.setLastActivity(new Utils4KST().time_generateActualTimeInDateFormat());
-							this.client.getDbHandler().storeChatMember(workedCall);
-						}
+						client.recordLoggedQso(loggedQso, workedCall);
 						
 
 						appendToUdpBackupFile(this.client.getChatPreferences()
@@ -594,18 +486,6 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 
             callBackToController.onThreadStatus(ThreadNickName,threadStateMessage);
 
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-            threadStateMessage = new ThreadStateMessage(this.ThreadNickName, true, "CRASHED" + udpMsg, true);
-            threadStateMessage.setCriticalStateFurtherInfo(Arrays.toString(e.getStackTrace()));
-
-            callBackToController.onThreadStatus(ThreadNickName,threadStateMessage);
-
-//            threadStatusMessage = new String[2];
-//            threadStatusMessage[0] = "STOPPED";
-//            threadStatusMessage[1] = Arrays.toString(e.getStackTrace());
-//            callBackToController.onThreadStatus(ThreadNickName,threadStatusMessage);
 		}
 
 //		System.out.println("[ReadUDPbyUCXTh: ] worked size = " + this.client.getMap_ucxLogInfoWorkedCalls().size());

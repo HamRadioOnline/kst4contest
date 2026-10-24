@@ -38,11 +38,11 @@ internal object Density {
     /** Two-letter compass labels need only a small inset inside their fixed width. */
     val DIRECTION_BUTTON_HORIZONTAL_PADDING = 2.dp
 
-    /** A compact, independently scrollable message table in the selected-station pane. */
-    val SELECTED_MESSAGE_TABLE_HEIGHT = 104.dp
-
     /** Enough room for the NOT-QRV and sked groups to remain usable side by side. */
-    val SELECTED_ACTION_GROUPS_ROW_MIN_WIDTH = 520.dp
+    val SELECTED_ACTION_GROUPS_ROW_MIN_WIDTH = 450.dp
+
+    /** Keeps the station actions usable when a stored splitter position is too low. */
+    val SELECTED_ACTION_AREA_MIN_HEIGHT = 160.dp
 
     val TAB_MIN_HEIGHT = 30.dp
 

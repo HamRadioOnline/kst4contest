@@ -107,6 +107,84 @@ class SelectedStationPanelScreenTest {
     }
 
     @Test
+    fun allMessageChoicesShareOneVerticalAxis() = runComposeUiTest {
+        setPanel(selectedState("DM5M"), Modifier.width(570.dp).height(420.dp))
+
+        val centers = listOf("pm to me", "pm to other", "public msgs", "nothing")
+            .map { onNodeWithText(it).fetchSemanticsNode().boundsInRoot.center.y }
+
+        assertTrue(centers.max() - centers.min() <= 1f, "radio labels are misaligned: $centers")
+    }
+
+    @Test
+    fun selectedMessageSplitterChangesTheActualTableHeightInBothDirections() = runComposeUiTest {
+        val selected = selectedState("DM5M")
+        val splitter = SplitterState(2, doubleArrayOf(0.45)) {}
+
+        setContent {
+            Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
+                SelectedStationPanel(
+                    state = selected,
+                    messages = messageTable(),
+                    activeBands = EnumSet.of(Band.B_144),
+                    contentSplitter = splitter,
+                    openInBrowser = Consumer {},
+                    onShowOnMap = {},
+                    onShowPathInAirScout = {},
+                    modifier = Modifier.width(570.dp).height(620.dp),
+                )
+            }
+        }
+
+        val initial = onNodeWithTag(SELECTED_MESSAGES_TABLE_TAG)
+            .fetchSemanticsNode().boundsInRoot.height
+        runOnIdle { splitter.drag(0, 0.70f, 500f) }
+        waitForIdle()
+        val taller = onNodeWithTag(SELECTED_MESSAGES_TABLE_TAG)
+            .fetchSemanticsNode().boundsInRoot.height
+        assertTrue(taller > initial, "moving the divider down did not enlarge the table")
+
+        runOnIdle { splitter.drag(0, 0.25f, 500f) }
+        waitForIdle()
+        val shorter = onNodeWithTag(SELECTED_MESSAGES_TABLE_TAG)
+            .fetchSemanticsNode().boundsInRoot.height
+        assertTrue(shorter < taller, "moving the divider up did not shrink the table")
+
+        onNodeWithText("Lookup on qrz.com").assertIsDisplayed()
+    }
+
+    @Test
+    fun selectedMessageSplitterSurvivesStationAndMessageUpdates() = runComposeUiTest {
+        val selected = selectedState("DM5M")
+        val messages = messageTable()
+        val splitter = SplitterState(2, doubleArrayOf(0.62)) {}
+
+        setContent {
+            Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
+                SelectedStationPanel(
+                    state = selected,
+                    messages = messages,
+                    activeBands = EnumSet.of(Band.B_144),
+                    contentSplitter = splitter,
+                    openInBrowser = Consumer {},
+                    onShowOnMap = {},
+                    onShowPathInAirScout = {},
+                    modifier = Modifier.width(570.dp).height(620.dp),
+                )
+            }
+        }
+
+        val expectedPosition = splitter.positions.single()
+        runOnIdle {
+            selected.select(member("DL1ABC"))
+            messages.replaceRows(listOf(ChatMessage().apply { messageText = "new message" }))
+        }
+        waitForIdle()
+
+        assertEquals(expectedPosition, splitter.positions.single())
+    }
+
+    @Test
     fun notQrvHeadingFollowsTheCurrentStationWithoutKeepingAStaleCallsign() = runComposeUiTest {
         val selected = selectedState("DM5M")
 
@@ -300,9 +378,7 @@ class SelectedStationPanelScreenTest {
             }
         }
 
-        onNodeWithText("Lookup on qrz.com")
-            .performScrollTo()
-            .assertIsDisplayed()
+        onNodeWithText("Lookup on qrz.com").assertIsDisplayed()
     }
 
     private fun selectedState(callSign: String) = selectedState(member(callSign))

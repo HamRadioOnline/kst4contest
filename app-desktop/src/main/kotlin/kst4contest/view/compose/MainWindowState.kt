@@ -55,12 +55,20 @@ class MainWindowState(
     val bandUpgradeNotice: BlinkingNotice,
     val threadButtons: ThreadStatusButtons,
 
-    /** The three splitters, whose positions the operator has arranged and stored. */
+    /** The splitters whose positions the operator has arranged and stored. */
     val outerSplitter: SplitterState,
     val messageSplitter: SplitterState,
     val rightSplitter: SplitterState,
+    val selectedStationSplitter: SplitterState = SplitterState(
+        SELECTED_STATION_PANE_COUNT,
+        doubleArrayOf(0.55),
+    ) {},
+    val newJoined: NewJoinedState = NewJoinedState(onSelect = {}),
     val reachability: ReachabilityState = ReachabilityState(activeBands),
 ) {
+
+    /** Explicit map analysis requested from either station context menu. */
+    val mapReachability = MapReachabilityState(prefs.stn_loginLocatorMainCat.orEmpty())
 
     /** The shortcut buttons above the send line. */
     /**
@@ -76,11 +84,18 @@ class MainWindowState(
     /** Debounced persistence hook shared by the main and map windows. */
     var layoutSaveRequested: (() -> Unit)? = null
 
+    /** Contactinfo-equivalent manual Worked action supplied by the controller host. */
+    var markStationWorked: ((ChatMember, kst4contest.model.Band) -> Boolean)? = null
+
+    /** Persistent any-band Worked gross fields used by the optional map overlay. */
+    var workedGrossFieldsProvider: (() -> Set<String>) = { emptySet() }
+
     val stationSelection: StationSelectionState
         get() = selectedStation.stationSelection
 
     /** Routes every explicit station choice through the application-level action. */
     fun selectStation(member: ChatMember?, source: StationSelectionSource) {
+        mapReachability.selectionChanged(StationIdentity.of(member))
         val selector = stationSelector
         if (selector != null) {
             selector(member, source)
@@ -132,6 +147,9 @@ class MainWindowState(
 
         /** Station list, top priorities, selected station. */
         const val RIGHT_PANE_COUNT = 3
+
+        /** Selected-station message table and its scrollable action area. */
+        const val SELECTED_STATION_PANE_COUNT = 2
     }
 }
 

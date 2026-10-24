@@ -119,7 +119,14 @@ class SplitterState(
             }
             val upperBound = totalPx - trailingMinimum
             val wanted = livePositions[index] * totalPx
-            val position = wanted.coerceIn(lowerBound, upperBound)
+            // Scaling impossible minimums can leave the two bounds a few float ULPs
+            // apart. Treat that rounding-only empty range like drag() does instead of
+            // letting coerceIn throw during layout.
+            val position = if (lowerBound > upperBound) {
+                (lowerBound + upperBound) / 2f
+            } else {
+                wanted.coerceIn(lowerBound, upperBound)
+            }
             effective[index] = position
             previous = position
         }

@@ -51,9 +51,10 @@ class MapMarkerClusterTooltipTest {
         List<String> lines = List.of(MapMarkerClusterTooltip.build(clusterOf(3)).split("\\n"));
 
         assertEquals("3 stations", lines.get(0));
-        assertEquals("DL000AA", lines.get(1));
-        assertEquals("DL001AA", lines.get(2));
-        assertEquals("DL002AA", lines.get(3));
+        assertTrue(lines.get(1).startsWith("DL000AA"));
+        assertTrue(lines.get(2).startsWith("DL001AA"));
+        assertTrue(lines.get(3).startsWith("DL002AA"));
+        assertTrue(lines.get(1).contains("JO50JP"));
     }
 
     /** A hundred callsigns is a box taller than the window. */

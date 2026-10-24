@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -226,5 +227,34 @@ class StationFilterBarScreenTest {
             bearingWidths.all { abs(it - expectedWidth) <= 1f },
             "bearing buttons are not $expectedWidth px wide: $bearingWidths",
         )
+    }
+
+    @Test
+    fun functionalFilterGroupsRemainDistinctAndInsideANarrowBar() = runComposeUiTest {
+        val width = 300.dp
+        setContent {
+            Kst4ContestTheme(darkMode = true, baseFontSizeSp = 12f) {
+                Box(Modifier.width(width)) {
+                    StationFilterBar(
+                        filters = StationFilterState(),
+                        activeBands = EnumSet.of(Band.B_144),
+                        reachability = ReachabilityState(EnumSet.of(Band.B_144)),
+                        onChanged = {},
+                    )
+                }
+            }
+        }
+
+        val limit = with(density) { width.toPx() }
+        listOf(
+            FILTER_DISTANCE_GROUP_TAG,
+            FILTER_DIRECTION_GROUP_TAG,
+            FILTER_STATION_GROUP_TAG,
+            FILTER_WORKED_GROUP_TAG,
+            FILTER_PROPAGATION_GROUP_TAG,
+        ).forEach { tag ->
+            val bounds = onNodeWithTag(tag).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            assertTrue(bounds.left >= 0f && bounds.right <= limit + 0.5f, "$tag crosses the filter bar")
+        }
     }
 }

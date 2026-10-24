@@ -29,6 +29,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material3.Surface
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import java.awt.Cursor
@@ -43,14 +46,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import kst4contest.view.i18n.LocalStrings
+import kotlin.math.roundToInt
 
 /**
  * A multi-column table.
@@ -72,13 +80,15 @@ import kst4contest.view.i18n.LocalStrings
  * the supported way to reach the hover text the JavaFX cells had, and losing that
  * loses the only way to read a value that does not fit its column.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun <T> DataTableView(
     state: DataTableState<T>,
     modifier: Modifier = Modifier,
     rowStyle: ((T) -> CellAccent?)? = null,
+    emphasizeCell: ((T, DataColumn<T>) -> Boolean)? = null,
     onRowClick: ((T) -> Unit)? = null,
+    onRowContextMenu: ((T, IntOffset) -> Unit)? = null,
     selectOnRowClick: Boolean = true,
 ) {
     val density = LocalDensity.current
@@ -321,6 +331,9 @@ fun <T> DataTableView(
                 val accent = rowStyle?.invoke(row)
                 val isEven = index % 2 == 0
                 val _forceRedraw = state.contentRevision
+                var rowCoordinates by remember(state.keyOf(row)) {
+                    mutableStateOf<LayoutCoordinates?>(null)
+                }
 
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -340,6 +353,20 @@ fun <T> DataTableView(
                                     state.select(row)
                                 }
                                 onRowClick?.invoke(row)
+                            }
+                            .onGloballyPositioned { rowCoordinates = it }
+                            .onPointerEvent(PointerEventType.Press) { event ->
+                                if (event.buttons.isSecondaryPressed) {
+                                    val local = event.changes.firstOrNull()?.position
+                                    val window = local?.let { rowCoordinates?.localToWindow(it) }
+                                    if (window != null) {
+                                        onRowContextMenu?.invoke(
+                                            row,
+                                            IntOffset(window.x.roundToInt(), window.y.roundToInt()),
+                                        )
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                }
                             }
                             .heightIn(min = Density.ROW_MIN_HEIGHT),
                         verticalAlignment = Alignment.CenterVertically,
@@ -377,6 +404,11 @@ fun <T> DataTableView(
                                     Text(
                                         value,
                                         style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (emphasizeCell?.invoke(row, column) == true) {
+                                            FontWeight.Bold
+                                        } else {
+                                            null
+                                        },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         color = cell?.foreground

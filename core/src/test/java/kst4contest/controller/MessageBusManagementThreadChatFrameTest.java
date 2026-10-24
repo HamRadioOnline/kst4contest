@@ -63,6 +63,7 @@ class MessageBusManagementThreadChatFrameTest {
     private static final String RECEIVER_LOCATOR = "JO70LL";
     private static final double MAX_QRB_KM = 900.0;
     private static final double BEAM_WIDTH_DEG = 50.0;
+    private static final long FIXED_NOW_MILLIS = 1_700_000_123_456L;
 
     @TempDir
     Path tempDir;
@@ -102,6 +103,10 @@ class MessageBusManagementThreadChatFrameTest {
                 .thenReturn(mock(StationMetricsService.class));
         when(controller.getScoreService()).thenReturn(mock(ScoreService.class));
         when(controller.getDxClusterServer()).thenReturn(dxClusterServer);
+        DBController database = mock(DBController.class);
+        when(controller.getDbHandler()).thenReturn(database);
+        when(database.fetchChatMemberWkdDataForOnlyOneCallsignFromDB(any(ChatMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(controller.findActiveChatMember(any(ChatMember.class)))
                 .thenAnswer(invocation -> activeMemberFor(invocation.getArgument(0)));
     }
@@ -179,6 +184,60 @@ class MessageBusManagementThreadChatFrameTest {
         ChatMessage published = singlePublished();
         assertTrue(published.isMessageDirectedToCommunity());
         assertFalse(published.isMessageDirectedToMe());
+    }
+
+    @Test
+    @Timeout(10)
+    void liveUserEntryCarriesTheInjectedJoinTimestampToTheController()
+            throws InterruptedException {
+        runThrough(message("UA5|2|HB9SJV|Contest team|JN47AA|3|"));
+
+        ArgumentCaptor<ChatMember> member = ArgumentCaptor.forClass(ChatMember.class);
+        verify(controller).addOrUpdateActiveChatMember(member.capture(),
+                org.mockito.ArgumentMatchers.eq(FIXED_NOW_MILLIS));
+        assertEquals("HB9SJV", member.getValue().getCallSign());
+        assertEquals(ChatCategory.VUHF,
+                member.getValue().getChatCategory().getCategoryNumber());
+    }
+
+    @Test
+    @Timeout(10)
+    void alternateLiveUserEntryCarriesTheInjectedJoinTimestampToTheController()
+            throws InterruptedException {
+        runThrough(message("UA2|3|OE5SOS|Microwave team|JN78AA|3|"));
+
+        ArgumentCaptor<ChatMember> member = ArgumentCaptor.forClass(ChatMember.class);
+        verify(controller).addOrUpdateActiveChatMember(member.capture(),
+                org.mockito.ArgumentMatchers.eq(FIXED_NOW_MILLIS));
+        assertEquals("OE5SOS", member.getValue().getCallSign());
+        assertEquals(ChatCategory.MICROWAVE,
+                member.getValue().getChatCategory().getCategoryNumber());
+    }
+
+    @Test
+    @Timeout(10)
+    void initialUserListAndItsTerminatorDoNotCreateLiveJoinEvents()
+            throws InterruptedException {
+        runThrough(
+                message("UA0|2|HB9SJV|Contest team|JN47AA|3|"),
+                message("UE|2|1|"));
+
+        verify(controller, never()).addOrUpdateActiveChatMember(
+                any(ChatMember.class), org.mockito.ArgumentMatchers.anyLong());
+        verify(controller).stageInitialOn4KstChatMember(
+                org.mockito.ArgumentMatchers.eq(7L), any(ChatMember.class));
+        verify(controller).onOn4KstInitialUserListCompleted(
+                org.mockito.ArgumentMatchers.eq(7L), any(ChatCategory.class));
+    }
+
+    @Test
+    @Timeout(10)
+    void ownCallIsExcludedFromLiveJoinEventsIgnoringCase()
+            throws InterruptedException {
+        runThrough(message("UA5|2|dn9apw|Own station|JO50LL|3|"));
+
+        verify(controller, never()).addOrUpdateActiveChatMember(
+                any(ChatMember.class), org.mockito.ArgumentMatchers.anyLong());
     }
 
     // --- sent by me ---------------------------------------------------------
@@ -417,7 +476,8 @@ class MessageBusManagementThreadChatFrameTest {
                 mock(ThreadStatusCallback.class),
                 7L,
                 rxQueue,
-                ignored -> true);
+                ignored -> true,
+                () -> FIXED_NOW_MILLIS);
         for (ChatMessage frame : frames) {
             rxQueue.add(frame);
         }

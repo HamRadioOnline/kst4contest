@@ -1145,7 +1145,7 @@ public class MessageBusManagementThread extends Thread {
 //				System.out.println("MSGBUS: User detected");
 
 
-					if (!client.getChatPreferences().getStn_loginCallSign().equals(splittedMessageLine[2])) { //own call ignore
+					if (!client.getChatPreferences().getStn_loginCallSign().equalsIgnoreCase(splittedMessageLine[2])) { //own call ignore
 
 						ChatMember newMember = new ChatMember();
 
@@ -1164,7 +1164,8 @@ public class MessageBusManagementThread extends Thread {
 
 						newMember = this.client.getDbHandler().fetchChatMemberWkdDataForOnlyOneCallsignFromDB(newMember);
 
-						this.client.addOrUpdateActiveChatMember(newMember);
+						this.client.addOrUpdateActiveChatMember(
+								newMember, millisClock.getAsLong());
 //					this.client.getReachabilityService().ensureAutoTropoMarginCalculated(newMember);
 
 						this.client.getDbHandler().storeChatMember(newMember);

@@ -253,6 +253,23 @@ class SplitterStateTest {
         assertEquals(100f, sizes.sum(), 0.01f)
     }
 
+    @Test
+    fun `pane-specific minimum scaling tolerates float rounding`() {
+        val state = SplitterState(
+            paneCount = 2,
+            stored = doubleArrayOf(0.48),
+            minPanePx = 160f,
+        ) {}
+
+        val sizes = state.paneSizes(
+            totalPx = 24.405657f,
+            minimumPaneSizesPx = floatArrayOf(52f, 160f),
+        )
+
+        assertTrue(sizes.all { it >= 0f })
+        assertEquals(24.405657f, sizes.sum(), 0.0001f)
+    }
+
     private fun assertNull(value: Any?, message: String) {
         assertFalse(value != null, message)
     }

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.stream.Stream;
 
+import kst4contest.model.Band;
 import kst4contest.model.ChatMember;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,6 +36,15 @@ class ExternalLoggedQsoTest {
 		assertNull(LoggedQsoBand.fromLoggerValue("unknown"));
 		assertNull(LoggedQsoBand.fromWinTestBandId(null));
 		assertNull(LoggedQsoBand.fromWinTestBandId("99"));
+	}
+
+	@Test
+	void resolvesEveryProjectBandForManualWorkedActions() {
+		for (Band band : Band.values()) {
+			LoggedQsoBand loggedBand = LoggedQsoBand.fromProjectBand(band);
+
+			assertEquals(band, loggedBand.getProjectBand());
+		}
 	}
 
 	@Test

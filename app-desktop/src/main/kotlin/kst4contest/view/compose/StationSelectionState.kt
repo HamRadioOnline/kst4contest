@@ -54,11 +54,14 @@ object DirectedMessageStationTarget {
 /** Where an explicit station selection came from. */
 enum class StationSelectionSource {
     STATION_TABLE,
+    STATION_CONTEXT_MENU,
     DIRECTED_MESSAGE,
     PUBLIC_MESSAGE,
     QSO_OF_THE_OTHER,
     MAP,
+    MAP_CONTEXT_MENU,
     PRIORITY,
+    NEW_JOINED,
     TIMELINE,
     RESET_VIEW,
     PROGRAMMATIC,
@@ -98,7 +101,7 @@ class StationSelectionState : TableSelectionModel<ChatMember> {
         current = row
         lastSource = source
         selectionRevision++
-        if (row != null) {
+        if (row != null && source.requestsStationTableScroll()) {
             scrollRequestRevision++
         }
     }
@@ -113,4 +116,20 @@ class StationSelectionState : TableSelectionModel<ChatMember> {
             scrollRequestRevision++
         }
     }
+}
+
+private fun StationSelectionSource.requestsStationTableScroll(): Boolean = when (this) {
+    StationSelectionSource.STATION_TABLE,
+    StationSelectionSource.STATION_CONTEXT_MENU,
+    StationSelectionSource.RESET_VIEW,
+    StationSelectionSource.PROGRAMMATIC -> false
+
+    StationSelectionSource.DIRECTED_MESSAGE,
+    StationSelectionSource.PUBLIC_MESSAGE,
+    StationSelectionSource.QSO_OF_THE_OTHER,
+    StationSelectionSource.MAP,
+    StationSelectionSource.MAP_CONTEXT_MENU,
+    StationSelectionSource.PRIORITY,
+    StationSelectionSource.NEW_JOINED,
+    StationSelectionSource.TIMELINE -> true
 }

@@ -26,7 +26,7 @@ public final class MapMarkerClusterTooltip {
     public static String build(MapMarkerCluster cluster) {
         List<String> callsigns = new ArrayList<>();
         for (MapCallsignRawSnapshot marker : cluster.getMarkers()) {
-            String label = marker.markerLabel();
+            String label = marker.tooltipText().replace('\n', ' ');
             if (label != null && !label.isBlank()) {
                 callsigns.add(label.trim());
             }

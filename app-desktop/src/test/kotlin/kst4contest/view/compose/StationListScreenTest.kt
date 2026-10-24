@@ -2,17 +2,23 @@ package kst4contest.view.compose
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.MouseButton
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.IntOffset
 import kst4contest.model.AirPlane
 import kst4contest.model.AirPlaneReflectionInfo
 import kst4contest.model.Band
 import kst4contest.model.ChatCategory
 import kst4contest.model.ChatMember
+import kst4contest.model.RecentChatJoin
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.EnumSet
 
@@ -85,10 +91,15 @@ class StationListScreenTest {
     private fun ComposeUiTest.show(
         state: DataTableState<ChatMember>,
         onRowClick: (ChatMember) -> Unit = {},
+        onRowContextMenu: ((ChatMember, IntOffset) -> Unit)? = null,
     ) {
         setContent {
             Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
-                DataTableView(state = state, onRowClick = onRowClick)
+                DataTableView(
+                    state = state,
+                    onRowClick = onRowClick,
+                    onRowContextMenu = onRowContextMenu,
+                )
             }
         }
         waitForIdle()
@@ -107,7 +118,7 @@ class StationListScreenTest {
         val inSecond = station("DL1ABC", category = 3)
         val clicked = mutableListOf<ChatMember>()
 
-        show(state) { clicked += it }
+        show(state, onRowClick = { clicked += it })
         runOnIdle { state.replaceRows(listOf(inMain, inSecond)) }
         waitForIdle()
 
@@ -207,6 +218,24 @@ class StationListScreenTest {
     }
 
     @Test
+    fun aSecondaryClickReportsTheExactStationAndWindowPosition() = runComposeUiTest {
+        val state = stationList()
+        val member = station("DL1ABC", category = 3)
+        state.replaceRows(listOf(member))
+        val requests = mutableListOf<Pair<ChatMember, IntOffset>>()
+
+        show(state, onRowContextMenu = { target, position -> requests += target to position })
+        onNodeWithText("DL1ABC").performMouseInput {
+            click(button = MouseButton.Secondary)
+        }
+        waitForIdle()
+
+        assertEquals(1, requests.size)
+        assertSame(member, requests.single().first)
+        assertTrue(requests.single().second.x >= 0 && requests.single().second.y >= 0)
+    }
+
+    @Test
     fun anExplicitSelectionScrollsUsingTheCurrentSortedPosition() = runComposeUiTest {
         val selection = StationSelectionState()
         val state = DataTableState(
@@ -258,5 +287,34 @@ class StationListScreenTest {
 
         onNodeWithText("DL1MOVE").assertDoesNotExist()
         onNodeWithText("DL2STAY").assertExists()
+    }
+
+    @Test
+    fun onlyTheCallsignCellOfARecentlyJoinedStationIsEmphasized() = runComposeUiTest {
+        val state = stationList()
+        val joined = station("HB9SJV", 2)
+        val existing = station("DL1OLD", 2)
+        val recent = NewJoinedState(clock = { 5_000L }, onSelect = {}).apply {
+            updateActiveMembers(listOf(joined, existing))
+            updateEvents(listOf(RecentChatJoin("HB9SJV", 2, 1_000L)))
+        }
+        val emphasized = mutableSetOf<Pair<String, String>>()
+        state.replaceRows(listOf(joined, existing))
+
+        setContent {
+            Kst4ContestTheme(darkMode = false, baseFontSizeSp = 12f) {
+                DataTableView(
+                    state = state,
+                    emphasizeCell = { member, column ->
+                        val emphasize = column.id == "callsign" && recent.isRecent(member)
+                        if (emphasize) emphasized += member.callSign to column.id
+                        emphasize
+                    },
+                )
+            }
+        }
+        waitForIdle()
+
+        assertEquals(setOf("HB9SJV" to "callsign"), emphasized)
     }
 }

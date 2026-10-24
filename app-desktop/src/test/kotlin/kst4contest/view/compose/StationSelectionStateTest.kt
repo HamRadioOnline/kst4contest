@@ -36,6 +36,36 @@ class StationSelectionStateTest {
     }
 
     @Test
+    fun `direct station table selections do not request scrolling`() {
+        val state = StationSelectionState()
+
+        state.select(station("DL1ABC", 2), StationSelectionSource.STATION_TABLE)
+
+        assertEquals(0L, state.scrollRequestRevision)
+    }
+
+    @Test
+    fun `station table context selection does not request scrolling`() {
+        val state = StationSelectionState()
+
+        state.select(station("DL1ABC", 2), StationSelectionSource.STATION_CONTEXT_MENU)
+
+        assertEquals(0L, state.scrollRequestRevision)
+    }
+
+    @Test
+    fun `map context selection requests scrolling again for the same station`() {
+        val state = StationSelectionState()
+        val station = station("DL1ABC", 2)
+
+        state.select(station, StationSelectionSource.MAP_CONTEXT_MENU)
+        val first = state.scrollRequestRevision
+        state.select(station, StationSelectionSource.MAP_CONTEXT_MENU)
+
+        assertTrue(state.scrollRequestRevision > first)
+    }
+
+    @Test
     fun `reconciling a refreshed instance keeps the selection without requesting a scroll`() {
         val state = StationSelectionState()
         state.select(station("DL1ABC", 2), StationSelectionSource.STATION_TABLE)

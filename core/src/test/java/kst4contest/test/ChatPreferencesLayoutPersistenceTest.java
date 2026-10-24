@@ -106,6 +106,8 @@ class ChatPreferencesLayoutPersistenceTest {
         preferences.getGUIscn_ChatwindowMainSceneSizeHW()[0] = 812;
         preferences.getGUIscn_ChatwindowMainSceneSizeHW()[1] = 1340;
         preferences.setGUIstationMapClusteringEnabled(false);
+        preferences.setGUIselectedCallSignSplitPane_dividerposition(
+                new double[] {0.68});
         preferences.setTableColumnWidth("qso-other-monitor", "call-tx", 123.75);
 
         assertTrue(preferences.writeLayoutPreferencesToXmlFile());
@@ -124,6 +126,8 @@ class ChatPreferencesLayoutPersistenceTest {
         assertTrue(restored.readPreferencesFromXmlFile());
         assertEquals("SAVED-CALL", restored.getStn_loginCallSign());
         assertFalse(restored.isGUIstationMapClusteringEnabled());
+        assertArrayEquals(new double[] {0.68},
+                restored.getGUIselectedCallSignSplitPane_dividerposition(), 0.0001);
         assertEquals(123.75,
                 restored.getTableColumnWidth("qso-other-monitor", "call-tx").orElseThrow());
     }

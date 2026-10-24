@@ -107,6 +107,8 @@ On its first build, the user list is sorted alphabetically by complete callsign,
 
 Station selection is shared by the user list, PM, Public and QSO-of-the-other tables, priority display, AP timeline and map. A selection made in another view scrolls the user list to the chat member's current position and highlights the row. If a filter hides that station, it is temporarily added to the user list; the stored filters and exactly filtered map view remain unchanged. Callsign and chat category jointly identify the station.
 
+A callsign shown in bold marks a station which actually joined the chat during the current session. The emphasis remains visible for ten minutes. The initial user list and a complete resynchronisation after a reconnect do not create these markers. The Day design uses a contrasting dark text colour, and the Evening design uses an appropriately light colour.
+
 A callsign displayed in green and bold indicates a directional opportunity derived from a directed message. The marker applies to the sender of that message and remains visible for no more than five minutes. Derivation and limitations: [Directional Opportunities from Directed Messages](en-Features#directional-opportunities-from-directed-messages).
 
 
@@ -181,6 +183,8 @@ This avoids having to move the divider merely to read an individual long message
 ## Filters and Reachability Controls
 
 The filter bar is located above the chat-member table. Filters can be combined; a station remains visible only if it satisfies every active condition.
+
+Subtly bordered surfaces group **QRB**, **QTF** including direction buttons, **Hide**, **Show** and **Reachability** by function. **Find** and **Reset filters** remain separate controls. The grouping changes presentation only; filter state, reset behaviour and map coupling remain shared.
 
 ![Wrapped filter bar in a narrow chat-member view](filter_bar_wrapped.png)
 
@@ -269,7 +273,7 @@ A local callsign mentioned only somewhere in ordinary message text does not make
 
 This setting changes the Further Info display only. Messages are neither discarded nor removed from the other message tables, and the filter can be changed at any time for the currently selected station.
 
-When the lower divider leaves the Further Info area very short, its contents can be scrolled vertically. The message table keeps a compact scroll area of its own, while the sked, NOT-QRV, map, AirScout, antenna and lookup actions remain reachable. Empty tables retain their column structure and show **No entries**.
+A horizontal divider inside Further Info divides the available height between the message table and station actions. Moving it immediately makes the table taller or shorter. NOT-QRV and Sked use their own vertical scroll region in the lower area, while **Look up and show** remains pinned below it. The divider position is stored with the active root or operator profile's layout and is clamped to a usable value in a smaller window. Empty tables retain their column structure and show **No entries**.
 
 The station header combines the callsign, chat category, QTF, QRB, last activity and detected bands in a compact flow. It does not repeat the locator; the locator remains available in the other station views. In a narrow panel, the metadata wraps onto additional lines without clipping. **Show messages** sits directly in front of the four message filters and flows with them.
 
@@ -312,7 +316,13 @@ The complete derivation and limitations are described under [Skeds and Sked Remi
 
 ## Priority List
 
-The compact priority bar is located on the right-hand side between the user list and the Further Info section. It displays the two currently highest-ranked candidates directly in the main window:
+The compact bar is located on the right-hand side between the user list and the Further Info section. The **New joined** group appears on the left when needed, while the independent **Priority** group remains on the right.
+
+**New joined** shows actual chat joins for ten minutes, newest first. Up to five stations are displayed directly when space permits; additional entries, or entries moved out at a narrow width, remain available in the compact **more** dropdown. The initial user list, a complete resynchronisation, profile-only updates and the local callsign do not create entries. A station is removed immediately when it leaves. A later real rejoin starts a new ten-minute period. Complete callsign and chat category remain separate identities.
+
+Clicking an entry uses the shared station selection, updates Further Info and scrolls the user list to the station when necessary.
+
+The **Priority** group displays the two currently highest-ranked candidates directly in the main window:
 
 ```text
 Priority:  1 CALLSIGN SCORE  2 CALLSIGN SCORE  more
@@ -355,7 +365,11 @@ The map uses the stations which remain visible after applying the current user-l
 
 ![Station map with a selected station and visible path analysis](station_map_path_analysis.png)
 
+> **Screenshot note:** This image still shows the previous marker label and neither the new context menu nor the Worked-square overlay. It will be replaced after manual map acceptance.
+
 ### Selecting a Station
+
+A marker displays only its callsign as visible text. Locator, detected bands, `B+` state and the most recently known QRGs remain available in its tooltip.
 
 A single station marker can be selected directly. KST4Contest then:
 
@@ -372,6 +386,12 @@ The change takes effect immediately without changing the current zoom, viewport 
 
 This switch controls only the spatial clusters on screen. Active chat variants of the same normalised base callsign may still share one geographical marker and remain separate message targets regardless of this setting.
 
+Right-clicking a marker or a row in the user list opens the same station context menu. It contains **Message snippets**, **Create sked…**, band-specific **Tag NOT QRV** and **Mark as worked** actions, and **Calculate reachability**. When a marker represents several complete callsigns or chat categories, the concrete target must be chosen first. No action is applied arbitrarily to the first entry.
+
+The snippet action only extends the send field and does not send by itself. The sked editor keeps the target captured when it opened; a later selection change does not alter that draft. **Mark as worked** uses the same additive Worked and database path as a received logger `contactinfo` and never removes an existing mark.
+
+**Calculate reachability** explicitly starts the existing path calculation for the chosen band. When invoked from the user list, KST4Contest opens the map and displays the loading state, result or error for that exact target.
+
 For a selected station, the header additionally shows:
 
 - the complete callsign,
@@ -383,7 +403,9 @@ For a selected station, the header additionally shows:
 
 Long header content is shortened. The complete text remains available in its tooltip.
 
-**Reset filters** invokes the same action as the button in the user list. It clears all enabled station filters, callsign search, direction filters and grid colouring. Sorting, station selection, zoom and viewport remain unchanged. **Always on top** affects only the map window, is applied immediately and is saved automatically for the operator profile. It is disabled when no value has been stored.
+**Reset filters** invokes the same action as the button in the user list. It clears all enabled station filters, callsign search and direction filters. The display-only **Grid color** option remains unchanged, as do sorting, station selection, zoom and viewport. **Always on top** affects only the map window, is applied immediately and is saved automatically for the operator profile. It is disabled when no value has been stored.
+
+While **Grid color** is enabled, the map marks persistently known, already worked four-character Maidenhead squares with a black outline and a 30 percent black fill overlay. The overlay uses the same persistent Worked-grid state as **Only new grids**, so a square remains visible even when it currently contains no chat station. Neither outline nor fill overlay is drawn while **Grid color** is disabled.
 
 ### Clearing the Selection with Reset View
 
@@ -527,6 +549,8 @@ Functions which communicate with the server are available only after the ON4KST 
 ## Window Sizes and Dividers
 
 KST4Contest automatically stores programme-window sizes and positions, relevant dividers and manually changed table-column widths in the configuration file after a short delay. Any pending layout update is written when the programme exits. **Save Settings** is not required for these changes, but still stores the complete current state, including the layout.
+
+This includes the horizontal divider between the message table and the station actions in Further Info. Its value belongs to the active root or operator profile; when restoring it, KST4Contest clamps the value to the height available in the current window.
 
 The main window is additionally checked against the visible area of the primary screen during startup. If the stored size is too large, KST4Contest reduces and moves the window so that it remains accessible. The complete process is described under [Screen-Aware Main Window Sizing](en-Features#screen-aware-main-window-sizing-from-v141).
 

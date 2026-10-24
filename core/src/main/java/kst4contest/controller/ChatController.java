@@ -1648,6 +1648,7 @@ private SimpleRoster<String>
 	 * lst_chatMemberList is this very field.
 	 */
 	private final SimpleRoster<ChatMember> chatMemberList = new SimpleRoster<>(); // List of active stations
+	private final SimpleRoster<RecentChatJoin> recentChatJoins = new SimpleRoster<>();
 
 	private final SimpleRoster<Predicate<ChatMember>> lst_chatMemberListFilterPredicates = new SimpleRoster<>();
 	private final SimpleRoster<ClusterMessage> lst_clusterMemberList = new SimpleRoster<>();
@@ -1803,6 +1804,20 @@ private SimpleRoster<String>
 	 * user-enter events.
 	 */
 	public void addOrUpdateActiveChatMember(ChatMember member) {
+		addOrUpdateActiveChatMember(member, System.currentTimeMillis());
+	}
+
+	/**
+	 * Adds or replaces an active member and records a join only for a previously absent
+	 * full callsign/category identity.
+	 *
+	 * @param member member received in a live user-enter frame
+	 * @param joinedAtEpochMillis wall-clock time of that frame
+	 */
+	public void addOrUpdateActiveChatMember(
+			ChatMember member,
+			long joinedAtEpochMillis
+	) {
 		String key = buildActiveChatMemberKey(member);
 		if (key == null) {
 			return;
@@ -1810,7 +1825,7 @@ private SimpleRoster<String>
 
 		initializeFrequencyFromStationNameIfUnambiguous(member);
 
-		activeChatMembersByCallAndCategory.put(key, member);
+		ChatMember previous = activeChatMembersByCallAndCategory.put(key, member);
 
 		runOnFxThread(() -> chatMemberList.mutate(list -> {
 			int existingIndex = findChatMemberIndexInList(list, key);
@@ -1820,6 +1835,18 @@ private SimpleRoster<String>
 				list.add(member);
 			}
 		}));
+
+		if (previous == null) {
+			int categoryNumber = member.getChatCategory().getCategoryNumber();
+			recentChatJoins.mutate(joins -> {
+				boolean alreadyRecorded = joins.stream().anyMatch(join ->
+						join.matches(member.getCallSign(), categoryNumber));
+				if (!alreadyRecorded) {
+					joins.add(0, new RecentChatJoin(
+							member.getCallSign(), categoryNumber, joinedAtEpochMillis));
+				}
+			});
+		}
 	}
 
 	/**
@@ -1834,6 +1861,9 @@ private SimpleRoster<String>
 		}
 
 		ChatMember removedMember = activeChatMembersByCallAndCategory.remove(key);
+		int categoryNumber = member.getChatCategory().getCategoryNumber();
+		recentChatJoins.mutate(joins -> joins.removeIf(join ->
+				join.matches(member.getCallSign(), categoryNumber)));
 		runOnFxThread(() -> chatMemberList.mutate(list ->
 				list.removeIf(currentMember -> key.equals(buildActiveChatMemberKey(currentMember)))));
 		return removedMember != null;
@@ -1845,6 +1875,7 @@ private SimpleRoster<String>
 	 */
 	public void clearActiveChatMembers() {
 		activeChatMembersByCallAndCategory.clear();
+		recentChatJoins.clear();
 		runOnFxThread(chatMemberList::clear);
 	}
 
@@ -1867,6 +1898,8 @@ private SimpleRoster<String>
 		}
 
 		int categoryNumber = category.getCategoryNumber();
+		recentChatJoins.mutate(joins -> joins.removeIf(join ->
+				join.getCategoryNumber() == categoryNumber));
 		List<ChatMember> safeMembers = completeMembers == null
 				? List.of() : new ArrayList<>(completeMembers);
 		Map<String, ChatMember> workedDataFromDatabase =
@@ -1992,8 +2025,8 @@ private SimpleRoster<String>
 
 	/**
 	 * Applies a QSO received from an external logger to all active callsign
-	 * variants. Active member objects back JavaFX views, so their state is changed
-	 * only on the JavaFX Application Thread. The band-upgrade hint is evaluated
+	 * variants. Active member objects back UI views, so their state is changed
+	 * only through the configured UI dispatcher. The band-upgrade hint is evaluated
 	 * afterwards and therefore sees the new Worked state.
 	 *
 	 * @param loggedQso validated external QSO
@@ -2197,6 +2230,16 @@ private SimpleRoster<String>
 			target.setQrv3400(sourceMember.isQrv3400());
 			target.setQrv5600(sourceMember.isQrv5600());
 			target.setQrv10G(sourceMember.isQrv10G());
+		}
+
+		if (dbHandler != null) {
+			try {
+				dbHandler.updateNotQRVInfoOnChatMember(sourceMember);
+			} catch (SQLException exception) {
+				LOGGER.log(Level.WARNING,
+						"Could not persist NOT-QRV state for " + rawCall,
+						exception);
+			}
 		}
 
 		if (scoreService != null) {
@@ -2741,6 +2784,96 @@ private SimpleRoster<String>
 
 	public ObservableRoster<ChatMember> getLst_chatMemberList() {
 		return chatMemberList;
+	}
+
+	/**
+	 * Applies and persists a validated QSO through the same path for external
+	 * logger packets and explicit UI Worked actions.
+	 *
+	 * @param loggedQso validated QSO
+	 * @return true when the QSO was accepted and its station state was persisted
+	 */
+	public boolean recordLoggedQso(ExternalLoggedQso loggedQso) {
+		return loggedQso != null
+				&& recordLoggedQso(loggedQso, loggedQso.toWorkedChatMember());
+	}
+
+	/**
+	 * Applies and persists a QSO while retaining the supplied database/backup row.
+	 * Logger listeners use this overload so later backup serialization observes the
+	 * same normalization as database persistence.
+	 *
+	 * @param loggedQso validated QSO
+	 * @param workedCall mutable row derived from the QSO
+	 * @return true when the QSO was accepted and its station state was persisted
+	 */
+	public boolean recordLoggedQso(ExternalLoggedQso loggedQso, ChatMember workedCall) {
+		if (loggedQso == null || workedCall == null || dbHandler == null) {
+			return false;
+		}
+
+		LoggedQsoBand loggedBand = loggedQso.getBand();
+		if (loggedBand != null
+				&& loggedBand.getProjectBand() != null
+				&& loggedQso.getLocator() != null) {
+			registerWorkedGrossField(
+					loggedBand.getProjectBand(),
+					loggedQso.getLocator(),
+					workedCall,
+					loggedQso.getSource());
+		}
+
+		applyExternalLoggedQso(loggedQso);
+
+		try {
+			boolean isInChat = dbHandler.updateWkdInfoOnChatMember(workedCall);
+			if (!isInChat) {
+				workedCall.setName("unknown");
+				if (workedCall.getQra() == null || workedCall.getQra().isBlank()) {
+					workedCall.setQra("unknown");
+				}
+				workedCall.setLastActivity(new Utils4KST().time_generateActualTimeInDateFormat());
+				dbHandler.storeChatMember(workedCall);
+			}
+			return true;
+		} catch (SQLException exception) {
+			LOGGER.log(Level.WARNING,
+					"Could not persist Worked state for " + loggedQso.getCallSign(),
+					exception);
+			return false;
+		}
+	}
+
+	/**
+	 * Marks one station and band as worked with contactinfo-equivalent semantics.
+	 * Worked contacts are additive; invoking this method for an already worked band
+	 * is intentionally idempotent.
+	 *
+	 * @param member station selected by the UI
+	 * @param band band to mark as worked
+	 * @return true when a valid contact was accepted and persisted
+	 */
+	public boolean markStationWorkedOnBand(ChatMember member, Band band) {
+		if (member == null || band == null) {
+			return false;
+		}
+
+		LoggedQsoBand loggedBand = LoggedQsoBand.fromProjectBand(band);
+		if (loggedBand == null) {
+			return false;
+		}
+
+		String callSign = member.getCallSign() != null
+				? member.getCallSign()
+				: member.getCallSignRaw();
+		return ExternalLoggedQso.create(callSign, loggedBand, member.getQra(), "MANUAL")
+				.map(this::recordLoggedQso)
+				.orElse(false);
+	}
+
+	/** Live joins only; initial and resynchronized user lists never enter this roster. */
+	public ObservableRoster<RecentChatJoin> getRecentChatJoins() {
+		return recentChatJoins;
 	}
 
 	public ObservableRoster<ChatMember> getLst_DBBasedWkdCallSignList() {

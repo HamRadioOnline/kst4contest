@@ -86,6 +86,9 @@ class SelectedStationState @JvmOverloads constructor(
     val stationSelection: StationSelectionState = StationSelectionState(),
 ) {
 
+    /** Shared sked action used by both the panel and isolated context-menu drafts. */
+    var skedRequestSubmitter: ((SkedRequest) -> Boolean)? = null
+
     val selected: ChatMember?
         get() = stationSelection.selected
 
@@ -162,15 +165,22 @@ class SelectedStationState @JvmOverloads constructor(
     fun isTaggedNotQrv(band: NotQrvBand): Boolean {
         @Suppress("UNUSED_EXPRESSION") tagRevision
 
-        val member = selected ?: return false
+        return selected?.let { isTaggedNotQrv(it, band) } ?: false
+    }
 
+    fun isTaggedNotQrv(member: ChatMember, band: NotQrvBand): Boolean {
+        @Suppress("UNUSED_EXPRESSION") tagRevision
         return !band.read(member)
     }
 
     /** Tagged means not QRV, so the station's QRV flag goes the other way. */
     fun tagNotQrv(band: NotQrvBand, tagged: Boolean) {
         val member = selected ?: return
+        tagNotQrv(member, band, tagged)
+    }
 
+    /** Applies a context action to its fixed target instead of the current selection. */
+    fun tagNotQrv(member: ChatMember, band: NotQrvBand, tagged: Boolean) {
         band.write(member, !tagged)
         tagRevision++
         propagateNotQrv(member)
@@ -178,7 +188,10 @@ class SelectedStationState @JvmOverloads constructor(
 
     fun tagNotQrvAll(tagged: Boolean) {
         val member = selected ?: return
+        tagNotQrvAll(member, tagged)
+    }
 
+    fun tagNotQrvAll(member: ChatMember, tagged: Boolean) {
         NotQrvBand.entries.forEach { it.write(member, !tagged) }
         tagRevision++
         propagateNotQrv(member)
@@ -188,8 +201,32 @@ class SelectedStationState @JvmOverloads constructor(
     fun createSked(): Boolean {
         val member = selected ?: return false
 
-        return createSked(member, skedMinutes, skedBand, skedMode)
+        val request = SkedRequest(
+            target = member,
+            minutes = skedMinutes,
+            band = skedBand,
+            mode = skedMode,
+            remindPm = remindPm,
+            reminderOffsets = reminderOffsets,
+        )
+        return submitSked(request)
     }
+
+    /** Submits a fixed-target request through the shared application action. */
+    fun submitSked(request: SkedRequest): Boolean =
+        skedRequestSubmitter?.invoke(request)
+            ?: createSked(request.target, request.minutes, request.band, request.mode)
+
+    /** Copies the panel values into an isolated draft for a fixed target. */
+    fun createSkedDraft(target: ChatMember): SkedEditorState = SkedEditorState(
+        target = target,
+        minutes = skedMinutes,
+        band = skedBand ?: resolveDefaultSkedBand(target),
+        mode = skedMode,
+        remindPm = remindPm,
+        reminderOffsets = reminderOffsets,
+        submitter = ::submitSked,
+    )
 
     /**
      * Marks the path to this station as failed.

@@ -5,11 +5,14 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.MouseButton
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.text.input.TextFieldValue
 import kst4contest.locatorUtils.Location
@@ -34,6 +37,8 @@ import kst4contest.view.compose.StationColumns
 import kst4contest.view.compose.StationFilterState
 import kst4contest.view.compose.StationSelectionSource
 import kst4contest.view.compose.StationSelectionState
+import kst4contest.view.compose.STATION_CONTEXT_MENU_TAG
+import kst4contest.view.compose.STATION_CONTEXT_TARGET_CHOOSER_TAG
 import kst4contest.view.compose.ThreadStatusButtons
 import kst4contest.view.compose.TimelineState
 import kst4contest.view.compose.TopPriorityState
@@ -304,6 +309,64 @@ class StationMapWindowScreenTest {
         assertSame(inMain, state.stations.selectedRow)
         assertEquals(StationSelectionSource.MAP, state.stationSelection.lastSource)
         assertTrue(state.stations.scrollRequestRevision > scrollRevision)
+    }
+
+    @Test
+    fun aMarkerContextClickSelectsItsOnlyTargetAndOpensTheSharedMenu() = runComposeUiTest {
+        val state = windowState(prefs())
+        val member = station("DL1ABC", 2)
+        val scrollRevision = state.stations.scrollRequestRevision
+
+        show(state, listOf(member), mapLookingAt("JO50JP", zoom = 12f))
+
+        onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performMouseInput {
+            click(button = MouseButton.Secondary)
+        }
+        waitForIdle()
+
+        onNodeWithTag(STATION_CONTEXT_MENU_TAG).assertExists()
+        assertSame(member, state.stations.selectedRow)
+        assertEquals(StationSelectionSource.MAP_CONTEXT_MENU, state.stationSelection.lastSource)
+        assertTrue(state.stations.scrollRequestRevision > scrollRevision)
+    }
+
+    @Test
+    fun aMarkerContextClickRequiresCategoryChoiceForAmbiguousTargets() = runComposeUiTest {
+        val state = windowState(prefs())
+        val inMain = station("DL1ABC", 2)
+        val inSecond = station("DL1ABC", 3)
+
+        show(state, listOf(inMain, inSecond), mapLookingAt("JO50JP", zoom = 12f))
+
+        onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performMouseInput {
+            click(button = MouseButton.Secondary)
+        }
+        waitForIdle()
+
+        onNodeWithTag(STATION_CONTEXT_TARGET_CHOOSER_TAG).assertExists()
+        assertEquals(null, state.stations.selectedRow)
+    }
+
+    @Test
+    fun workedGrossFieldsAreReadOnlyWhileGridColouringIsEnabled() = runComposeUiTest {
+        val state = windowState(prefs())
+        var reads = 0
+        state.workedGrossFieldsProvider = {
+            reads++
+            setOf("JO50")
+        }
+
+        show(state, emptyList(), mapLookingAt("JO50JP", zoom = 6f))
+        assertEquals(0, reads)
+
+        runOnIdle { state.stationFilter.gridColouring = true }
+        waitForIdle()
+        assertTrue(reads > 0, "enabling Grid color did not request the persistent worked fields")
+
+        val readsWhileEnabled = reads
+        runOnIdle { state.stationFilter.gridColouring = false }
+        waitForIdle()
+        assertEquals(readsWhileEnabled, reads, "disabled Grid color still read worked fields")
     }
 
     /**

@@ -106,8 +106,10 @@ Beim ersten Aufbau ist die Benutzerliste alphabetisch nach dem vollständigen Ru
 
 Die Stationsauswahl gilt gemeinsam für Benutzerliste, PM-, Public- und QSO-of-the-other-Tabelle, Prioritätsanzeige, AP-Timeline und Karte. Eine Auswahl aus einer anderen Ansicht scrollt die Benutzerliste zur aktuellen Position des Chatmembers und hebt die Zeile hervor. Ist die Station durch einen Filter ausgeblendet, erscheint sie vorübergehend zusätzlich in der Benutzerliste; die gespeicherten Filter und die exakt gefilterte Kartenansicht ändern sich dadurch nicht. Rufzeichen und Chat-Kategorie bilden gemeinsam die Identität.
 
+Ein fett dargestelltes Rufzeichen kennzeichnet eine Station, die während der laufenden Sitzung tatsächlich neu in den Chat gekommen ist. Die Hervorhebung bleibt zehn Minuten sichtbar. Die anfängliche Benutzerliste und eine vollständige Neusynchronisierung nach einem Reconnect erzeugen keine solchen Markierungen. Im Day-Design wird eine kontrastreiche dunkle, im Evening-Design eine entsprechend helle Schrift verwendet.
 
 Ein grün und fett dargestelltes Rufzeichen kennzeichnet eine aus einer gerichteten Nachricht hergeleitete Richtungsgelegenheit. Die Markierung bezieht sich auf den Absender der Nachricht und bleibt höchstens fünf Minuten sichtbar. Herleitung und Grenzen: [Richtungsgelegenheiten aus gerichteten Nachrichten](de-Funktionen#richtungsgelegenheiten-aus-gerichteten-nachrichten).
+
 ### Sendfeld
 
 Das Sendfeld enthält den vorbereiteten Text für die nächste ausgehende Nachricht.
@@ -179,6 +181,8 @@ Damit muss der Divider nicht allein deshalb verschoben werden, um eine einzelne 
 ## Filter und Reachability-Steuerung
 
 Die Filterleiste befindet sich oberhalb der Chatmember-Tabelle. Filter können miteinander kombiniert werden; eine Station bleibt nur sichtbar, wenn sie alle aktiven Bedingungen erfüllt.
+
+Dezent umrahmte Flächen fassen **QRB**, **QTF** einschließlich Richtungstasten, **Hide**, **Show** und **Reachability** jeweils funktional zusammen. **Find** und **Reset filters** bleiben eigenständige Controls. Die Gruppen ändern nur die Darstellung; Filterzustände, Reset-Verhalten und Kartenkopplung bleiben gemeinsam verwaltet.
 
 ![Umgebrochene Filterleiste bei schmaler Chatmember-Ansicht](filter_bar_wrapped.png)
 
@@ -267,7 +271,7 @@ Eine bloße Erwähnung des eigenen Rufzeichens irgendwo im Nachrichtentext macht
 
 Die Einstellung verändert nur die Darstellung im Stationsinfo-Panel. Nachrichten werden dadurch weder verworfen noch aus den übrigen Nachrichtentabellen entfernt. Der Filter kann im Panel jederzeit für die aktuell betrachtete Station gewechselt werden.
 
-Ist der Further-Info-Bereich durch den unteren Divider sehr niedrig, lässt sich sein Inhalt vertikal scrollen. Die Nachrichtentabelle behält dabei einen kompakten, eigenen Scrollbereich; die Sked-, NOT-QRV-, Karten-, AirScout-, Antennen- und Lookup-Aktionen bleiben erreichbar. Leere Tabellen zeigen weiterhin ihre Spaltenstruktur und den Hinweis **Keine Einträge**.
+Ein horizontaler Divider im Further-Info-Bereich teilt die Höhe zwischen Nachrichtentabelle und Stationsfunktionen. Die Nachrichtentabelle wird beim Verschieben unmittelbar höher oder niedriger. NOT-QRV und Sked besitzen im unteren Bereich einen eigenen vertikalen Scrollbereich; **Look up and show** bleibt darunter fest sichtbar. Die Dividerposition wird mit dem Layout des aktiven Root- oder Operatorprofils gespeichert und bei einem kleineren Fenster auf einen bedienbaren Wert begrenzt. Leere Tabellen zeigen weiterhin ihre Spaltenstruktur und den Hinweis **Keine Einträge**.
 
 Der Stationskopf fasst Rufzeichen, Chat-Kategorie, QTF, QRB, letzte Aktivität und erkannte Bänder platzsparend zusammen. Der Locator wird im Kopf nicht noch einmal wiederholt; in den übrigen Stationsansichten bleibt er unverändert verfügbar. Bei einem schmalen Panel fließen die Angaben kontrolliert in weitere Zeilen. **Show messages** steht direkt vor den vier Nachrichtenfiltern und fließt gemeinsam mit ihnen um.
 
@@ -310,7 +314,13 @@ Die vollständige Herleitung und die Grenzen der Funktion sind unter [Skeds und 
 
 ## Prioritätsliste
 
-Die kompakte Prioritätsleiste befindet sich rechts zwischen Benutzerliste und Further-Info-Bereich. Sie zeigt die beiden derzeit höchstbewerteten Kandidaten unmittelbar im Hauptfenster:
+Die kompakte Leiste befindet sich rechts zwischen Benutzerliste und Further-Info-Bereich. Links erscheint bei Bedarf die Gruppe **Neu hinzugekommen**, rechts bleibt die unabhängige Gruppe **Priority**.
+
+**Neu hinzugekommen** zeigt die neuesten tatsächlichen Chat-Beitritte für zehn Minuten an, neuere Einträge zuerst. Bei ausreichender Breite sind bis zu fünf Stationen direkt sichtbar; weitere oder wegen geringer Breite ausgeblendete Einträge stehen im kompakten **more**-Dropdown. Die anfängliche Benutzerliste, eine vollständige Neusynchronisierung, reine Profilaktualisierungen und das eigene Rufzeichen werden nicht aufgenommen. Verlässt eine Station den Chat, verschwindet ihr Eintrag sofort. Ein späterer echter Wiedereintritt startet die Frist neu. Vollständiges Rufzeichen und Chat-Kategorie bleiben getrennte Identitäten.
+
+Ein Klick auf einen Eintrag verwendet die gemeinsame Stationsauswahl, aktualisiert das Further-Info-Panel und scrollt bei Bedarf zur Station in der Benutzerliste.
+
+Die Gruppe **Priority** zeigt die beiden derzeit höchstbewerteten Kandidaten unmittelbar im Hauptfenster:
 
 ```text
 Priority:  1 RUFZEICHEN SCORE  2 RUFZEICHEN SCORE  more
@@ -353,7 +363,11 @@ Die Karte verwendet die Stationen, die nach Anwendung der aktuellen Benutzerlist
 
 ![Stationskarte mit ausgewählter Station und eingeblendeter Streckenanalyse](station_map_path_analysis.png)
 
+> **Screenshot-Hinweis:** Das Bild zeigt noch die frühere Markerbeschriftung und weder das neue Kontextmenü noch die Worked-Großfeldfläche. Es wird nach der manuellen Kartenabnahme ersetzt.
+
 ### Station auswählen
+
+Ein Marker zeigt als sichtbare Beschriftung ausschließlich das Rufzeichen. Locator, erkannte Bänder, `B+`-Status und zuletzt bekannte QRGs stehen weiterhin im Tooltip.
 
 Ein einzelner Stationsmarker kann direkt angeklickt werden. KST4Contest:
 
@@ -368,6 +382,12 @@ Das Umschalten wirkt sofort und verändert weder Zoom noch Kartenausschnitt oder
 
 Der Schalter betrifft nur die räumlichen Cluster auf dem Bildschirm. Aktive Chatvarianten desselben normalisierten Basisrufzeichens können weiterhin einen gemeinsamen geografischen Marker verwenden und bleiben unabhängig davon getrennte Nachrichtenziele.
 
+Ein Rechtsklick auf einen Marker oder eine Zeile der Benutzerliste öffnet dasselbe Stations-Kontextmenü. Es enthält **Message snippets**, **Create sked…**, bandbezogene **Tag NOT QRV**- und **Mark as worked**-Aktionen sowie **Calculate reachability**. Repräsentiert ein Marker mehrere vollständige Rufzeichen oder Chat-Kategorien, muss zuerst das konkrete Ziel gewählt werden. Dadurch werden keine Aktionen willkürlich auf den ersten Eintrag angewendet.
+
+Die Snippet-Aktion ergänzt lediglich das Sendefeld und sendet nicht selbst. Der Sked-Dialog arbeitet mit dem beim Öffnen festgehaltenen Ziel; ein späterer Auswahlwechsel ändert diesen Entwurf nicht. **Mark as worked** verwendet dieselbe additive Worked- und Datenbanklogik wie ein empfangenes Logger-`contactinfo` und entfernt keine bereits vorhandene Markierung.
+
+**Calculate reachability** startet die vorhandene Streckenberechnung ausdrücklich für das gewählte Band. Wird die Aktion aus der Benutzerliste aufgerufen, öffnet KST4Contest die Karte und zeigt dort Ladezustand, Ergebnis oder Fehler für genau dieses Ziel an.
+
 Die Kopfzeile ergänzt bei ausgewählter Station:
 
 - vollständiges Rufzeichen,
@@ -379,7 +399,9 @@ Die Kopfzeile ergänzt bei ausgewählter Station:
 
 Lange Inhalte werden in der Kopfzeile gekürzt. Der vollständige Text steht im Tooltip.
 
-**Filter zurücksetzen** führt dieselbe Aktion wie die Schaltfläche in der Benutzerliste aus. Dabei werden alle aktivierten Stationsfilter, die Rufzeichensuche, Richtungsfilter und Grid-Färbung zurückgesetzt. Sortierung, Stationsauswahl, Zoom und Kartenausschnitt bleiben erhalten. **Immer im Vordergrund** wirkt ausschließlich auf das Kartenfenster, wird sofort angewendet und für dieses Operatorprofil automatisch gespeichert; ohne gespeicherten Wert ist die Option ausgeschaltet.
+**Filter zurücksetzen** führt dieselbe Aktion wie die Schaltfläche in der Benutzerliste aus. Dabei werden alle aktivierten Stationsfilter, die Rufzeichensuche und Richtungsfilter zurückgesetzt. Die reine Darstellungsoption **Grid color** bleibt ebenso unverändert wie Sortierung, Stationsauswahl, Zoom und Kartenausschnitt. **Immer im Vordergrund** wirkt ausschließlich auf das Kartenfenster, wird sofort angewendet und für dieses Operatorprofil automatisch gespeichert; ohne gespeicherten Wert ist die Option ausgeschaltet.
+
+Bei aktivem **Grid color** kennzeichnet die Karte dauerhaft bekannte, bereits gearbeitete vierstellige Maidenhead-Großfelder mit einem schwarzen Rahmen und einer schwarzen Flächenüberblendung von 30 Prozent. Die Darstellung stammt aus derselben persistenten Worked-Grid-Verwaltung wie **Only new grids** und bleibt deshalb auch sichtbar, wenn sich momentan keine Chatstation in dem Großfeld befindet. Bei ausgeschaltetem **Grid color** werden weder Rahmen noch Flächenüberblendung gezeichnet.
 
 ### Auswahl mit Reset view löschen
 
@@ -523,6 +545,8 @@ Die serverbezogenen Funktionen sind nur bei vollständig aufgebauter ON4KST-Verb
 ## Fenstergrößen und Divider
 
 KST4Contest speichert Größen und Positionen der Programmfenster, die relevanten Divider sowie manuell geänderte Tabellenbreiten automatisch nach einer kurzen Verzögerung in der Konfigurationsdatei. Ein ausstehender Layoutstand wird beim Programmende noch geschrieben. **Save Settings** ist dafür nicht erforderlich, speichert aber weiterhin den vollständigen aktuellen Stand einschließlich Layout.
+
+Dazu gehört der horizontale Divider zwischen der Nachrichtentabelle und den Stationsfunktionen im Further-Info-Bereich. Sein Wert gilt für das aktive Root- oder Operatorprofil; beim Wiederherstellen begrenzt KST4Contest ihn auf die im aktuellen Fenster nutzbare Höhe.
 
 Das Hauptfenster wird beim Start zusätzlich gegen den sichtbaren Bereich des primären Bildschirms geprüft. Ist die gespeicherte Größe zu groß, verkleinert und verschiebt KST4Contest das Fenster so, dass es wieder erreichbar bleibt. Die genaue Herleitung ist unter [Bildschirmgerechte Größe des Hauptfensters](de-Funktionen#bildschirmgerechte-größe-des-hauptfensters-ab-v141) beschrieben.
 

@@ -25,7 +25,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import kst4contest.model.Band;
 import kst4contest.model.ChatMember;
 import kst4contest.model.ChatPreferences;
 import kst4contest.model.ThreadStateMessage;
@@ -145,12 +144,12 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 	}
 
 	/**
-	 * A UCXLog QSO packet marks the station worked, registers the gross field
-	 * and stores an unknown station in the database and the UDP backup file.
+	 * A UCXLog QSO packet delegates the complete contact to the shared controller
+	 * action and writes the derived row to the UDP backup file.
 	 * Bytes before the XML declaration are transport framing and are dropped.
 	 */
 	@Test
-	void contactInfoPacketMarksTheStationWorkedAndStoresIt(@TempDir Path tempDir) throws Exception {
+	void contactInfoPacketUsesSharedWorkedActionAndWritesBackup(@TempDir Path tempDir) throws Exception {
 		Path backupFile = tempDir.resolve("udp-backup.txt");
 		DBController database = givenQsoProcessingEnabled(backupFile);
 		when(database.updateWkdInfoOnChatMember(any())).thenReturn(false);
@@ -164,24 +163,13 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 				+ "</contactinfo>");
 
 		ArgumentCaptor<ExternalLoggedQso> qso = ArgumentCaptor.forClass(ExternalLoggedQso.class);
-		verify(controller).applyExternalLoggedQso(qso.capture());
+		verify(controller).recordLoggedQso(qso.capture(), any(ChatMember.class));
 		assertEquals("OK1ABC", qso.getValue().getCallSign());
 		assertEquals(LoggedQsoBand.BAND_144, qso.getValue().getBand());
 		assertEquals("JO70FD", qso.getValue().getLocator());
 		assertEquals("UCXLOG", qso.getValue().getSource());
-		verify(controller).registerWorkedGrossField(
-				eq(Band.B_144), eq("JO70FD"), any(ChatMember.class), eq("UCXLOG"));
-
-		ArgumentCaptor<ChatMember> stored = ArgumentCaptor.forClass(ChatMember.class);
-		verify(database).storeChatMember(stored.capture());
-		assertEquals("OK1ABC", stored.getValue().getCallSign());
-		assertEquals("unknown", stored.getValue().getName());
-		assertEquals("JO70FD", stored.getValue().getQra());
-		assertTrue(stored.getValue().isWorked());
-		assertTrue(stored.getValue().isWorked144());
-
 		String backup = Files.readString(backupFile, StandardCharsets.UTF_8);
-		assertTrue(backup.startsWith("\nOK1ABC;unknown;JO70FD;"), backup);
+		assertTrue(backup.startsWith("\nOK1ABC;null;JO70FD;"), backup);
 	}
 
 	/**
@@ -198,10 +186,10 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 				+ "<contactreplace><app>DXLog</app><band>432</band><call>SP2XYZ</call>"
 				+ "<rcvnr>042JO93AB</rcvnr></contactreplace>");
 
-		verify(controller).registerWorkedGrossField(
-				eq(Band.B_432), eq("JO93AB"), any(ChatMember.class), eq("UCXLOG"));
-		verify(database).updateWkdInfoOnChatMember(any());
-		verify(database, never()).storeChatMember(any());
+		ArgumentCaptor<ExternalLoggedQso> qso = ArgumentCaptor.forClass(ExternalLoggedQso.class);
+		verify(controller).recordLoggedQso(qso.capture(), any(ChatMember.class));
+		assertEquals(LoggedQsoBand.BAND_432, qso.getValue().getBand());
+		assertEquals("JO93AB", qso.getValue().getLocator());
 	}
 
 	@Test
@@ -211,7 +199,7 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 
 		sendThenAwaitMarker("<contactinfo><band>144</band><call>OK1ABC</call></contactinfo>");
 
-		verify(controller, never()).applyExternalLoggedQso(any());
+		verify(controller, never()).recordLoggedQso(any(), any());
 		verify(database, never()).updateWkdInfoOnChatMember(any());
 	}
 
@@ -229,8 +217,7 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 		sendThenAwaitMarker("<contactinfo><band>144</band><call>OK1ABC</call>"
 				+ "<gridsquare>JO70FD</gridsquare></contactinfo>");
 
-		verify(controller).applyExternalLoggedQso(any());
-		verify(database).storeChatMember(any());
+		verify(controller).recordLoggedQso(any(), any());
 	}
 
 	/** A RadioInfo without Freq used to end the listener with a NullPointerException. */
@@ -250,7 +237,7 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 	@Test
 	void runtimeExceptionWhileProcessingDropsOnlyThatPacket(@TempDir Path tempDir) throws Exception {
 		givenQsoProcessingEnabled(tempDir.resolve("udp-backup.txt"));
-		doThrow(new IllegalStateException("boom")).when(controller).applyExternalLoggedQso(any());
+		doThrow(new IllegalStateException("boom")).when(controller).recordLoggedQso(any(), any());
 
 		sendThenAwaitMarker("<contactinfo><band>144</band><call>OK1ABC</call></contactinfo>");
 
@@ -297,7 +284,7 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 	@Test
 	void failingStatusCallbackDoesNotEndTheListener(@TempDir Path tempDir) throws Exception {
 		givenQsoProcessingEnabled(tempDir.resolve("udp-backup.txt"));
-		doThrow(new IllegalStateException("boom")).when(controller).applyExternalLoggedQso(any());
+		doThrow(new IllegalStateException("boom")).when(controller).recordLoggedQso(any(), any());
 		statusCallbackThrows = true;
 
 		sendThenAwaitMarker("<contactinfo><band>144</band><call>OK1ABC</call></contactinfo>");

@@ -21,6 +21,8 @@ import kst4contest.view.compose.PaletteStore
 import kst4contest.view.compose.ComposeWindowHost
 import kst4contest.view.compose.MainWindowState
 import kst4contest.view.compose.StationIdentity
+import kst4contest.view.compose.StationContextMenuState
+import kst4contest.view.compose.StationContextOverlays
 import kst4contest.view.compose.StationSelectionSource
 import kst4contest.view.map.MapCallsignRawSnapshotBuilder
 import kst4contest.view.map.PathAnalysisResult
@@ -141,6 +143,9 @@ object StationMapWindow {
             var groupingEnabled by remember { mutableStateOf(prefs.isGUIstationMapClusteringEnabled) }
             var pathAnalysisVisible by remember { mutableStateOf(prefs.isGUIstationMapPathAnalysisVisible) }
             var alwaysOnTop by remember { mutableStateOf(prefs.isGUIstationMapAlwaysOnTop) }
+            val stationContextMenu = remember(mainWindowState) {
+                StationContextMenuState(mainWindowState::selectStation)
+            }
             
             val selectedMember = mainWindowState.selectedStation.selected
             
@@ -180,6 +185,7 @@ object StationMapWindow {
             }
 
             var pathAnalysisResult by remember { mutableStateOf<PathAnalysisResult?>(null) }
+            var automaticAnalysisRevision by remember { mutableStateOf(0L) }
 
             // Read through updated state so a caller passing a new lambda is never served a stale one.
             val currentPathAnalysis by rememberUpdatedState(pathAnalysis)
@@ -192,6 +198,8 @@ object StationMapWindow {
                 markers.any { it.callSignRaw() == selectedMember.callSignRaw }
 
             LaunchedEffect(selectedMember, selectedHasMarker) {
+                val automaticRequest = ++automaticAnalysisRevision
+                val explicitRevisionAtStart = mainWindowState.mapReachability.requestRevision
                 if (selectedMember == null) {
                     pathAnalysisResult = null
                     return@LaunchedEffect
@@ -232,9 +240,29 @@ object StationMapWindow {
                     )
                     
                     analysis.request(selectedMember, selectedSnapshot) { result ->
-                        pathAnalysisResult = result
+                        if (automaticAnalysisRevision == automaticRequest &&
+                            mainWindowState.mapReachability.requestRevision == explicitRevisionAtStart
+                        ) {
+                            pathAnalysisResult = result
+                        }
                     }
                 }
+            }
+
+            val explicitReachabilityResult = mainWindowState.mapReachability.result
+            LaunchedEffect(mainWindowState.mapReachability.requestRevision, explicitReachabilityResult) {
+                if (explicitReachabilityResult != null) {
+                    automaticAnalysisRevision++
+                    pathAnalysisResult = explicitReachabilityResult
+                    pathAnalysisVisible = true
+                }
+            }
+
+            val workedGrossFields = if (mainWindowState.stationFilter.gridColouring) {
+                mainWindowState.stations.contentRevision
+                mainWindowState.workedGrossFieldsProvider()
+            } else {
+                emptySet()
             }
 
             androidx.compose.material3.Surface(
@@ -373,6 +401,7 @@ object StationMapWindow {
                             antennaBeamWidthDeg = antennaBeamWidthDeg,
                             maxQrbKm = maxQrbKm,
                             darkMode = isDarkTheme,
+                            workedGrossFields = workedGrossFields,
                             onMarkerClicked = { snapshot ->
                                 val variants = chatMembers()
                                     .filter { it.callSignRaw == snapshot.callSignRaw() }
@@ -392,6 +421,15 @@ object StationMapWindow {
                                     // Mirror old JavaFX handleMapCallsignSelection logic: prefill /cq
                                     mainWindowState.chatInput.prepareCq(member.callSign ?: "", forceOverwrite = true)
                                 }
+                            },
+                            onMarkerContextRequested = { snapshots, position ->
+                                val callsigns = snapshots.mapTo(linkedSetOf()) { it.callSignRaw() }
+                                val candidates = chatMembers().filter { it.callSignRaw in callsigns }
+                                stationContextMenu.open(
+                                    candidates,
+                                    StationSelectionSource.MAP_CONTEXT_MENU,
+                                    position,
+                                )
                             },
                             modifier = Modifier.fillMaxSize().testTag(MAP_CANVAS_TAG)
                         )
@@ -456,6 +494,7 @@ object StationMapWindow {
                 } // main layout column
             } // window column
             } // Surface
+            StationContextOverlays(stationContextMenu, mainWindowState)
     } // Content
 
     /** Marks the map canvas so a test can click a marker on it. */

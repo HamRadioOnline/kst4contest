@@ -93,6 +93,27 @@ public enum LoggedQsoBand {
 	}
 
 	/**
+	 * Resolves a project band for UI actions that must follow the same Worked
+	 * processing as an external logger contact.
+	 *
+	 * @param band project band
+	 * @return normalized logged-QSO band, or {@code null} for a missing band
+	 */
+	public static LoggedQsoBand fromProjectBand(Band band) {
+		if (band == null) {
+			return null;
+		}
+
+		for (LoggedQsoBand loggedBand : values()) {
+			if (loggedBand.projectBand == band) {
+				return loggedBand;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Returns the common Band value used by worked-grid persistence.
 	 *
 	 * @return project band, or {@code null} where no matching Band value exists

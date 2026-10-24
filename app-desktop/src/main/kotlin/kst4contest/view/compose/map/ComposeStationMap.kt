@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
@@ -24,7 +25,11 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -50,6 +55,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.sign
+import kotlin.math.roundToInt
 
 /**
  * Where the map is looking. Compose state, so a pan or a zoom reaches the screen.
@@ -94,6 +100,7 @@ class MapState(
  * any zoom with a fraction, the antenna beam did not start where the map said home was.
  * Neither failure is possible here, because nothing is scaled.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ComposeStationMap(
     markers: List<MapCallsignRawSnapshot>,
@@ -106,6 +113,8 @@ fun ComposeStationMap(
     antennaBeamWidthDeg: Double,
     maxQrbKm: Double,
     onMarkerClicked: ((MapCallsignRawSnapshot) -> Unit)?,
+    onMarkerContextRequested: ((List<MapCallsignRawSnapshot>, IntOffset) -> Unit)? = null,
+    workedGrossFields: Set<String> = emptySet(),
     darkMode: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -122,6 +131,7 @@ fun ComposeStationMap(
      * wrongly grouped markers whenever the window is resized.
      */
     var canvasSize by remember { mutableStateOf(Size.Zero) }
+    var canvasCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     /* Bumped when a tile arrives, which is what asks for the frame that shows it. */
     var tileRevision by remember { mutableStateOf(0) }
@@ -196,6 +206,39 @@ fun ComposeStationMap(
         modifier = modifier
             .clipToBounds()
             .onSizeChanged { canvasSize = Size(it.width.toFloat(), it.height.toFloat()) }
+            .onGloballyPositioned { canvasCoordinates = it }
+            .onPointerEvent(PointerEventType.Press) { event ->
+                if (event.buttons.isSecondaryPressed) {
+                    val local = event.changes.firstOrNull()?.position ?: return@onPointerEvent
+                    val viewport = mapState.viewportFor(canvasSize.width, canvasSize.height)
+                    val result = StationMapClusterer.cluster(markers, viewport, groupingEnabled)
+                    val cluster = result.clusters().firstOrNull { candidate ->
+                        within(
+                            local,
+                            viewport.screenX(candidate.centerLon).toFloat(),
+                            viewport.screenY(candidate.centerLat).toFloat(),
+                            clusterRadiusPx(candidate.size()),
+                        )
+                    }
+                    val individual = result.individual().firstOrNull { marker ->
+                        within(
+                            local,
+                            viewport.screenX(marker.longitudeDeg()).toFloat(),
+                            viewport.screenY(marker.latitudeDeg()).toFloat(),
+                            MARKER_HIT_RADIUS_PX,
+                        )
+                    }
+                    val targets = cluster?.getMarkers() ?: individual?.let(::listOf)
+                    val window = canvasCoordinates?.localToWindow(local)
+                    if (!targets.isNullOrEmpty() && window != null) {
+                        onMarkerContextRequested?.invoke(
+                            targets,
+                            IntOffset(window.x.roundToInt(), window.y.roundToInt()),
+                        )
+                        event.changes.forEach { it.consume() }
+                    }
+                }
+            }
             .pointerInput(Unit) {
                 detectTransformGestures { centroid, pan, zoomChange, _ ->
                     var viewport = mapState.viewportFor(size.width.toFloat(), size.height.toFloat())
@@ -293,6 +336,7 @@ fun ComposeStationMap(
 
         drawTiles(viewport, imageCache, darkMode)
         drawMaidenheadGrid(viewport, textMeasurer, darkMode)
+        drawWorkedGrossFields(viewport, workedGrossFields)
         drawBeamAndPath(viewport, home, antennaAzimuthDeg, antennaBeamWidthDeg, maxQrbKm, markers, selectedMarkerCallsign, darkMode)
         drawStations(viewport, clusterResult, selectedMarkerCallsign, textMeasurer, darkMode)
         drawHover(viewport, hoverPosition, clusterResult, textMeasurer)
@@ -709,10 +753,7 @@ private fun DrawScope.drawHover(
     val text = when {
         clusterUnderPointer != null -> MapMarkerClusterTooltip.build(clusterUnderPointer)
 
-        markerUnderPointer != null -> markerUnderPointer.locator6().let { locator ->
-            if (locator.isBlank()) markerUnderPointer.displayCallSign()
-            else "${markerUnderPointer.displayCallSign()} ($locator)"
-        }
+        markerUnderPointer != null -> markerUnderPointer.tooltipText()
 
         else -> return
     }
@@ -756,6 +797,46 @@ private fun DrawScope.drawHover(
         textLayoutResult = layout,
         topLeft = Offset(left + TOOLTIP_PADDING_PX, top + TOOLTIP_PADDING_PX),
     )
+}
+
+private fun DrawScope.drawWorkedGrossFields(
+    viewport: MapViewport,
+    workedGrossFields: Set<String>,
+) {
+    visibleWorkedGrossFieldCells(viewport, workedGrossFields).forEach { cell ->
+        val left = viewport.screenX(cell.westLon()).toFloat()
+        val right = viewport.screenX(cell.eastLon()).toFloat()
+        val top = viewport.screenY(cell.northLat()).toFloat()
+        val bottom = viewport.screenY(cell.southLat()).toFloat()
+        val topLeft = Offset(minOf(left, right), minOf(top, bottom))
+        val cellSize = Size(kotlin.math.abs(right - left), kotlin.math.abs(bottom - top))
+        drawRect(
+            color = WORKED_GRID_FILL,
+            topLeft = topLeft,
+            size = cellSize,
+        )
+        drawRect(
+            color = WORKED_GRID_BORDER,
+            topLeft = topLeft,
+            size = cellSize,
+            style = Stroke(width = WORKED_GRID_BORDER_WIDTH_PX),
+        )
+    }
+}
+
+/** Worked four-character cells visible in the current viewport, independent of markers. */
+internal fun visibleWorkedGrossFieldCells(
+    viewport: MapViewport,
+    workedGrossFields: Set<String>,
+): List<MaidenheadGridUtils.GridCell> {
+    if (workedGrossFields.isEmpty()) return emptyList()
+    return MaidenheadGridUtils.buildVisibleCells(
+        viewport.southLat(),
+        viewport.westLon(),
+        viewport.northLat(),
+        viewport.eastLon(),
+        MaidenheadGridUtils.GridPrecision.SQUARE_4,
+    ).filter { it.locatorLabel() in workedGrossFields }
 }
 
 /* ----------------------------------------------------------- helpers */
@@ -864,6 +945,9 @@ private const val GRID_LINE_WIDTH_PX = 1.4f
 private val GRID_LABEL_COLOR = Color(0xFF63067A)
 private val GRID_LABEL_BACKGROUND_LIGHT = Color.White.copy(alpha = 0.18f)
 private val GRID_LABEL_BACKGROUND_DARK = Color(0xFF22262B).copy(alpha = 0.20f)
+private val WORKED_GRID_FILL = Color.Black.copy(alpha = 0.30f)
+private val WORKED_GRID_BORDER = Color.Black
+private const val WORKED_GRID_BORDER_WIDTH_PX = 3f
 private const val GRID_LABEL_PADDING_PX = 3f
 
 private val DOT_FILL = Color(0xFF1D1D1D)
