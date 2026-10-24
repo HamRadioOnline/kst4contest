@@ -155,6 +155,9 @@ jobs:
   test:
     name: Test (Java 21, headless)
     runs-on: ubuntu-latest
+    # A healthy run takes about four minutes. The per-test limit in build.gradle.kts names
+    # a hanging test; this cap covers a hang outside any test, such as in Gradle itself.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
