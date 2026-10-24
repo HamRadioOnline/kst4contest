@@ -209,17 +209,20 @@ jobs:
           }
           G
           mkdir -p diag
-          ./gradlew -S test --init-script /tmp/diag.init.gradle 2>&1 | tee diag/gradle.log &
+          ./gradlew -S test --init-script /tmp/diag.init.gradle > diag/gradle.log 2>&1 &
+          G=$!
           prev=0; idle=0
-          while pgrep -f GradleWrapperMain >/dev/null; do
+          while kill -0 $G 2>/dev/null; do
             sleep 15; s=$(stat -c %s diag/gradle.log)
             if [ "$s" = "$prev" ]; then idle=$((idle+15)); else idle=0; fi; prev=$s
             if [ $idle -ge 300 ]; then
               for p in $(jps -q); do jstack -l $p > diag/jstack_$p.txt 2>&1 || true; done
               jps -lv > diag/jps.txt
-              echo "STALLED, dumped"; exit 1
+              echo "STALLED, dumped"; tail -40 diag/gradle.log; exit 1
             fi
           done
+          tail -40 diag/gradle.log
+          wait $G
 
       - name: Keep diagnostics
         if: always()
