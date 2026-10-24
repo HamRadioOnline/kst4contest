@@ -153,8 +153,12 @@ jobs:
           fi
 
   test:
-    name: Test (Java 21, headless)
+    name: Test (Java 21, headless) ${{ matrix.attempt }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3, 4]
 
     steps:
       - name: Checkout
@@ -196,8 +200,26 @@ jobs:
       # precisely so that its 42 tests run here: buildSrc tests do not run on `./gradlew
       # build` -- measured, not assumed. The summary below globs */build/test-results, so
       # the module was counted the moment it existed.
+      # DIAGNOSTIC ONLY (diag/ci-hang-302, not for merge): log each test start and dump
+      # all JVM threads once the log has been silent for five minutes.
       - name: Test
-        run: ./gradlew -S test
+        timeout-minutes: 15
+        run: |
+          mkdir -p diag
+          (
+            sleep 480
+            for p in $(jps -q); do jstack -l $p > diag/jstack_$p.txt 2>&1 || true; done
+            jps -lv > diag/jps.txt
+            echo "WATCHDOG: dumped after 8 min"
+          ) &
+          ./gradlew -S test
+
+      - name: Keep diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diag-${{ matrix.attempt }}
+          path: diag/
 
       # Coverage is a report, not a gate: no threshold, nothing in it can fail on a
       # percentage. Deliberately not `if: always()` -- without a completed test run the
