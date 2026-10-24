@@ -158,7 +158,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        attempt: [1, 2, 3, 4, 5, 6]
+        attempt: [1, 2, 3, 4]
 
     steps:
       - name: Checkout
@@ -203,30 +203,16 @@ jobs:
       # DIAGNOSTIC ONLY (diag/ci-hang-302, not for merge): log each test start and dump
       # all JVM threads once the log has been silent for five minutes.
       - name: Test
-        timeout-minutes: 20
+        timeout-minutes: 15
         run: |
-          cat > /tmp/diag.init.gradle <<'G'
-          allprojects {
-              tasks.withType(Test).configureEach {
-                  testLogging { events "started", "passed", "skipped", "failed"; showStandardStreams = false }
-              }
-          }
-          G
           mkdir -p diag
-          ./gradlew -S test --init-script /tmp/diag.init.gradle > diag/gradle.log 2>&1 &
-          G=$!
-          prev=0; idle=0
-          while kill -0 $G 2>/dev/null; do
-            sleep 15; s=$(stat -c %s diag/gradle.log)
-            if [ "$s" = "$prev" ]; then idle=$((idle+15)); else idle=0; fi; prev=$s
-            if [ $idle -ge 300 ]; then
-              for p in $(jps -q); do jstack -l $p > diag/jstack_$p.txt 2>&1 || true; done
-              jps -lv > diag/jps.txt
-              echo "STALLED, dumped"; tail -40 diag/gradle.log; exit 1
-            fi
-          done
-          tail -40 diag/gradle.log
-          wait $G
+          (
+            sleep 480
+            for p in $(jps -q); do jstack -l $p > diag/jstack_$p.txt 2>&1 || true; done
+            jps -lv > diag/jps.txt
+            echo "WATCHDOG: dumped after 8 min"
+          ) &
+          ./gradlew -S test
 
       - name: Keep diagnostics
         if: always()
