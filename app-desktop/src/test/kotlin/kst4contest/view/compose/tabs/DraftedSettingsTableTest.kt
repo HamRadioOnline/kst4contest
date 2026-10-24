@@ -82,6 +82,9 @@ class DraftedSettingsTableTest {
             f.station.stn_pathAnalysisDxHighestPointInSquare = v
         },
         flag("station rotator", { it.station.stn_pstRotatorEnabled }) { f, v -> f.station.stn_pstRotatorEnabled = v },
+        flag("station QTF filter heading sync", { it.station.stn_useQtfFilterDirectionAsAntennaHeading }) { f, v ->
+            f.station.stn_useQtfFilterDirectionAsAntennaHeading = v
+        },
         Case("station rotator host", { it.station.stn_pstRotatorHost += "x" }, { it.prefs.getStn_pstRotatorHost() }),
         Case("station rotator port", { it.station.stn_pstRotatorPort += 1 }, { it.prefs.getStn_pstRotatorPort() }),
         Case("station QTF", { it.station.stn_qtfDefault += 1.5 }, { it.prefs.getStn_qtfDefault() }),

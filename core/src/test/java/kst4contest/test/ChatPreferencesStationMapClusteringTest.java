@@ -32,7 +32,7 @@ class ChatPreferencesStationMapClusteringTest {
         assertTrue(written.writePreferencesToXmlFile());
 
         String writtenXml = Files.readString(preferencesFile);
-        assertTrue(writtenXml.contains("<configVersion>8</configVersion>"));
+        assertTrue(writtenXml.contains("<configVersion>9</configVersion>"));
         assertTrue(writtenXml.contains("<GUIstationMapClusteringEnabled>false"
                 + "</GUIstationMapClusteringEnabled>"));
 

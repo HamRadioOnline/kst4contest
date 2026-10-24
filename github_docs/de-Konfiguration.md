@@ -836,6 +836,7 @@ Die Einstellungen befinden sich im Reiter **Station**:
 | Einstellung | Standardwert | Verwendung |
 |---|---:|---|
 | **Enable PSTRotator** | deaktiviert | Startet die UDP-Kommunikation mit PSTRotator |
+| **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** | aktiviert, wenn PSTRotator 1 deaktiviert ist | Übernimmt bewusste Richtungseingaben im QTF-Filter als aktuelle eigene Antennenrichtung |
 | **PSTRotator host** | `127.0.0.1` | Hostname oder IP-Adresse des Rechners, auf dem PSTRotator läuft |
 | **PSTRotator UDP port** | `12000` | UDP-Port, auf dem PSTRotator die Steuerbefehle empfängt |
 
@@ -862,6 +863,8 @@ Das vollständige UDP-Protokoll ist im [PSTRotatorAz User Manual](https://www.qs
 
 ### Übernahme der aktuellen QTF
 
+Beim Programmstart wird die aktuelle eigene QTF mit der im aktiven Root- oder Operatorprofil gespeicherten Vorgabe **QTF** initialisiert. Sie dient nur als Startwert. Änderungen während des Betriebs verändern diese gespeicherte Vorgabe nicht.
+
 KST4Contest fragt PSTRotator alle zwei Sekunden nach der aktuellen Azimutposition und dem Betriebsmodus. Die zurückgemeldete Azimutposition wird als `actualQTF` übernommen.
 
 Bei aktivierter PSTRotator-Integration ist das QTF-Feld im Hauptfenster deshalb nicht manuell editierbar. Es zeigt die zuletzt von PSTRotator gemeldete Position.
@@ -876,6 +879,10 @@ Diese QTF wird unter anderem verwendet für:
 - die Variable `MYQTF`.
 
 Eine empfangene Rotatorposition ist damit nicht nur eine Anzeige. Sie verändert mehrere Funktionen, die auf der aktuellen Antennenrichtung beruhen.
+
+Ohne PSTRotator 1 kann **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** einen direkt in den QTF-Filter eingetragenen Winkel oder eine über dessen Richtungstasten gewählte Richtung in dasselbe `actualQTF` übernehmen. Das funktioniert auch, wenn **Show only QTF** ausgeschaltet ist. **Reset filters**, das Ausschalten des Filters und ein automatisch wiederhergestellter Filterzustand verändern die Antennenrichtung nicht. Die Übernahme erfolgt nur vom Filter zur Antennenrichtung und sendet keinen PSTRotator-Befehl.
+
+Die Option steht im Abschnitt **Manuelle Antennenrichtung** und ist standardmäßig aktiviert. Das gilt nach dem Update auch für bestehende Root- und Operatorprofile. Wer die Kopplung nicht verwenden möchte, schaltet sie aus; diese Entscheidung wird im jeweiligen Profil gespeichert. Bei aktiviertem PSTRotator 1 ist die Checkbox nicht bedienbar und die Übernahme vorübergehend unwirksam. Die gespeicherte Auswahl bleibt dabei erhalten und gilt wieder, sobald PSTRotator 1 deaktiviert wird. PSTRotator 2 unter SO2R ist von dieser Regel unabhängig.
 
 KST4Contest verwendet derzeit nur den Azimut. Eine Elevationssteuerung oder eine vollständige Azimut-/Elevationsnachführung ist nicht Bestandteil dieser Integration.
 

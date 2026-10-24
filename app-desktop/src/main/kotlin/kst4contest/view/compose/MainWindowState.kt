@@ -109,6 +109,11 @@ class MainWindowState(
         stationFiltersChanged?.invoke()
     }
 
+    /** Applies only a deliberate QTF filter entry, never a restored or reset filter value. */
+    fun applyExplicitQtfFilterDirection(qtf: Double) {
+        applyExplicitQtfHeading(prefs, qtf)
+    }
+
     fun requestLayoutSave() {
         layoutSaveRequested?.invoke()
     }

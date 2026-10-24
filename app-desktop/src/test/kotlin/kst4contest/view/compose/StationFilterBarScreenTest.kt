@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kst4contest.model.Band
+import kst4contest.model.ChatPreferences
+import kst4contest.view.compose.ObservedValue
 import kst4contest.view.compose.tabs.checkBeside
 import kst4contest.view.compose.tabs.fieldBeside
 import kst4contest.view.compose.tabs.showTab
@@ -24,6 +26,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 import java.util.EnumSet
 import kotlin.math.abs
 
@@ -37,7 +41,7 @@ import kotlin.math.abs
  * Headless: only a composition, no window.
  */
 @OptIn(ExperimentalTestApi::class)
-class StationFilterBarScreenTest {
+class StationFilterBarScreenTest(@param:TempDir private val directory: Path) {
 
     private val maxLabel = "Show only QRB [km] <="
     private val minLabel = "Show only QRB [km] >"
@@ -45,6 +49,7 @@ class StationFilterBarScreenTest {
     private class Bar {
         val filters = StationFilterState()
         var changes = 0
+        val explicitQtfDirections = mutableListOf<Double>()
     }
 
     private fun ComposeUiTest.showBar(): Bar {
@@ -55,9 +60,89 @@ class StationFilterBarScreenTest {
                 activeBands = EnumSet.of(Band.B_144),
                 reachability = ReachabilityState(EnumSet.of(Band.B_144)),
                 onChanged = { bar.changes++ },
+                onQtfDirectionChanged = { bar.explicitQtfDirections += it },
             )
         }
         return bar
+    }
+
+    @Test
+    fun aValidManualQtfEntryIsReportedEvenWhileTheFilterIsOff() = runComposeUiTest {
+        val bar = showBar()
+
+        type("Show only QTF:", "127.5")
+
+        assertFalse(bar.filters.qtfEnabled)
+        assertEquals(listOf(127.5), bar.explicitQtfDirections)
+    }
+
+    @Test
+    fun everyBearingButtonReportsItsExplicitDirection() = runComposeUiTest {
+        val bar = showBar()
+
+        Bearing.entries.forEach { bearing ->
+            onNodeWithText(bearing.name).performClick()
+        }
+
+        assertEquals(Bearing.entries.map { it.degrees }, bar.explicitQtfDirections)
+    }
+
+    @Test
+    fun deselectingABearingDoesNotReportAnotherExplicitDirection() = runComposeUiTest {
+        val bar = showBar()
+
+        onNodeWithText("NE").performClick()
+        onNodeWithText("NE").performClick()
+
+        assertFalse(bar.filters.qtfEnabled)
+        assertEquals(listOf(45.0), bar.explicitQtfDirections)
+    }
+
+    @Test
+    fun defaultManualHeadingMakesNorthEastVisibleToTheMapObserverWhileFilterIsOff() = runComposeUiTest {
+        val prefs = ChatPreferences(directory.resolve("preferences.xml"))
+        val filters = StationFilterState()
+        val mapHeading = ObservedValue(prefs.actualQTF)
+        try {
+            showTab {
+                StationFilterBar(
+                    filters = filters,
+                    activeBands = EnumSet.of(Band.B_144),
+                    reachability = ReachabilityState(EnumSet.of(Band.B_144)),
+                    onChanged = {},
+                    onQtfDirectionChanged = { applyExplicitQtfHeading(prefs, it) },
+                )
+            }
+
+            assertFalse(filters.qtfEnabled)
+            onNodeWithText("NE").performClick()
+            waitForIdle()
+
+            assertEquals(45.0, prefs.actualQTF.get(), 0.0001)
+            assertEquals(45.0, requireNotNull(mapHeading.value), 0.0001)
+            assertEquals(135.0, prefs.stn_qtfDefault, 0.0001)
+        } finally {
+            mapHeading.release()
+        }
+    }
+
+    @Test
+    fun resetAndQtfCheckboxChangesDoNotReportAnExplicitDirection() = runComposeUiTest {
+        val bar = showBar()
+        toggle("Show only QTF:")
+        onNodeWithText("Reset filters").performClick()
+
+        assertTrue(bar.explicitQtfDirections.isEmpty())
+    }
+
+    @Test
+    fun invalidManualQtfEntriesAreNotReported() = runComposeUiTest {
+        val bar = showBar()
+
+        listOf("NaN", "Infinity", "-1", "360.1").forEach { type("Show only QTF:", it) }
+
+        assertTrue(bar.explicitQtfDirections.isEmpty())
+        assertEquals(0.0, bar.filters.qtfDegrees, 0.0001)
     }
 
     @Test

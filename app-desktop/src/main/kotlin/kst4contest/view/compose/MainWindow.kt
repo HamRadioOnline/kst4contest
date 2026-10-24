@@ -264,6 +264,7 @@ private fun StationColumn(
                         onChanged = {
                             onFiltersChanged()
                         },
+                        onQtfDirectionChanged = state::applyExplicitQtfFilterDirection,
                         onReset = state::resetStationFilters,
                         modifier = Modifier.fillMaxWidth(),
                     )

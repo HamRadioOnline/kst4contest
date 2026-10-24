@@ -64,6 +64,9 @@ internal object Density {
     /** Between buttons in a row. */
     val BUTTON_GAP = 6.dp
 
+    /** Compact inset for a visually grouped settings section. */
+    val GROUP_CONTENT_PADDING = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+
     /** Around a selected row, and the hairline between rows. */
     val SELECTION_BORDER = 1.5.dp
 

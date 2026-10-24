@@ -204,6 +204,8 @@ Dezent umrahmte Flächen fassen **QRB**, **QTF** einschließlich Richtungstasten
 | **Tropo >=0dB** | Zeigt Stationen mit einer berechneten, nicht negativen SSB-Marge |
 | **AS next 5m** | Zeigt Stationen mit einem aktuellen oder innerhalb der nächsten fünf Minuten erwarteten AirScout-Fenster |
 
+Standardmäßig aktualisiert eine gültige direkte Eingabe in der QTF-Gruppe oder der Klick auf eine Richtungstaste zugleich die aktuelle eigene Antennenrichtung. Diese ausdrückliche Übernahme funktioniert unabhängig davon, ob **Show only QTF** ein- oder ausgeschaltet ist. Das Zurücksetzen oder bloße Ausschalten des Filters verändert die Antennenrichtung nicht. Im Abschnitt **Station → Manuelle Antennenrichtung** kann das Verhalten mit **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** profilbezogen ausgeschaltet werden. PSTRotator 1 hat vorübergehend Vorrang, ohne diese gespeicherte Auswahl zu verändern.
+
 Bei **New bands** werden aktuelle QRGs, Bandangaben im Namensfeld und aktive Rufzeichenvarianten gemeinsam ausgewertet. Manuelle NOT-QRV-Markierungen haben Vorrang.
 
 Der Filter **Tropo >=0dB** entfernt nur Stationen, für die eine abgeschlossene Berechnung eine negative Marge ergeben hat. Noch nicht berechnete oder fehlgeschlagene Auswertungen bleiben sichtbar. Andernfalls würde ein fehlender API-Wert wie ein nachgewiesen ungeeigneter Funkweg behandelt.

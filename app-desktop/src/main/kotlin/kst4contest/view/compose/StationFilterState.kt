@@ -45,6 +45,10 @@ enum class StationFilter {
 internal fun parseQrbKm(text: String): Double? =
     text.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
 
+/** A deliberate antenna/filter heading in the convention used by the QTF display. */
+internal fun parseQtfDegrees(text: String): Double? =
+    text.toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..360.0 }
+
 /** The bands the "hide worked" row offers, under the labels the bar shows. */
 enum class WorkedBandFilter(val label: String, val filter: StationFilter, val modelBand: kst4contest.model.Band) {
     B_50("50", StationFilter.HIDE_WORKED_50, kst4contest.model.Band.B_50),

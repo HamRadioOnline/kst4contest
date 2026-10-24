@@ -838,6 +838,7 @@ The settings are located in the **Station** tab:
 | Setting | Default | Purpose |
 |---|---:|---|
 | **Enable PSTRotator** | disabled | Starts UDP communication with PSTRotator |
+| **Use QTF filter direction as antenna heading** | enabled when PSTRotator 1 is disabled | Copies deliberate QTF-filter direction entries to the current local antenna heading |
 | **PSTRotator host** | `127.0.0.1` | Hostname or IP address of the computer running PSTRotator |
 | **PSTRotator UDP port** | `12000` | UDP port on which PSTRotator receives control commands |
 
@@ -864,6 +865,8 @@ The complete UDP protocol is documented in the [PSTRotatorAz User Manual](https:
 
 ### Updating the local QTF
 
+At program start, the current local QTF is initialised from the **QTF** default stored in the active root or operator profile. This is a start value only. It does not change the stored default during operation.
+
 KST4Contest asks PSTRotator for the current azimuth and operating mode every two seconds. The reported azimuth becomes `actualQTF`.
 
 While PSTRotator integration is enabled, the QTF field in the main window is therefore read-only. It displays the most recent position reported by PSTRotator.
@@ -878,6 +881,10 @@ This QTF is used by:
 - the `MYQTF` variable.
 
 A received rotator position is therefore more than a displayed value. It changes several functions which depend on the current antenna direction.
+
+Without PSTRotator 1, **Use QTF filter direction as antenna heading** can apply a direction entered in the QTF filter, or selected with one of its compass buttons, to the same `actualQTF`. This also works while **Show only QTF** is switched off. **Reset filters**, switching the filter off and restored filter state do not alter the antenna heading. The transfer is one-way and does not issue a PSTRotator command.
+
+The option is grouped under **Manual antenna heading** and is enabled by default, including for existing root and operator profiles after updating. Clear it to store a profile-specific opt-out. While PSTRotator 1 is enabled, the checkbox is unavailable and the transfer is temporarily inactive. Its stored state is retained, so disabling PSTRotator 1 restores the previous choice. PSTRotator 2 under SO2R is independent of this rule.
 
 The current integration uses azimuth only. Elevation control and complete azimuth/elevation tracking are outside its present scope.
 

@@ -165,7 +165,13 @@ class StationTabState(
         return null
     }
 
-    var stn_pstRotatorEnabled: Boolean by draft.setting({ prefs.isStn_pstRotatorEnabled() }) { prefs.setStn_pstRotatorEnabled(it) }
+    var stn_pstRotatorEnabled: Boolean by draft.setting(
+        { prefs.isStn_pstRotatorEnabled() },
+    ) { prefs.setStn_pstRotatorEnabled(it) }
+
+    var stn_useQtfFilterDirectionAsAntennaHeading: Boolean by draft.setting(
+        { prefs.isStn_useQtfFilterDirectionAsAntennaHeading() },
+    ) { prefs.setStn_useQtfFilterDirectionAsAntennaHeading(it) }
 
     var stn_pstRotatorHost: String by draft.setting({ prefs.getStn_pstRotatorHost() }) { prefs.setStn_pstRotatorHost(it) }
 

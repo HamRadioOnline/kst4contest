@@ -117,7 +117,7 @@ class ChatPreferencesLayoutPersistenceTest {
         assertFalse(writtenXml.contains("UNSAVED-CALL"));
         assertTrue(writtenXml.contains("<futureExtension mode=\"keep-me\">"));
         assertTrue(writtenXml.contains("<futureLayoutValue>untouched</futureLayoutValue>"));
-        assertTrue(writtenXml.contains("<configVersion>8</configVersion>"));
+        assertTrue(writtenXml.contains("<configVersion>9</configVersion>"));
         assertTrue(writtenXml.contains("<GUIscn_ChatwindowMainSceneSizeHW>812.0;1340.0"));
         assertTrue(writtenXml.contains("<GUIstationMapClusteringEnabled>false"
                 + "</GUIstationMapClusteringEnabled>"));

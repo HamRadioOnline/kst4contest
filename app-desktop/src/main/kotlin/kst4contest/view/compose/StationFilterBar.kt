@@ -38,6 +38,7 @@ fun StationFilterBar(
     activeBands: Set<kst4contest.model.Band>,
     reachability: ReachabilityState,
     onChanged: () -> Unit,
+    onQtfDirectionChanged: (Double) -> Unit = {},
     onReset: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -170,10 +171,11 @@ fun StationFilterBar(
                             filters.qtfDegrees.toString()
                         },
                         onValueChange = {
-                            val parsed = it.toDoubleOrNull()
+                            val parsed = parseQtfDegrees(it)
                             if (parsed != null) {
                                 filters.qtfDegrees = parsed
                                 filters.bearing = null
+                                onQtfDirectionChanged(parsed)
                                 if (filters.qtfEnabled) onChanged()
                             } else if (it.isEmpty()) {
                                 filters.qtfDegrees = 0.0
@@ -198,6 +200,9 @@ fun StationFilterBar(
                             horizontalPadding = Density.DIRECTION_BUTTON_HORIZONTAL_PADDING,
                         ) {
                             filters.toggleBearing(bearing)
+                            if (filters.bearing == bearing) {
+                                onQtfDirectionChanged(bearing.degrees)
+                            }
                             onChanged()
                         }
                     }

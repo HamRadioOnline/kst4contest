@@ -346,19 +346,29 @@ object Form {
     }
 
     @Composable
-    fun check(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    fun check(
+        label: String,
+        value: Boolean,
+        enabled: Boolean = true,
+        onChange: (Boolean) -> Unit,
+    ) {
         val draft = rememberDraft(value)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.heightIn(min = Density.CONTROL_HEIGHT),
         ) {
-            CompactCheckbox(draft.value) { ticked ->
+            CompactCheckbox(draft.value, enabled = enabled) { ticked ->
                 draft.value = ticked
                 onChange(ticked)
             }
             Text(
                 label,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
                 style = compactControlTextStyle(),
                 modifier = Modifier.padding(start = 4.dp),
             )
@@ -388,8 +398,17 @@ object Form {
         number(label, value, { it.trim().toIntOrNull() }, onChange)
 
     @Composable
-    fun decimal(label: String, value: Double, onChange: (Double) -> Unit) =
-        number(label, value, { it.trim().replace(',', '.').toDoubleOrNull() }, onChange)
+    fun decimal(
+        label: String,
+        value: Double,
+        isValid: (Double) -> Boolean = { true },
+        onChange: (Double) -> Unit,
+    ) = number(
+        label,
+        value,
+        { text -> text.trim().replace(',', '.').toDoubleOrNull()?.takeIf(isValid) },
+        onChange,
+    )
 
     /**
      * The number field behind [int] and [decimal].
@@ -457,6 +476,30 @@ object Form {
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 HorizontalDivider(modifier = Modifier.weight(1f).padding(start = 8.dp))
             }
+            content()
+        }
+    }
+
+    /** A compact settings group that needs stronger separation than a labelled divider. */
+    @Composable
+    fun panelSection(title: String, content: @Composable () -> Unit) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    shape = Density.BUTTON_SHAPE,
+                )
+                .border(
+                    width = Density.HAIRLINE,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = Density.BUTTON_SHAPE,
+                )
+                .padding(Density.GROUP_CONTENT_PADDING),
+            verticalArrangement = Arrangement.spacedBy(Density.FIELD_GAP),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
             content()
         }
     }
@@ -643,6 +686,7 @@ internal fun CompactToggleButton(
         hovered || focused -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
+
     val contentColor = when {
         !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
         (pressed || hovered) && checked -> MaterialTheme.colorScheme.onPrimaryContainer
@@ -859,11 +903,13 @@ internal fun CompactTextField(
 internal fun CompactCheckbox(
     checked: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         Checkbox(
             checked = checked,
+            enabled = enabled,
             onCheckedChange = onCheckedChange,
             modifier = modifier.size(Density.CONTROL_HEIGHT),
         )

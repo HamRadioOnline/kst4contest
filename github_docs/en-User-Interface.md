@@ -206,6 +206,8 @@ Subtly bordered surfaces group **QRB**, **QTF** including direction buttons, **H
 | **Tropo >=0dB** | Shows stations with a calculated non-negative SSB margin |
 | **AS next 5m** | Shows stations with a current AirScout window or one expected within the next five minutes |
 
+By default, a valid direct entry in the QTF group or a compass-button click also updates the current local antenna heading. This explicit transfer works whether **Show only QTF** is on or off. Resetting or merely disabling the filter does not change the antenna heading. The profile-specific option **Use QTF filter direction as antenna heading** under **Station → Manual antenna heading** can disable this behaviour. PSTRotator 1 takes temporary priority without changing that saved choice.
+
 For **New bands**, KST4Contest evaluates current QRGs, band information in the name field and active callsign variants together. Manual NOT-QRV marks take precedence.
 
 The **Tropo >=0dB** filter removes only stations for which a completed calculation returned a negative margin. Stations with pending or failed calculations remain visible. Otherwise, a missing API result would incorrectly be treated as proof that the path is unsuitable.
