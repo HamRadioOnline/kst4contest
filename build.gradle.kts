@@ -141,6 +141,16 @@ subprojects {
             }
             testUserHome.mkdirs()
         }
+        /*
+         * A test that never returns must fail by name instead of holding the job until
+         * GitHub kills it after six hours: Nightly #302 hung in :app-desktop:test for over
+         * an hour, and the log named only the task. The limit is far above the slowest test
+         * (under four seconds). SEPARATE_THREAD also ends a test whose thread ignores
+         * interruption, such as a busy loop or a blocked native call, and the failure's
+         * cause carries that thread's stack, so it shows where the test stood.
+         */
+        systemProperty("junit.jupiter.execution.timeout.default", "2m")
+        systemProperty("junit.jupiter.execution.timeout.thread.mode.default", "SEPARATE_THREAD")
         finalizedBy(checkTestUserHome)
     }
 
