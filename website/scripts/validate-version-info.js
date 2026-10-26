@@ -28,14 +28,29 @@ function extractTag(xml, tagName) {
     return match ? match[1].trim() : null;
 }
 
+// Applies the removal until nothing changes, so that nested input such as
+// "<!-<!---->-->" cannot leave a fresh comment behind after a single pass.
+function removeUntilStable(value, pattern) {
+    let previous;
+    let current = value;
+
+    do {
+        previous = current;
+        current = current.replace(pattern, "");
+    } while (current !== previous);
+
+    return current;
+}
+
 function assertWellFormedStructure(xml) {
     if (/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-f]+;)/i.test(xml)) {
         fail("the XML contains an unescaped ampersand");
     }
 
-    const withoutCommentsAndDeclaration = xml
-        .replace(/<!--[\s\S]*?-->/g, "")
-        .replace(/<\?[\s\S]*?\?>/g, "");
+    const withoutCommentsAndDeclaration = removeUntilStable(
+        xml,
+        /<!--[\s\S]*?-->|<\?[\s\S]*?\?>/g
+    );
 
     const tagPattern =
         /<\/?([A-Za-z_][\w:.-]*)(?:\s[^<>]*?)?\s*\/?>/g;
