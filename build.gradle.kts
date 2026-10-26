@@ -151,6 +151,13 @@ subprojects {
          */
         systemProperty("junit.jupiter.execution.timeout.default", "2m")
         systemProperty("junit.jupiter.execution.timeout.thread.mode.default", "SEPARATE_THREAD")
+        /*
+         * The timed-out thread's stack shows where a test waits, not who it waits for: the
+         * rare CI hang in SelectedStationMessageUiVisualRenderingTest blocks on a monitor
+         * that another thread holds. On a timeout JUnit prints all threads to the test's
+         * standard output, which lands in its XML report (the test-results artifact).
+         */
+        systemProperty("junit.jupiter.execution.timeout.threaddump.enabled", "true")
         // The default short format prints only the first frame of each cause, which for a
         // timed-out test is the line it hung in but not the call that blocked there.
         testLogging {
