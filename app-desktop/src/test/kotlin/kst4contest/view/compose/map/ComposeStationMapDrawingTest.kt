@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import kst4contest.view.compose.onEventThread
 import kst4contest.view.map.MapCallsignRawSnapshot
 import kst4contest.view.map.MapViewport
 import kst4contest.view.map.TileFetcher
@@ -71,27 +72,29 @@ class ComposeStationMapDrawingTest {
         workedGrossFields: Set<String> = emptySet(),
         darkMode: Boolean = true,
     ): BufferedImage {
-        val scene = ImageComposeScene(canvasWidth, canvasHeight, Density(1f)) {
-            ComposeStationMap(
-                markers = markers,
-                tileFetcher = offlineTileFetcher,
-                mapState = MapState(zoom = zoom, centerLon = 10.0, centerLat = 51.0),
-                groupingEnabled = false,
-                selectedMarkerCallsign = null,
-                ownLocator6 = ownLocator6,
-                antennaAzimuthDeg = 90.0,
-                antennaBeamWidthDeg = 0.0,
-                maxQrbKm = 0.0,
-                onMarkerClicked = null,
-                workedGrossFields = workedGrossFields,
-                darkMode = darkMode,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        try {
-            return ImageIO.read(ByteArrayInputStream(scene.render().encodeToData()!!.bytes))
-        } finally {
-            scene.close()
+        return onEventThread {
+            val scene = ImageComposeScene(canvasWidth, canvasHeight, Density(1f)) {
+                ComposeStationMap(
+                    markers = markers,
+                    tileFetcher = offlineTileFetcher,
+                    mapState = MapState(zoom = zoom, centerLon = 10.0, centerLat = 51.0),
+                    groupingEnabled = false,
+                    selectedMarkerCallsign = null,
+                    ownLocator6 = ownLocator6,
+                    antennaAzimuthDeg = 90.0,
+                    antennaBeamWidthDeg = 0.0,
+                    maxQrbKm = 0.0,
+                    onMarkerClicked = null,
+                    workedGrossFields = workedGrossFields,
+                    darkMode = darkMode,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            try {
+                ImageIO.read(ByteArrayInputStream(scene.render().encodeToData()!!.bytes))
+            } finally {
+                scene.close()
+            }
         }
     }
 

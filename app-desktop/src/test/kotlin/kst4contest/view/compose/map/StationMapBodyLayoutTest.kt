@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import kst4contest.view.compose.SplitterOrientation
 import kst4contest.view.compose.SplitterPane
 import kst4contest.view.compose.SplitterState
+import kst4contest.view.compose.onEventThread
 import kst4contest.view.map.MapCallsignRawSnapshot
 import kst4contest.view.map.PathAnalysisResult
 import kst4contest.view.map.TileFetcher
@@ -88,13 +89,15 @@ class StationMapBodyLayoutTest {
     }
 
     private fun renderAt(widthPx: Int, heightPx: Int, pathAnalysisVisible: Boolean = true) {
-        val scene = ImageComposeScene(width = widthPx, height = heightPx, density = Density(1f)) {
-            Body(pathAnalysisVisible)
-        }
-        try {
-            scene.render()
-        } finally {
-            scene.close()
+        onEventThread {
+            val scene = ImageComposeScene(width = widthPx, height = heightPx, density = Density(1f)) {
+                Body(pathAnalysisVisible)
+            }
+            try {
+                scene.render()
+            } finally {
+                scene.close()
+            }
         }
     }
 

@@ -87,62 +87,64 @@ class StationWorkspaceVisualRenderingTest {
             RowKeys.byReference<ChatMessage>(),
         )
 
-        val scene = ImageComposeScene(
-            width = 1366,
-            height = scenario.height,
-            density = Density(scale),
-        ) {
-            Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    Box(Modifier.fillMaxSize()) {
-                    Column(
-                        Modifier
-                            .width(scenario.width.dp)
-                            .fillMaxHeight()
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp),
+        return onEventThread {
+            val scene = ImageComposeScene(
+                width = 1366,
+                height = scenario.height,
+                density = Density(scale),
+            ) {
+                Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
                     ) {
-                        StationFilterBar(
-                            filters = StationFilterState(),
-                            activeBands = EnumSet.of(Band.B_144, Band.B_432),
-                            reachability = ReachabilityState(EnumSet.of(Band.B_144, Band.B_432)),
-                            onChanged = {},
-                        )
-                        DataTableView(
-                            state = stations,
-                            modifier = Modifier.weight(0.45f),
-                            emphasizeCell = { member, column ->
-                                column.id == "callsign" && newJoined.isRecent(member)
-                            },
-                        )
-                        TopPriorityBar(
-                            state = priority,
-                            newJoined = newJoined,
-                            onShowMore = {},
-                        )
-                        SelectedStationPanel(
-                            state = selected,
-                            messages = selectedMessages,
-                            activeBands = EnumSet.of(Band.B_144, Band.B_432),
-                            contentSplitter = SplitterState(2, doubleArrayOf(0.48)) {},
-                            openInBrowser = Consumer {},
-                            onShowOnMap = {},
-                            onShowPathInAirScout = {},
-                            modifier = Modifier.weight(0.55f),
-                        )
-                    }
+                        Box(Modifier.fillMaxSize()) {
+                        Column(
+                            Modifier
+                                .width(scenario.width.dp)
+                                .fillMaxHeight()
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp),
+                        ) {
+                            StationFilterBar(
+                                filters = StationFilterState(),
+                                activeBands = EnumSet.of(Band.B_144, Band.B_432),
+                                reachability = ReachabilityState(EnumSet.of(Band.B_144, Band.B_432)),
+                                onChanged = {},
+                            )
+                            DataTableView(
+                                state = stations,
+                                modifier = Modifier.weight(0.45f),
+                                emphasizeCell = { member, column ->
+                                    column.id == "callsign" && newJoined.isRecent(member)
+                                },
+                            )
+                            TopPriorityBar(
+                                state = priority,
+                                newJoined = newJoined,
+                                onShowMore = {},
+                            )
+                            SelectedStationPanel(
+                                state = selected,
+                                messages = selectedMessages,
+                                activeBands = EnumSet.of(Band.B_144, Band.B_432),
+                                contentSplitter = SplitterState(2, doubleArrayOf(0.48)) {},
+                                openInBrowser = Consumer {},
+                                onShowOnMap = {},
+                                onShowPathInAirScout = {},
+                                modifier = Modifier.weight(0.55f),
+                            )
+                        }
+                        }
                     }
                 }
             }
-        }
 
-        return try {
-            scene.render().encodeToData()!!.bytes
-        } finally {
-            scene.close()
+            try {
+                scene.render().encodeToData()!!.bytes
+            } finally {
+                scene.close()
+            }
         }
     }
 

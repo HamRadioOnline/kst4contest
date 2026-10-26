@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import kst4contest.view.compose.onEventThread
 import kst4contest.view.map.MapCallsignRawSnapshot
 import kst4contest.view.map.TileFetcher
 import org.junit.jupiter.api.Test
@@ -33,30 +34,32 @@ class ComposeStationMapLayoutTest {
     )
 
     private fun renderAt(widthPx: Int, heightPx: Int, zoom: Float) {
-        val scene = ImageComposeScene(
-            width = widthPx,
-            height = heightPx,
-            density = Density(1f),
-        ) {
-            ComposeStationMap(
-                markers = stations,
-                tileFetcher = TileFetcher(),
-                mapState = MapState(zoom = zoom, centerLon = 10.0, centerLat = 51.0),
-                groupingEnabled = true,
-                selectedMarkerCallsign = "F5JMI",
-                ownLocator6 = "JO50JP",
-                antennaAzimuthDeg = 229.0,
-                antennaBeamWidthDeg = 60.0,
-                maxQrbKm = 800.0,
-                onMarkerClicked = null,
-                darkMode = true,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        try {
-            scene.render()
-        } finally {
-            scene.close()
+        onEventThread {
+            val scene = ImageComposeScene(
+                width = widthPx,
+                height = heightPx,
+                density = Density(1f),
+            ) {
+                ComposeStationMap(
+                    markers = stations,
+                    tileFetcher = TileFetcher(),
+                    mapState = MapState(zoom = zoom, centerLon = 10.0, centerLat = 51.0),
+                    groupingEnabled = true,
+                    selectedMarkerCallsign = "F5JMI",
+                    ownLocator6 = "JO50JP",
+                    antennaAzimuthDeg = 229.0,
+                    antennaBeamWidthDeg = 60.0,
+                    maxQrbKm = 800.0,
+                    onMarkerClicked = null,
+                    darkMode = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            try {
+                scene.render()
+            } finally {
+                scene.close()
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import kst4contest.view.compose.onEventThread
 import kst4contest.view.map.PathAnalysisResult
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -31,18 +32,20 @@ class PathAnalysisDetailsWidthTest {
     private val assessmentBackground = 0x33383E
 
     private fun render(paneWidthPx: Int, heightPx: Int = 600): BufferedImage {
-        val scene = ImageComposeScene(width = paneWidthPx, height = heightPx, density = Density(1f)) {
-            PathAnalysisDetails(
-                result = PathAnalysisResult.loading("JO50JP", "JN24JB", "F5JMI"),
-                darkMode = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        try {
-            val png = scene.render().encodeToData()!!.bytes
-            return ImageIO.read(ByteArrayInputStream(png))
-        } finally {
-            scene.close()
+        return onEventThread {
+            val scene = ImageComposeScene(width = paneWidthPx, height = heightPx, density = Density(1f)) {
+                PathAnalysisDetails(
+                    result = PathAnalysisResult.loading("JO50JP", "JN24JB", "F5JMI"),
+                    darkMode = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            try {
+                val png = scene.render().encodeToData()!!.bytes
+                ImageIO.read(ByteArrayInputStream(png))
+            } finally {
+                scene.close()
+            }
         }
     }
 

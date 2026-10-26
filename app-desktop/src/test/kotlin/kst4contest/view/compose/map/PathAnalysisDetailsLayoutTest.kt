@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import kst4contest.view.compose.onEventThread
 import kst4contest.view.map.PathAnalysisResult
 import org.junit.jupiter.api.Test
 
@@ -25,21 +26,23 @@ class PathAnalysisDetailsLayoutTest {
     private val narrowWidthPx = 120
 
     private fun renderAt(widthPx: Int, result: PathAnalysisResult?) {
-        val scene = ImageComposeScene(
-            width = widthPx,
-            height = 600,
-            density = Density(1f),
-        ) {
-            PathAnalysisDetails(
-                result = result,
-                darkMode = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        try {
-            scene.render()
-        } finally {
-            scene.close()
+        onEventThread {
+            val scene = ImageComposeScene(
+                width = widthPx,
+                height = 600,
+                density = Density(1f),
+            ) {
+                PathAnalysisDetails(
+                    result = result,
+                    darkMode = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            try {
+                scene.render()
+            } finally {
+                scene.close()
+            }
         }
     }
 
