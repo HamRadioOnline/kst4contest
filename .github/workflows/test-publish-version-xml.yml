@@ -3,6 +3,10 @@ name: TEST publish-version-xml (local only)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: read
+
 jobs:
   publish-version-xml:
     name: Publish Version Info XML via WebDAV

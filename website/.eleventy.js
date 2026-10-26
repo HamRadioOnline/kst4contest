@@ -32,11 +32,26 @@ const MANUAL_PAGE_ORDER = {
     ]
 };
 
+// Removes HTML tags until none are left, so that nested input such as
+// "<<b>script>" cannot reassemble a tag after a single pass.
+function stripHtmlTags(value) {
+    let previous;
+    let current = value;
+
+    do {
+        previous = current;
+        current = current.replace(/<[^>]+>/g, "");
+    } while (current !== previous);
+
+    return current;
+}
+
 function markdownToPlainText(value) {
-    return (value || "")
+    const withoutLinks = (value || "")
         .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-        .replace(/<[^>]+>/g, "")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+
+    return stripHtmlTags(withoutLinks)
         .replace(/[*_~`]/g, "")
         .replace(/\s+/g, " ")
         .trim();
