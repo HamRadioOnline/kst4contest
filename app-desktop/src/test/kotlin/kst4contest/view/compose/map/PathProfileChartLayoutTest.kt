@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import kst4contest.view.compose.onEventThread
 import org.junit.jupiter.api.Test
 
 /**
@@ -18,17 +19,19 @@ import org.junit.jupiter.api.Test
 class PathProfileChartLayoutTest {
 
     private fun renderAt(widthPx: Int, heightPx: Int) {
-        val scene = ImageComposeScene(
-            width = widthPx,
-            height = heightPx,
-            density = Density(1f),
-        ) {
-            PathProfileChart(modifier = Modifier.fillMaxSize(), darkMode = true)
-        }
-        try {
-            scene.render()
-        } finally {
-            scene.close()
+        onEventThread {
+            val scene = ImageComposeScene(
+                width = widthPx,
+                height = heightPx,
+                density = Density(1f),
+            ) {
+                PathProfileChart(modifier = Modifier.fillMaxSize(), darkMode = true)
+            }
+            try {
+                scene.render()
+            } finally {
+                scene.close()
+            }
         }
     }
 

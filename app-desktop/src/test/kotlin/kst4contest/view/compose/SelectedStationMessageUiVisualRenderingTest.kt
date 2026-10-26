@@ -84,37 +84,39 @@ class SelectedStationMessageUiVisualRenderingTest {
             replaceRows(listOf(message(member("DL1ABC", 2), member("DL2XYZ", 2), "pse sked")))
         }
 
-        val scene = ImageComposeScene(width = 1366, height = windowHeight, density = Density(scale)) {
-            Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    Row(Modifier.fillMaxSize().padding(6.dp)) {
-                        MessageTabs(
-                            publicMessages = publicMessages,
-                            clusterMessages = clusterTable(),
-                            qsoOfTheOther = qsoMessages,
-                            modifier = Modifier.weight(1f),
-                        )
-                        SelectedStationPanel(
-                            state = selectedState,
-                            messages = selectedMessages,
-                            activeBands = EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
-                            openInBrowser = Consumer {},
-                            onShowOnMap = {},
-                            onShowPathInAirScout = {},
-                            modifier = Modifier.width(panelWidth).padding(start = 6.dp),
-                        )
+        return onEventThread {
+            val scene = ImageComposeScene(width = 1366, height = windowHeight, density = Density(scale)) {
+                Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        Row(Modifier.fillMaxSize().padding(6.dp)) {
+                            MessageTabs(
+                                publicMessages = publicMessages,
+                                clusterMessages = clusterTable(),
+                                qsoOfTheOther = qsoMessages,
+                                modifier = Modifier.weight(1f),
+                            )
+                            SelectedStationPanel(
+                                state = selectedState,
+                                messages = selectedMessages,
+                                activeBands = EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
+                                openInBrowser = Consumer {},
+                                onShowOnMap = {},
+                                onShowPathInAirScout = {},
+                                modifier = Modifier.width(panelWidth).padding(start = 6.dp),
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        return try {
-            scene.render().encodeToData()!!.bytes
-        } finally {
-            scene.close()
+            try {
+                scene.render().encodeToData()!!.bytes
+            } finally {
+                scene.close()
+            }
         }
     }
 

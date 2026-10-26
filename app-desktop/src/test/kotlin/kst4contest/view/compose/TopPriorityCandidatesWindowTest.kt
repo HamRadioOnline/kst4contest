@@ -32,17 +32,19 @@ class TopPriorityCandidatesWindowTest {
     /** Runs [block] against a rendered list of [twoCandidates] and reports what it picked. */
     private fun picking(block: (ImageComposeScene) -> Unit): String? {
         var picked: String? = null
-        val scene = ImageComposeScene(width = 360, height = 500, density = Density(1f)) {
-            TopPriorityCandidatesWindow.CandidateListForTest(twoCandidates) {
-                picked = it.displayCallSign
+        onEventThread {
+            val scene = ImageComposeScene(width = 360, height = 500, density = Density(1f)) {
+                TopPriorityCandidatesWindow.CandidateListForTest(twoCandidates) {
+                    picked = it.displayCallSign
+                }
             }
-        }
-        try {
-            scene.render()
-            block(scene)
-            scene.render()
-        } finally {
-            scene.close()
+            try {
+                scene.render()
+                block(scene)
+                scene.render()
+            } finally {
+                scene.close()
+            }
         }
         return picked
     }
@@ -78,13 +80,15 @@ class TopPriorityCandidatesWindowTest {
     @Test
     fun `the list renders with candidates and without`() {
         listOf(emptyList(), twoCandidates).forEach { ranking ->
-            val scene = ImageComposeScene(width = 360, height = 500, density = Density(1f)) {
-                TopPriorityCandidatesWindow.CandidateListForTest(ranking) { }
-            }
-            try {
-                scene.render()
-            } finally {
-                scene.close()
+            onEventThread {
+                val scene = ImageComposeScene(width = 360, height = 500, density = Density(1f)) {
+                    TopPriorityCandidatesWindow.CandidateListForTest(ranking) { }
+                }
+                try {
+                    scene.render()
+                } finally {
+                    scene.close()
+                }
             }
         }
     }

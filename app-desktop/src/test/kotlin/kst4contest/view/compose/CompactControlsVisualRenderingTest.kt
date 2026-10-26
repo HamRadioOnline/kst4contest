@@ -55,45 +55,47 @@ class CompactControlsVisualRenderingTest(@param:TempDir private val tempDir: Pat
         }
         val filters = StationFilterState()
 
-        val scene = ImageComposeScene(width = 1366, height = 380, density = Density(scale)) {
-            Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    Column(Modifier.padding(4.dp)) {
-                        TimelineView(
-                            state = TimelineState(),
-                            onCandidateClicked = {},
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        StationFilterBar(
-                            filters = filters,
-                            activeBands = EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
-                            reachability = ReachabilityState(
-                                EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
-                            ),
-                            onChanged = {},
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        ChatInputRow(
-                            state = chatInputState,
-                            prefs = preferences,
-                            ownQrgMain = ObservedValue(preferences.getMYQRGFirstCat()),
-                            ownQrgSecond = ObservedValue(preferences.getMYQRGSecondCat()),
-                            antennaQtf = ObservedValue(preferences.getActualQTF()),
-                            antennaQtf2 = ObservedValue(preferences.getActualQTF2()),
-                            so2rEnabled = false,
-                        )
+        return onEventThread {
+            val scene = ImageComposeScene(width = 1366, height = 380, density = Density(scale)) {
+                Kst4ContestTheme(darkMode = darkMode, baseFontSizeSp = 12f) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        Column(Modifier.padding(4.dp)) {
+                            TimelineView(
+                                state = TimelineState(),
+                                onCandidateClicked = {},
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            StationFilterBar(
+                                filters = filters,
+                                activeBands = EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
+                                reachability = ReachabilityState(
+                                    EnumSet.of(Band.B_144, Band.B_432, Band.B_1296),
+                                ),
+                                onChanged = {},
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            ChatInputRow(
+                                state = chatInputState,
+                                prefs = preferences,
+                                ownQrgMain = ObservedValue(preferences.getMYQRGFirstCat()),
+                                ownQrgSecond = ObservedValue(preferences.getMYQRGSecondCat()),
+                                antennaQtf = ObservedValue(preferences.getActualQTF()),
+                                antennaQtf2 = ObservedValue(preferences.getActualQTF2()),
+                                so2rEnabled = false,
+                            )
+                        }
                     }
                 }
             }
-        }
-        return try {
-            scene.render().encodeToData()!!.bytes
-        } finally {
-            scene.close()
+            try {
+                scene.render().encodeToData()!!.bytes
+            } finally {
+                scene.close()
+            }
         }
     }
 
