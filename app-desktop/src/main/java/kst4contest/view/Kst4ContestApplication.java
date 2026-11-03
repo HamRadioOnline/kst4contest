@@ -3033,6 +3033,20 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 	private java.util.function.Consumer<java.util.List<ClusterMessage>> composeClusterListener;
 
 	/**
+	 * Fills the three global Compose message tables from their filtered
+	 * controller views.
+	 */
+	/* package */ static void refreshComposeMessageTables(
+			final ChatController controller,
+			final DataTableState<ChatMessage> directed,
+			final DataTableState<ChatMessage> publicMessages,
+			final DataTableState<ChatMessage> qsoOfTheOther) {
+		directed.replaceRows(controller.toMeMessages());
+		publicMessages.replaceRows(controller.toAllMessages());
+		qsoOfTheOther.replaceRows(controller.toOtherMessages());
+	}
+
+	/**
 	 * Opens the Compose main window beside the JavaFX one.
 	 *
 	 * <p>Only on --compose-main-window, and never a second time. The two run side by side so
@@ -3342,11 +3356,11 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 			return kotlin.Unit.INSTANCE;
 		});
 
-		composeChatListener = rows -> uiDispatcher.runOnUi(() -> {
-			directed.replaceRows(chatcontroller.toMeMessages());
-			publicMessages.replaceRows(rows);
-			qsoOfTheOther.replaceRows(chatcontroller.toOtherMessages());
-		});
+		composeChatListener = rows -> uiDispatcher.runOnUi(() -> refreshComposeMessageTables(
+				chatcontroller,
+				directed,
+				publicMessages,
+				qsoOfTheOther));
 		chatcontroller.getLst_globalChatMessageList().addListener(composeChatListener);
 
 		composeClusterListener = rows -> uiDispatcher.runOnUi(() -> cluster.replaceRows(rows));
@@ -3361,10 +3375,8 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		stations.replaceRows(initialMembers);
 		newJoined.updateActiveMembers(initialMembers);
 		newJoined.updateEvents(chatcontroller.getRecentChatJoins().snapshot());
-		directed.replaceRows(chatcontroller.toMeMessages());
-		publicMessages.replaceRows(chatcontroller.getLst_globalChatMessageList().snapshot());
+		refreshComposeMessageTables(chatcontroller, directed, publicMessages, qsoOfTheOther);
 		cluster.replaceRows(chatcontroller.getLst_clusterMemberList().snapshot());
-		qsoOfTheOther.replaceRows(chatcontroller.toOtherMessages());
 		/*
 		 * The only push that does not check the feed for null, and deliberately so: the
 		 * feed is assigned earlier in this same method, so a guard here could never fire
