@@ -4,7 +4,6 @@ import java.util.TimerTask;
 
 import kst4contest.model.ChatCategory;
 import kst4contest.model.ChatMessage;
-import kst4contest.model.ThreadStateMessage;
 
 /**
  * Sends the configured public-chat beacons for both active chat categories.
@@ -20,10 +19,9 @@ import kst4contest.model.ThreadStateMessage;
  */
 public class BeaconTask extends TimerTask {
 
-	private static final String THREAD_NICKNAME = "MyBeacon";
-
 	private final ChatController chatController;
 	private final ThreadStatusCallback callbackToController;
+	private final BeaconStatus beaconStatus;
 
 	/**
 	 * Creates one execution of the shared beacon timer.
@@ -37,30 +35,34 @@ public class BeaconTask extends TimerTask {
 	) {
 		this.chatController = chatController;
 		this.callbackToController = callbackToController;
+		this.beaconStatus = chatController.beaconStatusState();
 	}
 
 	@Override
 	public void run() {
 		Thread.currentThread().setName("BeaconTask");
-		reportStatus(THREAD_NICKNAME, true, "initialized", false);
-
-		sendMainCategoryBeacon();
-		sendSecondCategoryBeacon();
+		Attempt main = sendMainCategoryBeacon();
+		Attempt second = sendSecondCategoryBeacon();
+		String activity = "Main category: " + main.description
+				+ "; second category: " + second.description;
+		beaconStatus.recordRun(
+				main == Attempt.INVALID,
+				second == Attempt.INVALID,
+				activity
+		);
+		callbackToController.onThreadStatus(
+				BeaconStatus.SOURCE_NAME,
+				beaconStatus.message(chatController.getChatPreferences())
+		);
 	}
 
 	/**
 	 * Sends the main-category beacon if it is currently enabled.
 	 */
-	private void sendMainCategoryBeacon() {
+	private Attempt sendMainCategoryBeacon() {
 		if (!chatController.getChatPreferences()
 				.isBcn_beaconsEnabledMainCat()) {
-			reportStatus(
-					THREAD_NICKNAME + " 1",
-					false,
-					"off",
-					false
-			);
-			return;
+			return Attempt.OFF;
 		}
 
 		ChatMessage beaconMessage = buildBeaconMessage(
@@ -72,13 +74,7 @@ public class BeaconTask extends TimerTask {
 		);
 
 		if (beaconMessage == null) {
-			reportStatus(
-					THREAD_NICKNAME + " 1",
-					false,
-					"invalid text",
-					true
-			);
-			return;
+			return Attempt.INVALID;
 		}
 
 		System.out.println(
@@ -88,31 +84,19 @@ public class BeaconTask extends TimerTask {
 		);
 
 		chatController.getMessageTXBus().add(beaconMessage);
-
-		reportStatus(
-				THREAD_NICKNAME + " 1",
-				true,
-				"on",
-				false
-		);
+		return Attempt.SENT;
 	}
 
 	/**
 	 * Sends the second-category beacon if the second login and its beacon are
 	 * currently enabled.
 	 */
-	private void sendSecondCategoryBeacon() {
-		if (!chatController.getChatPreferences()
-				.isLoginToSecondChatEnabled()
-				|| !chatController.getChatPreferences()
-				.isBcn_beaconsEnabledSecondCat()) {
-			reportStatus(
-					THREAD_NICKNAME + " 2",
-					false,
-					"off",
-					false
-			);
-			return;
+	private Attempt sendSecondCategoryBeacon() {
+		if (!chatController.getChatPreferences().isLoginToSecondChatEnabled()) {
+			return Attempt.UNAVAILABLE;
+		}
+		if (!chatController.getChatPreferences().isBcn_beaconsEnabledSecondCat()) {
+			return Attempt.OFF;
 		}
 
 		ChatMessage beaconMessage = buildBeaconMessage(
@@ -124,13 +108,7 @@ public class BeaconTask extends TimerTask {
 		);
 
 		if (beaconMessage == null) {
-			reportStatus(
-					THREAD_NICKNAME + " 2",
-					false,
-					"invalid text",
-					true
-			);
-			return;
+			return Attempt.INVALID;
 		}
 
 		System.out.println(
@@ -140,13 +118,7 @@ public class BeaconTask extends TimerTask {
 		);
 
 		chatController.getMessageTXBus().add(beaconMessage);
-
-		reportStatus(
-				THREAD_NICKNAME + " 2",
-				true,
-				"on",
-				false
-		);
+		return Attempt.SENT;
 	}
 
 	/**
@@ -199,24 +171,16 @@ public class BeaconTask extends TimerTask {
 		}
 	}
 
-	/**
-	 * Forwards one state update to the existing thread-status display.
-	 */
-	private void reportStatus(
-			String threadName,
-			boolean running,
-			String information,
-			boolean criticalState
-	) {
-		ThreadStateMessage stateMessage = new ThreadStateMessage(
-				threadName,
-				running,
-				information,
-				criticalState
-		);
-		callbackToController.onThreadStatus(
-				THREAD_NICKNAME,
-				stateMessage
-		);
+	private enum Attempt {
+		SENT("sent"),
+		OFF("off"),
+		UNAVAILABLE("unavailable"),
+		INVALID("invalid text");
+
+		private final String description;
+
+		Attempt(String description) {
+			this.description = description;
+		}
 	}
 }

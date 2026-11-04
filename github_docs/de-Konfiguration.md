@@ -4,7 +4,7 @@
 
 Nach dem ersten Start öffnet sich das **Einstellungsfenster** – dieses ist der zentrale Ausgangspunkt für alle Konfigurationen. Es empfiehlt sich, das Einstellungsfenster während des Betriebs geöffnet zu lassen (z. B. um den Beacon schnell ein- und auszuschalten).
 
-> **Wichtig**: Änderungen im Einstellungsfenster wirken, sobald **Apply/Close prefs** oder **Save Settings** gedrückt wird; **Connect** übernimmt sie ebenfalls vorher. Wer mit offenen Änderungen das Fenster schließt, das Profil wechselt oder das Programm beendet, wird zuerst gefragt, ob sie übernommen oder verworfen werden sollen, oder kann zurück. Farben, Sprache und die Anmeldedaten im Reiter **Station** wirken sofort.
+> **Wichtig**: Änderungen im Einstellungsfenster wirken, sobald **Apply/Close prefs** oder **Save Settings** gedrückt wird; **Connect** übernimmt sie ebenfalls vorher. Wer mit offenen Änderungen das Fenster schließt, das Profil wechselt oder das Programm beendet, wird zuerst gefragt, ob sie übernommen oder verworfen werden sollen, oder kann zurück. Farben, Sprache, die Anmeldedaten im Reiter **Station** und die beiden Beacon-Aktivierungsschalter wirken sofort.
 >
 > Fachliche Einstellungen mit **„Save Settings"** sichern, wenn sie beim nächsten Start wieder gelten sollen. Layoutänderungen wie Fenstergrößen, Divider-Positionen und Tabellenbreiten speichert KST4Contest automatisch. Die gemeinsame Datei liegt unter Linux und macOS in `~/.praktiKST/preferences.xml` und unter Windows in `%USERPROFILE%\.praktiKST\preferences.xml` (bzw. `C:\Users\<Benutzername>\.praktiKST\preferences.xml`).
 
@@ -602,6 +602,10 @@ KST4Contest verwendet einen gemeinsamen Timer für beide Chat-Kategorien. Aktivi
 - **Shared beacon interval** legt das gemeinsame Intervall für beide Kategorien fest.
 
 Sind beide Beacons aktiviert, werden sie beim selben Timer-Lauf nacheinander in ihren jeweiligen Kategorien gesendet. Der zweite Beacon wird nur berücksichtigt, wenn die zweite Kategorie in derselben ON4KST-Sitzung aktiviert und vollständig synchronisiert ist.
+
+Die beiden Aktivierungsschalter wirken sofort auf den laufenden Timer. Sie starten weder den Countdown neu noch senden sie unmittelbar eine Nachricht; der nächste reguläre Timer-Lauf prüft den aktuellen Zustand. Erst **Save Settings** speichert die Aktivierung für den nächsten Programmstart. Nachrichtentexte und Intervall folgen weiterhin der normalen Apply-/Save-Logik.
+
+Der Status-Chip **MyBeacon** im Hauptfenster fasst beide nutzbaren Kategorien zusammen: **off** bedeutet kein aktiver Beacon, **1/2** genau eine von zwei aktiven Kategorien und **on** alle derzeit nutzbaren Kategorien. Ein Klick auf den Chip schaltet alle nutzbaren Beacons gemeinsam ein oder aus. Ist der zweite Chat deaktiviert, ändert der Chip nur den Beacon der Hauptkategorie und lässt die gespeicherte Einstellung des zweiten Beacons unverändert.
 
 ### Intervall und Timer-Verhalten
 

@@ -62,6 +62,9 @@ interface SettingsHost {
      */
     fun refreshSo2rState()
 
+    /** Pushes applied antenna-beam geometry into the open Compose map. */
+    fun refreshMapDisplaySettings()
+
     /** Rebuilds the Ctrl+1..Ctrl+0 context menus from the snippet list. */
     fun refreshTextSnippetContextMenusFromSettings()
 
@@ -148,6 +151,8 @@ fun buildSettingsTabs(
         applySecondCategory = { category -> controller.setChatCategorySecondChat(category) },
         connectionState = connectionState,
         applySecondRotator = { controller.reconfigureSecondRotator(); host.refreshSo2rState() },
+        refreshBeaconStatus = controller::refreshBeaconStatus,
+        applyMapDisplaySettings = host::refreshMapDisplaySettings,
     )
 
     val notificationState = NotificationTabState(
@@ -185,6 +190,8 @@ fun buildSettingsTabs(
         draft,
         validateBeaconTemplate = { template -> controller.validateBeaconTemplate(template) },
         restartBeaconTimer = { controller.restartBeaconTimer() },
+        setMainBeaconEnabled = controller::setMainBeaconEnabled,
+        setSecondBeaconEnabled = controller::setSecondBeaconEnabled,
         mainCategoryName = categoryName(controller.chatCategoryMain, kst4contest.view.i18n.CurrentStrings.get().settingsCategoryMainFallback),
         secondCategoryName = categoryName(controller.chatCategorySecondChat, kst4contest.view.i18n.CurrentStrings.get().settingsCategorySecondFallback),
     )

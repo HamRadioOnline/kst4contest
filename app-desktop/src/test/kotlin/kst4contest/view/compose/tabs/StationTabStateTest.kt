@@ -20,6 +20,8 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
         var secondApplied: ChatCategory? = null
         var secondWasApplied = false
         val secondRotatorCalls = mutableListOf<Unit>()
+        var beaconStatusRefreshes = 0
+        var mapDisplayRefreshes = 0
         val draft = SettingsDraft()
         val state = StationTabState(
             prefs,
@@ -27,6 +29,8 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
             { mainApplied = it },
             { secondApplied = it; secondWasApplied = true },
             applySecondRotator = { secondRotatorCalls.add(Unit) },
+            refreshBeaconStatus = { beaconStatusRefreshes++ },
+            applyMapDisplaySettings = { mapDisplayRefreshes++ },
         )
     }
 
@@ -303,6 +307,34 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
 
         assertTrue(prefs.isLoginToSecondChatEnabled())
         assertEquals(true, state.loginToSecondChatEnabled)
+    }
+
+    @Test
+    fun `applying the second chat switch refreshes aggregate beacon status`() {
+        val session = Session()
+
+        session.state.loginToSecondChatEnabled = true
+        assertEquals(0, session.beaconStatusRefreshes)
+
+        session.draft.apply()
+
+        assertEquals(1, session.beaconStatusRefreshes)
+    }
+
+    @Test
+    fun `beam width and maximum QRB refresh the map once after both are applied`() {
+        val session = Session()
+
+        session.state.stn_antennaBeamWidthDeg = 72.0
+        session.state.stn_maxQRBDefault = 1_250.0
+        assertEquals(0, session.mapDisplayRefreshes)
+
+        val outcome = session.draft.apply()
+
+        assertTrue(outcome.isClean, outcome.failures.toString())
+        assertEquals(72.0, session.prefs.stn_antennaBeamWidthDeg, 0.0001)
+        assertEquals(1_250.0, session.prefs.stn_maxQRBDefault, 0.0001)
+        assertEquals(1, session.mapDisplayRefreshes)
     }
 
     @Test

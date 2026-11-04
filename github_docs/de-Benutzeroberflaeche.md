@@ -206,6 +206,8 @@ Dezent umrahmte Flächen fassen **QRB**, **QTF** einschließlich Richtungstasten
 
 Standardmäßig aktualisiert eine gültige direkte Eingabe in der QTF-Gruppe oder der Klick auf eine Richtungstaste zugleich die aktuelle eigene Antennenrichtung. Diese ausdrückliche Übernahme funktioniert unabhängig davon, ob **Show only QTF** ein- oder ausgeschaltet ist. Das Zurücksetzen oder bloße Ausschalten des Filters verändert die Antennenrichtung nicht. Im Abschnitt **Station → Manuelle Antennenrichtung** kann das Verhalten mit **QTF-Filterrichtung als eigene Antennenrichtung übernehmen** profilbezogen ausgeschaltet werden. PSTRotator 1 hat vorübergehend Vorrang, ohne diese gespeicherte Auswahl zu verändern.
 
+Dieselbe ausdrückliche QTF-Eingabe beziehungsweise Richtungstaste zentriert eine geöffnete Stationskarte auf den gewählten Sektor, ohne den Zoom zu verändern. Wiederhergestellte Einstellungen, **Reset filters**, Rotor-Rückmeldungen und andere Hintergrundänderungen bewegen die Karte nicht. Diese Navigation ist von der optionalen Übernahme als tatsächliche Antennenrichtung getrennt und löst keinen Rotorbefehl aus.
+
 Bei **New bands** werden aktuelle QRGs, Bandangaben im Namensfeld und aktive Rufzeichenvarianten gemeinsam ausgewertet. Manuelle NOT-QRV-Markierungen haben Vorrang.
 
 Der Filter **Tropo >=0dB** entfernt nur Stationen, für die eine abgeschlossene Berechnung eine negative Marge ergeben hat. Noch nicht berechnete oder fehlgeschlagene Auswertungen bleiben sichtbar. Andernfalls würde ein fehlender API-Wert wie ein nachgewiesen ungeeigneter Funkweg behandelt.
@@ -361,11 +363,9 @@ Die Stationskarte kann auf zwei Wegen geöffnet werden:
 - **Windows → Show / hide station map** öffnet oder schließt das Kartenfenster.
 - **Show on map** im **Further Info**-Bereich öffnet die Karte und fokussiert die ausgewählte Station.
 
-Die Karte verwendet die Stationen, die nach Anwendung der aktuellen Benutzerlistenfilter noch sichtbar sind. Die Kopfzeile zeigt die Anzahl der dargestellten Stationen und weist mit `filtered view active` auf eine gefilterte Ansicht hin.
+Die Karte verwendet die Stationen, die nach Anwendung der aktuellen Benutzerlistenfilter noch sichtbar sind. Die Kopfzeile zeigt die Anzahl der dargestellten Stationen und weist mit `filtered view active` auf eine gefilterte Ansicht hin. Aktive QTF- und QRB-Grenzen erscheinen zusätzlich als eigene halbtransparente Sektor-, Kreis- oder Ringfläche. Dieses Filter-Overlay ist von dem Sektor für die tatsächliche Antennenrichtung, den Öffnungswinkel und den maximalen QRB getrennt. Eine kompakte Legende in der Kopfzeile kennzeichnet das rote Antennen-Overlay und das blaue Overlay der aktiven Filter, sobald sie sichtbar sind.
 
-![Stationskarte mit ausgewählter Station und eingeblendeter Streckenanalyse](station_map_path_analysis.png)
-
-> **Screenshot-Hinweis:** Das Bild zeigt noch die frühere Markerbeschriftung und weder das neue Kontextmenü noch die Worked-Großfeldfläche. Es wird nach der manuellen Kartenabnahme ersetzt.
+![Stationskarte mit ausgewähltem Pfad, rotem Antennensektor und aktivem blauem QRB-Bereich](station_map_spatial_filters.png)
 
 ### Station auswählen
 
@@ -377,6 +377,10 @@ Ein einzelner Stationsmarker kann direkt angeklickt werden. KST4Contest:
 2. scrollt die Benutzerliste zum entsprechenden Eintrag,
 3. aktualisiert den **Further Info**-Bereich und
 4. bereitet das vollständige sichtbare Rufzeichen als `/cq`-Empfänger vor.
+
+Jede ausdrückliche Stationsauswahl passt außerdem den Kartenausschnitt so an, dass der vollständige Weg vom eigenen Standort bis zur Gegenstation mit etwas Rand sichtbar ist. Reicht der aktuelle Zoom bereits aus, bleibt er erhalten; bei längeren Strecken wird nur so weit wie nötig herausgezoomt. Normale Userlisten-Aktualisierungen, Ergebnisse der Streckenanalyse und andere Hintergrund-Neuberechnungen bewegen die Karte nicht. Eine Station ohne verwendbaren Locator bleibt ausgewählt, löst aber keine Kamerabewegung aus.
+
+Wird eine bereits ausgewählte Station durch eine spätere Filteränderung ausgeblendet, bleibt sie als separates ausgewähltes Ziel mit Verbindungslinie sichtbar. Sie wird nicht wieder in die normale Markerliste, Gruppierung oder angezeigte Stationsanzahl aufgenommen. Das eigentliche Filterergebnis bleibt dadurch unverändert.
 
 Ist **Gruppierung** ausgewählt, werden Marker, die bei niedrigen Zoomstufen zu dicht beieinanderliegen, als Cluster mit einer Stationsanzahl dargestellt. Ein Klick auf einen Cluster vergrößert den betreffenden Kartenausschnitt. Erst ein anschließend sichtbarer einzelner Marker wählt eine konkrete Station aus. Wird die Checkbox ausgeschaltet, zeigt die Karte unabhängig von der Zoomstufe alle positionierbaren Stationen als einzelne Marker. Der Tooltip erläutert den vollständigen Zweck des kompakten Schalters.
 
@@ -407,7 +411,7 @@ Bei aktivem **Grid color** kennzeichnet die Karte dauerhaft bekannte, bereits ge
 
 ### Auswahl mit Reset view löschen
 
-**Reset view** löscht die Stationsauswahl, ohne die Kartenposition oder den Zoomlevel zu verändern.
+**Reset view** löscht die Stationsauswahl und zentriert die Karte wieder auf den eigenen Standort, ohne den Zoomlevel zu verändern.
 
 Dabei werden:
 
@@ -415,9 +419,10 @@ Dabei werden:
 - die Auswahl in der Benutzerliste aufgehoben,
 - die Verbindungslinie zur Gegenstation entfernt,
 - eine noch laufende Auswertung der vorherigen Station verworfen und
-- der rechte Analysebereich entfernt.
+- der rechte Analysebereich entfernt und
+- die Karte auf den eigenen Standort zentriert.
 
-Die Karte selbst bleibt im zuvor gewählten Ausschnitt. Die Funktion ist deshalb kein geografischer Reset auf den eigenen Standort.
+Der Zoomlevel bleibt unverändert. Die nächste ausdrückliche Stations- oder QTF-Auswahl kann den Kartenausschnitt erneut bewegen.
 
 ![Stationskarte nach Reset view ohne ausgewählte Station](station_map_reset.png)
 
@@ -560,7 +565,7 @@ Bei einer ungünstigen Aufteilung sollten zuerst die Divider und Spaltenbreiten 
 
 ## Tipps zur Bedienung
 
-- **Einstellungsfenster geöffnet lassen**: Schneller Zugriff auf Beacon-Aktivierung/Deaktivierung.
+- **Beacon schnell schalten**: Die Aktivierung ist im geöffneten Einstellungsfenster je Kategorie möglich. Ein Klick auf den Status-Chip **MyBeacon** schaltet alle derzeit nutzbaren Beacons gemeinsam ein oder aus.
 - **Rechtsklick in der Benutzerliste**: Öffnet das Snippet-Menü und weitere Aktionen (QRZ.com-Profil, NOT-QRV-Tags setzen).
 - **Enter aus dem Chat heraus**: Wenn im Sendfeld Text steht, sendet Enter direkt – auch wenn der Fokus woanders liegt.
 - **Beacon stoppen**: Beim Scannen von Frequenzen den Beacon ausschalten, damit der Chat nicht mit Meldungen überflutet wird.

@@ -162,8 +162,6 @@ class DraftedSettingsTableTest {
         }, { it.prefs.getLst_txtSnipList().snapshot() }),
 
         // Beacon
-        flag("beacon main", { it.beacon.bcn_beaconsEnabledMainCat }) { f, v -> f.beacon.bcn_beaconsEnabledMainCat = v },
-        flag("beacon second", { it.beacon.bcn_beaconsEnabledSecondCat }) { f, v -> f.beacon.bcn_beaconsEnabledSecondCat = v },
         Case("beacon text main", { it.beacon.commitBeaconTextMainCat(it.beacon.beaconTextMainCat + " x") },
             { it.prefs.getBcn_beaconTextMainCat() }),
         Case("beacon text second", { it.beacon.commitBeaconTextSecondCat(it.beacon.beaconTextSecondCat + " x") },

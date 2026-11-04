@@ -4,9 +4,11 @@ import kst4contest.view.i18n.LocalStrings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kst4contest.view.compose.Form
+import kst4contest.view.compose.observeAsState
 
 /**
  * The beacon tab: one CQ template per chat category and the interval they share.
@@ -18,12 +20,14 @@ import kst4contest.view.compose.Form
 @Composable
 fun BeaconTab(state: BeaconTabState, onRefused: (String) -> Unit) {
     val strings = LocalStrings.current
+    val mainEnabled by state.mainBeaconEnabled.observeAsState()
+    val secondEnabled by state.secondBeaconEnabled.observeAsState()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Form.section(strings.beaconSectionFor(state.mainCategoryName)) {
-            Form.check(strings.beaconEnabled, state.bcn_beaconsEnabledMainCat) {
+            Form.check(strings.beaconEnabled, mainEnabled == true) {
                 state.bcn_beaconsEnabledMainCat = it
             }
             Form.committed(
@@ -36,7 +40,7 @@ fun BeaconTab(state: BeaconTabState, onRefused: (String) -> Unit) {
         }
 
         Form.section(strings.beaconSectionFor(state.secondCategoryName)) {
-            Form.check(strings.beaconEnabled, state.bcn_beaconsEnabledSecondCat) {
+            Form.check(strings.beaconEnabled, secondEnabled == true) {
                 state.bcn_beaconsEnabledSecondCat = it
             }
             Form.committed(

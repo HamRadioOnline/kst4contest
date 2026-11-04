@@ -99,6 +99,21 @@ public final class MapViewport {
         return widthPx / 2.0 + (WebMercatorProjection.lonToX(lon, tileZoom) - centerWorldX) * tileScale;
     }
 
+    /**
+     * Places a longitude in the closest wrapped copy of the world.
+     *
+     * <p>A target at 179 degrees east and a centre at 179 degrees west are two degrees
+     * apart, not 358. Tiles already wrap at the anti-meridian; overlays and hit testing
+     * need the same world copy to stay aligned with them.</p>
+     */
+    public double screenXWrapped(double lon) {
+        double worldSize = TILE_SIZE_PX * Math.pow(2.0, tileZoom);
+        double worldX = WebMercatorProjection.lonToX(lon, tileZoom);
+        double delta = worldX - centerWorldX;
+        delta -= Math.rint(delta / worldSize) * worldSize;
+        return widthPx / 2.0 + delta * tileScale;
+    }
+
     public double screenY(double lat) {
         return heightPx / 2.0 + (WebMercatorProjection.latToY(lat, tileZoom) - centerWorldY) * tileScale;
     }

@@ -4,7 +4,6 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onAllNodesWithText
@@ -42,7 +41,6 @@ import kst4contest.view.compose.STATION_CONTEXT_TARGET_CHOOSER_TAG
 import kst4contest.view.compose.ThreadStatusButtons
 import kst4contest.view.compose.TimelineState
 import kst4contest.view.compose.TopPriorityState
-import kst4contest.view.map.StationMapClusterer
 import kst4contest.view.map.MapCallsignRawSnapshot
 import kst4contest.view.map.PathAnalysisResult
 import kst4contest.view.map.TileFetcher
@@ -231,7 +229,10 @@ class StationMapWindowScreenTest {
         val dl1abc = station("DL1ABC", 2)
         state.selectedStation.select(dl1abc)
         val selectorCalls = mutableListOf<ChatMember?>()
-        state.stationSelector = { member, _ -> selectorCalls += member }
+        state.stationSelector = { member, source ->
+            selectorCalls += member
+            state.selectedStation.select(member, source)
+        }
         val mapState = mapLookingAt("JO50JP", zoom = 15f)
 
         show(state, listOf(dl1abc), mapState)
@@ -240,11 +241,7 @@ class StationMapWindowScreenTest {
         waitForIdle()
 
         assertEquals(listOf<ChatMember?>(null), selectorCalls, "reset did not go through the station selector")
-        assertSame(
-            dl1abc,
-            state.selectedStation.selected,
-            "reset cleared the panel's selection behind the selector's back",
-        )
+        assertEquals(null, state.selectedStation.selected)
         assertEquals(15f, mapState.zoom, "reset changed the zoom")
 
         val home = Location(ownLocator)
@@ -369,12 +366,9 @@ class StationMapWindowScreenTest {
         assertEquals(readsWhileEnabled, reads, "disabled Grid color still read worked fields")
     }
 
-    /**
-     * The cc8c9020 rule: selecting a station pans the map to it and leaves the zoom alone.
-     * The earlier Compose version recomputed the zoom here and threw zoom 15 out to about 7.
-     */
+    /** An explicit selection fits both ends and still starts the existing path analysis. */
     @Test
-    fun selectingAStationPansToItAndKeepsTheZoom() = runComposeUiTest {
+    fun selectingAStationFitsTheCompletePath() = runComposeUiTest {
         val state = windowState(prefs())
         val dl1abc = station("DL1ABC", 2, locator = "JO50JP")
         val analysis = RecordingPathAnalysis()
@@ -382,53 +376,49 @@ class StationMapWindowScreenTest {
 
         show(state, listOf(dl1abc), mapState, analysis)
 
-        runOnIdle { state.selectedStation.select(dl1abc) }
+        runOnIdle { state.selectStation(dl1abc, StationSelectionSource.STATION_TABLE) }
         waitForIdle()
 
+        val home = Location(ownLocator)
         val target = Location("JO50JP")
-        assertEquals(target.longitude.toDegrees(), mapState.centerLon, 1e-9, "the map did not pan")
-        assertEquals(target.latitude.toDegrees(), mapState.centerLat, 1e-9, "the map did not pan")
-        assertEquals(15f, mapState.zoom, "selecting a station changed the zoom")
+        assertTrue(mapState.centerLon in home.longitude.toDegrees()..target.longitude.toDegrees())
+        assertTrue(mapState.centerLat in home.latitude.toDegrees()..target.latitude.toDegrees())
+        assertTrue(mapState.zoom < 15f, "a path too long for zoom 15 was not fitted")
         assertEquals(listOf(dl1abc), analysis.requested, "the path analysis was not asked")
     }
 
-    /**
-     * With grouping on, a selection zooms in only as far as it takes to break the station out
-     * of its bubble, and never out: StationMapClusterer.zoomToRevealStations.
-     */
+    /** Grouping never forces a path which already fits to zoom in. */
     @Test
-    fun withGroupingOnASelectionOnlyZoomsInFarEnoughToRevealTheStation() = runComposeUiTest {
+    fun groupingDoesNotZoomInWhileFittingASelectedPath() = runComposeUiTest {
         val prefs = prefs().apply { isGUIstationMapClusteringEnabled = true }
         val state = windowState(prefs)
-        val dl1abc = station("DL1ABC", 2, locator = "JO50JP")
-        val far = mapLookingAt(ownLocator, zoom = 5f)
+        val dl1abc = station("DL1ABC", 2, locator = "JO40HB")
+        val mapState = mapLookingAt(ownLocator, zoom = 5f)
 
-        show(state, listOf(dl1abc), far, RecordingPathAnalysis())
+        show(state, listOf(dl1abc), mapState, RecordingPathAnalysis())
 
-        runOnIdle { state.selectedStation.select(dl1abc) }
+        runOnIdle { state.selectStation(dl1abc, StationSelectionSource.STATION_TABLE) }
         waitForIdle()
 
-        assertEquals(StationMapClusterer.DISABLE_AT_ZOOM.toFloat(), far.zoom)
+        assertEquals(5f, mapState.zoom)
     }
 
-    /** Without a running application there is nothing to ask, and the map stays put. */
+    /** Camera navigation is independent of the optional path-analysis service. */
     @Test
-    fun withoutAPathAnalysisASelectionLeavesTheMapWhereItIs() = runComposeUiTest {
+    fun withoutAPathAnalysisASelectionStillFitsThePath() = runComposeUiTest {
         val state = windowState(prefs())
         val dl1abc = station("DL1ABC", 2, locator = "JO50JP")
         val mapState = mapLookingAt(ownLocator, zoom = 15f)
-        val home = Location(ownLocator)
         var asked = 0
 
         show(state, listOf(dl1abc), mapState, pathAnalysis = null, onPathAnalysisAsked = { asked++ })
 
-        runOnIdle { state.selectedStation.select(dl1abc) }
+        runOnIdle { state.selectStation(dl1abc, StationSelectionSource.STATION_TABLE) }
         waitForIdle()
 
         // Proves the selection effect ran, so the unchanged map is not a vacuous pass.
         assertEquals(1, asked, "the selection effect did not ask for a path analysis")
-        assertEquals(home.longitude.toDegrees(), mapState.centerLon, 1e-9)
-        assertEquals(15f, mapState.zoom)
+        assertTrue(mapState.zoom < 15f)
     }
 
     /** The two header switches write the profile, so the map opens the same way next time. */
@@ -475,6 +465,54 @@ class StationMapWindowScreenTest {
         waitForIdle()
         assertEquals(false, prefs.isGUIstationMapAlwaysOnTop)
         assertEquals(listOf(true, false), applied)
+    }
+
+    @Test
+    fun headerLegendFollowsDrawableAntennaAndSpatialFilterOverlays() = runComposeUiTest {
+        val prefs = prefs()
+        val state = windowState(prefs)
+
+        show(state, emptyList(), MapState())
+
+        onNodeWithText("Antenna").assertExists()
+        onNodeWithText("Active filters").assertDoesNotExist()
+
+        runOnIdle {
+            state.stationFilter.maxQrbKm = 666.0
+            state.stationFilter.maxQrbEnabled = true
+        }
+        waitForIdle()
+
+        onNodeWithText("Antenna").assertExists()
+        onNodeWithText("Active filters").assertExists()
+
+        runOnIdle {
+            prefs.stn_antennaBeamWidthDeg = 0.0
+            prefs.stn_maxQRBDefault = 0.0
+            state.refreshMapDisplaySettings()
+            state.stationFilter.maxQrbEnabled = false
+        }
+        waitForIdle()
+
+        onNodeWithText("Antenna").assertDoesNotExist()
+        onNodeWithText("Active filters").assertDoesNotExist()
+    }
+
+    @Test
+    fun invalidSpatialFilterDoesNotClaimAVisibleOverlay() = runComposeUiTest {
+        val state = windowState(prefs())
+        state.stationFilter.maxQrbKm = 0.0
+        state.stationFilter.maxQrbEnabled = true
+
+        show(state, emptyList(), MapState())
+
+        onNodeWithText("Antenna").assertExists()
+        onNodeWithText("Active filters").assertDoesNotExist()
+
+        runOnIdle { state.stationFilter.maxQrbKm = Double.NaN }
+        waitForIdle()
+
+        onNodeWithText("Active filters").assertDoesNotExist()
     }
 
     @Test
@@ -553,13 +591,9 @@ class StationMapWindowScreenTest {
         onNodeWithText("Showing 1 visible stations | filtered view active").assertExists()
     }
 
-    /**
-     * A selected station the filters hide has no marker, and so nothing to analyse: no
-     * request goes out and the analysis does not sit at "Loading" with an empty target (#21).
-     * The visible station beside it is the control: selecting it does ask and does load.
-     */
+    /** A filtered-out selection remains a separate target without entering the marker count. */
     @Test
-    fun aSelectedStationTheFiltersHideGetsNoPathAnalysis() = runComposeUiTest {
+    fun aSelectedStationTheFiltersHideKeepsItsTargetAndPathAnalysis() = runComposeUiTest {
         val state = windowState(prefs(pathAnalysisVisible = true))
         val hidden = station("DL1HIDE", 2, locator = "JO50JP").apply { qrb = 100.0 }
         val shown = station("DL2SHOW", 2, locator = "JO62QM").apply { qrb = 800.0 }
@@ -568,21 +602,128 @@ class StationMapWindowScreenTest {
         state.stations.rowFilter = { state.stationFilter.acceptsQrb(it.qrb) }
         val analysis = RecordingPathAnalysis()
         val mapState = mapLookingAt(ownLocator, zoom = 9f)
-        val home = Location(ownLocator)
 
         show(state, listOf(hidden, shown), mapState, analysis)
 
-        runOnIdle { state.selectedStation.select(hidden) }
+        runOnIdle { state.selectStation(hidden, StationSelectionSource.PRIORITY) }
         waitForIdle()
 
-        assertEquals(emptyList<ChatMember>(), analysis.requested, "a hidden station was analysed")
-        onAllNodesWithText("Loading", substring = true).assertCountEquals(0)
-        assertEquals(home.longitude.toDegrees(), mapState.centerLon, 1e-9, "the map panned to a hidden station")
-
-        runOnIdle { state.selectedStation.select(shown) }
-        waitForIdle()
-
-        assertEquals(listOf(shown), analysis.requested)
+        assertEquals(listOf(hidden), analysis.requested, "the selected hidden target was not analysed")
         assertEquals(true, onAllNodesWithText("Loading", substring = true).fetchSemanticsNodes().isNotEmpty())
+        onNodeWithText("Showing 1 visible stations | filtered view active", substring = true).assertExists()
+
+        runOnIdle { state.selectStation(shown, StationSelectionSource.PRIORITY) }
+        waitForIdle()
+
+        assertEquals(listOf(hidden, shown), analysis.requested)
+        assertEquals(true, onAllNodesWithText("Loading", substring = true).fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun filteredSelectedMarkerWinsHitTestingWhenAnotherMarkerOverlapsIt() = runComposeUiTest {
+        val state = windowState(prefs())
+        val hidden = station("DL1HIDE", 2, locator = ownLocator).apply { qrb = 100.0 }
+        val shown = station("DL2SHOW", 2, locator = ownLocator).apply { qrb = 800.0 }
+        state.stationFilter.minQrbKm = 300.0
+        state.stationFilter.minQrbEnabled = true
+        state.stations.rowFilter = { state.stationFilter.acceptsQrb(it.qrb) }
+        val selections = mutableListOf<ChatMember?>()
+        state.stationSelector = { member, source ->
+            selections += member
+            state.selectedStation.select(member, source)
+        }
+
+        show(state, listOf(hidden, shown), mapLookingAt(ownLocator, zoom = 12f))
+        runOnIdle { state.selectStation(hidden, StationSelectionSource.PRIORITY) }
+        waitForIdle()
+        selections.clear()
+
+        onNodeWithTag(StationMapWindow.MAP_CANVAS_TAG).performMouseInput { click() }
+        waitForIdle()
+
+        assertEquals(listOf(hidden), selections)
+    }
+
+    @Test
+    fun rosterReconciliationDoesNotOverwriteManualCameraMovement() = runComposeUiTest {
+        val state = windowState(prefs())
+        val selected = station("DL1ABC", 2, locator = "JO50JP")
+        val mapState = mapLookingAt(ownLocator, zoom = 10f)
+        show(state, listOf(selected), mapState, RecordingPathAnalysis())
+
+        runOnIdle { state.selectStation(selected, StationSelectionSource.PUBLIC_MESSAGE) }
+        waitForIdle()
+        runOnIdle {
+            mapState.centerLon = 3.0
+            mapState.centerLat = 48.0
+            mapState.zoom = 11f
+            state.stations.replaceRows(listOf(station("DL1ABC", 2, locator = "JO50JP")))
+        }
+        waitForIdle()
+
+        assertEquals(3.0, mapState.centerLon, 1e-9)
+        assertEquals(48.0, mapState.centerLat, 1e-9)
+        assertEquals(11f, mapState.zoom)
+    }
+
+    @Test
+    fun explicitQtfNavigationPreservesZoomAndFilterResetDoesNotNavigate() = runComposeUiTest {
+        val state = windowState(prefs())
+        val mapState = mapLookingAt(ownLocator, zoom = 9.5f)
+        show(state, emptyList(), mapState)
+
+        runOnIdle { state.applyExplicitQtfFilterDirection(45.0) }
+        waitForIdle()
+        val qtfLon = mapState.centerLon
+        val qtfLat = mapState.centerLat
+        assertEquals(9.5f, mapState.zoom)
+        assertTrue(qtfLon > Location(ownLocator).longitude.toDegrees())
+        assertTrue(qtfLat > Location(ownLocator).latitude.toDegrees())
+
+        runOnIdle { state.resetStationFilters() }
+        waitForIdle()
+        assertEquals(qtfLon, mapState.centerLon, 1e-9)
+        assertEquals(qtfLat, mapState.centerLat, 1e-9)
+        assertEquals(9.5f, mapState.zoom)
+    }
+
+    @Test
+    fun QtfNavigationDoesNotRequireOrChangeManualAntennaHeading() = runComposeUiTest {
+        val prefs = prefs().apply {
+            setStn_useQtfFilterDirectionAsAntennaHeading(false)
+            actualQTF.set(123.0)
+        }
+        val state = windowState(prefs)
+        val mapState = mapLookingAt(ownLocator, zoom = 9.5f)
+        show(state, emptyList(), mapState)
+
+        runOnIdle { state.applyExplicitQtfFilterDirection(45.0) }
+        waitForIdle()
+
+        assertTrue(mapState.centerLon > Location(ownLocator).longitude.toDegrees())
+        assertTrue(mapState.centerLat > Location(ownLocator).latitude.toDegrees())
+        assertEquals(9.5f, mapState.zoom)
+        assertEquals(123.0, prefs.actualQTF.get(), 1e-9)
+    }
+
+    @Test
+    fun selectingTheSameStationAgainRepeatsPathNavigation() = runComposeUiTest {
+        val state = windowState(prefs())
+        val selected = station("DL1ABC", 2, locator = "JO50JP")
+        val mapState = mapLookingAt(ownLocator, zoom = 10f)
+        show(state, listOf(selected), mapState, RecordingPathAnalysis())
+
+        runOnIdle { state.selectStation(selected, StationSelectionSource.TIMELINE) }
+        waitForIdle()
+        val firstCentre = mapState.centerLon to mapState.centerLat
+        runOnIdle {
+            mapState.centerLon = 2.0
+            mapState.centerLat = 45.0
+            state.selectStation(selected, StationSelectionSource.TIMELINE)
+        }
+        waitForIdle()
+
+        assertEquals(firstCentre.first, mapState.centerLon, 1e-9)
+        assertEquals(firstCentre.second, mapState.centerLat, 1e-9)
     }
 }

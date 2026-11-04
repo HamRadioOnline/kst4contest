@@ -176,18 +176,32 @@ object StatusIndicators {
 class ThreadStatusButtons {
 
     private val bySource = LinkedHashMap<String, ThreadStatusButton>()
+    private val actions = LinkedHashMap<String, () -> Unit>()
+    private val statusProviders = LinkedHashMap<String, () -> ThreadStateMessage>()
     private val ordered = mutableStateListOf<ThreadStatusButton>()
 
     val buttons: List<ThreadStatusButton> get() = ordered
 
     fun update(sourceName: String, message: ThreadStateMessage) {
+        val effectiveMessage = statusProviders[sourceName]?.invoke() ?: message
         val button = bySource.getOrPut(sourceName) {
-            ThreadStatusButton(sourceName).also { ordered.add(it) }
+            ThreadStatusButton(sourceName, actions[sourceName]).also { ordered.add(it) }
         }
         button.report(
-            label = "$sourceName: ${message.runningInformationTextDescription}",
-            tooltip = message.runningInformation.orEmpty(),
+            label = "$sourceName: ${effectiveMessage.runningInformationTextDescription}",
+            tooltip = effectiveMessage.runningInformation.orEmpty(),
         )
+    }
+
+    /** Gives one status source an explicit action without changing any other source. */
+    fun registerAction(sourceName: String, action: () -> Unit) {
+        actions[sourceName] = action
+        bySource[sourceName]?.setAction(action)
+    }
+
+    /** Resolves a status only when its queued UI update is actually applied. */
+    fun registerStatusProvider(sourceName: String, provider: () -> ThreadStateMessage) {
+        statusProviders[sourceName] = provider
     }
 
     companion object {
@@ -197,7 +211,10 @@ class ThreadStatusButtons {
 }
 
 /** One background thread's button. */
-class ThreadStatusButton(val sourceName: String) {
+class ThreadStatusButton(
+    val sourceName: String,
+    initialAction: (() -> Unit)? = null,
+) {
 
     var label: String by mutableStateOf(sourceName)
         private set
@@ -212,6 +229,12 @@ class ThreadStatusButton(val sourceName: String) {
     var revision: Int by mutableStateOf(0)
         private set
 
+    var action: (() -> Unit)? by mutableStateOf(initialAction)
+        private set
+
+    val hasAction: Boolean
+        get() = action != null
+
     internal fun report(label: String, tooltip: String) {
         this.label = label
         this.tooltip = tooltip
@@ -221,5 +244,16 @@ class ThreadStatusButton(val sourceName: String) {
 
     fun clearHighlight() {
         highlighted = false
+    }
+
+    internal fun setAction(action: () -> Unit) {
+        this.action = action
+    }
+
+    /** Runs the registered action and reports whether this status is actionable. */
+    fun activate(): Boolean {
+        val current = action ?: return false
+        current()
+        return true
     }
 }

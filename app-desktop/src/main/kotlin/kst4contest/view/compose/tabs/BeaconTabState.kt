@@ -12,8 +12,9 @@ import kst4contest.view.compose.setting
  * The two commit methods are the ports of `applyBeaconTextSetting` and
  * `applySharedBeaconInterval`. Both returned nothing and opened an alert; here they
  * return the refusal text instead, so the tab decides how to show it and a test can
- * read it. An accepted value is staged in the window's [SettingsDraft] and takes effect
- * when the operator applies it; a refused one never gets there.
+ * read it. Accepted templates and intervals are staged in the window's [SettingsDraft]
+ * and take effect when the operator applies them. The two enable switches deliberately
+ * bypass the draft so the running timer sees their values immediately.
  *
  * @param validateBeaconTemplate throws IllegalArgumentException with the reason,
  *        the contract of `ChatController.validateBeaconTemplate`.
@@ -27,15 +28,20 @@ class BeaconTabState(
     private val restartBeaconTimer: () -> Unit,
     val mainCategoryName: String,
     val secondCategoryName: String,
+    private val setMainBeaconEnabled: (Boolean) -> Unit = prefs::setBcn_beaconsEnabledMainCat,
+    private val setSecondBeaconEnabled: (Boolean) -> Unit = prefs::setBcn_beaconsEnabledSecondCat,
 ) {
 
-    var bcn_beaconsEnabledMainCat: Boolean by draft.setting(
-        { prefs.isBcn_beaconsEnabledMainCat() },
-    ) { prefs.setBcn_beaconsEnabledMainCat(it) }
+    val mainBeaconEnabled = prefs.bcnBeaconsEnabledMainCatProperty()
+    val secondBeaconEnabled = prefs.bcnBeaconsEnabledSecondCatProperty()
 
-    var bcn_beaconsEnabledSecondCat: Boolean by draft.setting(
-        { prefs.isBcn_beaconsEnabledSecondCat() },
-    ) { prefs.setBcn_beaconsEnabledSecondCat(it) }
+    var bcn_beaconsEnabledMainCat: Boolean
+        get() = prefs.isBcn_beaconsEnabledMainCat()
+        set(value) = setMainBeaconEnabled(value)
+
+    var bcn_beaconsEnabledSecondCat: Boolean
+        get() = prefs.isBcn_beaconsEnabledSecondCat()
+        set(value) = setSecondBeaconEnabled(value)
 
     private var textMainCat: String by draft.setting(
         { prefs.getBcn_beaconTextMainCat() },
@@ -69,7 +75,7 @@ class BeaconTabState(
      *
      * The clamp is not cosmetic: a stored zero would otherwise be displayed as a
      * valid setting while `ChatController` sends at the minimum anyway
-     * (ChatController:3425). The JavaFX field applied the same `Math.max` when it
+     * when scheduling the timer. The JavaFX field applied the same `Math.max` when it
      * restored the value after a rejected entry.
      */
     val beaconIntervalMinutes: Int

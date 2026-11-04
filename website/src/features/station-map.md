@@ -29,7 +29,7 @@ A table is efficient when callsigns, scores or QRBs need to be sorted. It is les
 
 Since version 1.41, the KST4Contest station map provides this geographical view of the same operating context. It is not an independent list. The filters applied to the chat-member table also determine which stations appear on the map.
 
-![Station map with path analysis](/manual/assets/station_map_path_analysis.png)
+![Station map with a selected path, red antenna sector and active blue QRB range](/manual/assets/station_map_spatial_filters.png)
 
 ## A geographical contest worklist
 
@@ -39,8 +39,11 @@ The map retains the context already known by KST4Contest:
 
 - normal, Worked, directional-opportunity and selected marker states;
 - known bands and open `B+` opportunities;
-- the configured antenna direction, beamwidth and maximum QRB as a visible sector; and
+- the configured antenna direction, beamwidth and maximum QRB as a visible sector;
+- active QTF and QRB filters as a separate semi-transparent sector, circle or distance ring; and
 - a Maidenhead locator grid for geographical orientation.
+
+When either overlay is visible, the compact header legend identifies the red antenna sector and the blue active-filter area.
 
 Only stations with a usable six-character locator can be positioned. Active chat variants of the same normalised base callsign are combined into one marker, while their actual message destinations remain separate.
 
@@ -50,11 +53,15 @@ Green has a specific meaning: it marks a directional opportunity derived from di
 
 ## Selection remains connected to the chat
 
-Selecting a marker selects the corresponding active chat member in the main window. KST4Contest scrolls to the entry in the user list, updates **Further Info** and prepares the complete visible callsign as the message target.
+Selecting a marker selects the corresponding active chat member in the main window. KST4Contest scrolls to the entry in the user list, updates **Further Info** and prepares the complete visible callsign as the message target. Explicit selections from the user list, messages, Priority, New joined, Timeline and other station controls use the same navigation action.
 
 The suffix and chat category are retained. Combining several active variants into one geographical marker therefore does not turn them into one interchangeable ON4KST login.
 
-The selected path is shown as a connection line. The map can then remain a quick selection surface or be used together with the lower path-analysis panel.
+The selected path is shown as a high-contrast connection line. The map keeps the current zoom if both ends already fit and otherwise zooms out until the complete path is visible. Ordinary station updates and asynchronous analysis results do not take over the camera.
+
+An explicit QTF entry or compass-button click centres the map towards that directional sector while preserving the zoom. This is map navigation only: it neither sends a rotor command nor changes the rules for the optional QTF-to-antenna-heading transfer.
+
+If a filter hides the selected station, the marker and path remain visible as a separate selected target. The station is not added back to the filtered marker count or clustering result.
 
 ## G1YBB's map-driven workflow
 

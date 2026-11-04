@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import kst4contest.controller.On4KstConnectionState
 import kst4contest.model.ChatPreferences
 import kst4contest.observe.SimpleRoster
+import kst4contest.view.compose.map.MapDisplaySettingsState
+import kst4contest.view.compose.map.MapNavigationState
 
 /**
  * Everything the main window draws, in one object.
@@ -67,6 +69,19 @@ class MainWindowState(
     val reachability: ReachabilityState = ReachabilityState(activeBands),
 ) {
 
+    internal val mapNavigation = MapNavigationState()
+
+    internal val mapDisplaySettings = MapDisplaySettingsState(prefs)
+
+    init {
+        stationSelection.explicitSelectionListener = { member, source ->
+            when {
+                source == StationSelectionSource.RESET_VIEW -> mapNavigation.resetToHome()
+                member != null -> StationIdentity.of(member)?.let(mapNavigation::fitSelectedPath)
+            }
+        }
+    }
+
     /** Explicit map analysis requested from either station context menu. */
     val mapReachability = MapReachabilityState(prefs.stn_loginLocatorMainCat.orEmpty())
 
@@ -111,7 +126,13 @@ class MainWindowState(
 
     /** Applies only a deliberate QTF filter entry, never a restored or reset filter value. */
     fun applyExplicitQtfFilterDirection(qtf: Double) {
+        mapNavigation.centerOnQtf(qtf)
         applyExplicitQtfHeading(prefs, qtf)
+    }
+
+    /** Refreshes map geometry after the Station settings draft has been applied. */
+    fun refreshMapDisplaySettings() {
+        mapDisplaySettings.refreshFromPreferences()
     }
 
     fun requestLayoutSave() {

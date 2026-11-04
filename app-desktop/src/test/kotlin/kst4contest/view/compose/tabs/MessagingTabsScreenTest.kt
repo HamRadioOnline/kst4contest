@@ -3,6 +3,7 @@ package kst4contest.view.compose.tabs
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onAllNodesWithText
@@ -188,6 +189,19 @@ class MessagingTabsScreenTest {
         assertEquals(0, s.restarts, "opening the tab restarted the beacon timer")
         assertTrue(s.refusals.isEmpty(), "opening the tab reported: ${s.refusals}")
         assertEquals("cq %foo%", s.prefs.bcn_beaconTextMainCat)
+    }
+
+    @Test
+    fun anExternalBeaconToggleUpdatesTheOpenSettingsTab() = runComposeUiTest {
+        val s = Beacon(preferences())
+        s.prefs.isBcn_beaconsEnabledMainCat = false
+        showTab { BeaconTab(s.state) { s.refusals += it } }
+        checkBeside("Send the beacon in this category").assertIsOff()
+
+        runOnIdle { s.prefs.isBcn_beaconsEnabledMainCat = true }
+        waitForIdle()
+
+        checkBeside("Send the beacon in this category").assertIsOn()
     }
 
     /*

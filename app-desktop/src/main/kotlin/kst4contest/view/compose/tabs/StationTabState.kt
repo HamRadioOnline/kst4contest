@@ -44,6 +44,10 @@ class StationTabState(
      * TRX synch tab through [SECOND_ROTATOR], so it runs once per apply.
      */
     private val applySecondRotator: () -> Unit = {},
+    /** Recomputes status whose available-count depends on the second-chat switch. */
+    private val refreshBeaconStatus: () -> Unit = {},
+    /** Repaints applied beam geometry and dependent QTF results in the running UI. */
+    private val applyMapDisplaySettings: () -> Unit = {},
 ) {
 
     var loginChatCategoryMain: ChatCategory?
@@ -55,7 +59,11 @@ class StationTabState(
         get() = prefs.getLoginChatCategorySecond()
         set(value) { prefs.setLoginChatCategorySecond(value) }
 
-    var stn_antennaBeamWidthDeg: Double by draft.setting({ prefs.getStn_antennaBeamWidthDeg() }) { prefs.setStn_antennaBeamWidthDeg(it) }
+    var stn_antennaBeamWidthDeg: Double by draft.setting(
+        { prefs.getStn_antennaBeamWidthDeg() },
+        effectKey = MAP_DISPLAY_SETTINGS,
+        effect = applyMapDisplaySettings,
+    ) { prefs.setStn_antennaBeamWidthDeg(it) }
 
     var stn_bandActive10G: Boolean by draft.setting({ prefs.isStn_bandActive10G() }) { prefs.setStn_bandActive10G(it) }
 
@@ -95,7 +103,11 @@ class StationTabState(
         get() = prefs.getStn_loginPassword()
         set(value) { prefs.setStn_loginPassword(value) }
 
-    var stn_maxQRBDefault: Double by draft.setting({ prefs.getStn_maxQRBDefault() }) { prefs.setStn_maxQRBDefault(it) }
+    var stn_maxQRBDefault: Double by draft.setting(
+        { prefs.getStn_maxQRBDefault() },
+        effectKey = MAP_DISPLAY_SETTINGS,
+        effect = applyMapDisplaySettings,
+    ) { prefs.setStn_maxQRBDefault(it) }
 
     var stn_on4kstServersDns: String by draft.setting({ prefs.getStn_on4kstServersDns() }) { prefs.setStn_on4kstServersDns(it) }
 
@@ -234,7 +246,10 @@ class StationTabState(
      * pickers it governs. It decides what the Connect button does, so it belongs with
      * the login settings and not with the display options.
      */
-    var loginToSecondChatEnabled: Boolean by draft.setting({ prefs.isLoginToSecondChatEnabled() }) { prefs.setLoginToSecondChatEnabled(it) }
+    var loginToSecondChatEnabled: Boolean by draft.setting(
+        { prefs.isLoginToSecondChatEnabled() },
+        effect = { refreshBeaconStatus() },
+    ) { prefs.setLoginToSecondChatEnabled(it) }
 
     /**
      * Whether the login fields may be edited. The JavaFX window disabled callsign,
@@ -288,6 +303,9 @@ class StationTabState(
     companion object {
         /** The effect key of everything that restarts rotator 2; shared with the TRX synch tab. */
         const val SECOND_ROTATOR: String = "secondRotator"
+
+        /** Shared effect for the two settings that define the map's antenna sector. */
+        const val MAP_DISPLAY_SETTINGS: String = "mapDisplaySettings"
 
         /**
          * Whether two PSTRotator ports collide: the same port, or one apart because

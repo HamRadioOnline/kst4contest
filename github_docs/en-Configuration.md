@@ -4,7 +4,7 @@
 
 After the first start, the **settings window** opens – this is the central starting point for all configuration. It is recommended to keep the settings window open during operation (e.g. to quickly toggle the beacon on and off).
 
-> **Important**: Changes in the settings window take effect when you click **Apply/Close prefs** or **Save Settings**; **Connect** applies them first as well. Closing the window, switching the operator profile or exiting with changes pending first asks whether to apply or discard them, or to go back. Colours, the language and the login data on the **Station** tab take effect immediately.
+> **Important**: Changes in the settings window take effect when you click **Apply/Close prefs** or **Save Settings**; **Connect** applies them first as well. Closing the window, switching the operator profile or exiting with changes pending first asks whether to apply or discard them, or to go back. Colours, the language, the login data on the **Station** tab and both beacon enable settings take effect immediately.
 >
 > Use **Save Settings** for functional settings which should remain in effect after the next start. KST4Contest saves layout changes such as window sizes, divider positions and table-column widths automatically. The shared file is `~/.praktiKST/preferences.xml` on Linux and macOS and `%USERPROFILE%\.praktiKST\preferences.xml` (or `C:\Users\<Username>\.praktiKST\preferences.xml`) on Windows.
 
@@ -602,6 +602,10 @@ KST4Contest uses one shared timer for both chat categories. Each category nevert
 - **Shared beacon interval** sets the common interval used by both categories.
 
 When both beacons are enabled, they are sent one after the other in their respective categories during the same timer run. The second beacon is only considered while the second category is enabled and fully synchronised in the same ON4KST session.
+
+Both enable settings affect the running timer immediately. They neither restart the countdown nor send a message straight away; the next regular timer run checks the current state. Only **Save Settings** stores the enable state for the next program start. Message templates and the interval continue to follow the normal Apply/Save workflow.
+
+The **MyBeacon** status chip in the main window combines the currently usable categories: **off** means that no beacon is enabled, **1/2** that one of two categories is enabled, and **on** that every usable category is enabled. Clicking the chip enables or disables all usable beacons together. If the second chat is disabled, the chip changes only the primary-category beacon and leaves the stored secondary-beacon setting untouched.
 
 ### Interval and timer behaviour
 

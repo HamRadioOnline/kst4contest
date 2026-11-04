@@ -203,4 +203,12 @@ class MapViewportTest {
         assertEquals(179.0, new MapViewport(-181.0, 0.0, 6.0, 800.0, 600.0).centerLon(), TOLERANCE_DEG);
         assertEquals(0.0, new MapViewport(360.0, 0.0, 6.0, 800.0, 600.0).centerLon(), TOLERANCE_DEG);
     }
+
+    @Test
+    void wrapped_screen_coordinates_use_the_nearest_world_copy() {
+        MapViewport viewport = new MapViewport(179.0, 0.0, 6.0, 800.0, 600.0);
+
+        assertTrue(Math.abs(viewport.screenXWrapped(-179.0) - viewport.screenXWrapped(179.0)) < 100.0);
+        assertTrue(Math.abs(viewport.screenX(-179.0) - viewport.screenX(179.0)) > 10_000.0);
+    }
 }

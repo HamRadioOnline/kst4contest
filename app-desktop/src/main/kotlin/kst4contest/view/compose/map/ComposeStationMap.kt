@@ -112,10 +112,15 @@ fun ComposeStationMap(
     antennaAzimuthDeg: Double,
     antennaBeamWidthDeg: Double,
     maxQrbKm: Double,
+    selectedTarget: MapCallsignRawSnapshot? = markers.firstOrNull {
+        it.callSignRaw() == selectedMarkerCallsign
+    },
+    spatialFilterOverlay: SpatialFilterOverlayState? = null,
     onMarkerClicked: ((MapCallsignRawSnapshot) -> Unit)?,
     onMarkerContextRequested: ((List<MapCallsignRawSnapshot>, IntOffset) -> Unit)? = null,
     workedGrossFields: Set<String> = emptySet(),
     darkMode: Boolean = true,
+    onCanvasSizeChanged: (Size) -> Unit = { },
     modifier: Modifier = Modifier,
 ) {
     val imageCache = remember { TileBitmapCache() }
@@ -147,6 +152,13 @@ fun ComposeStationMap(
      * one linear pass over a few hundred markers.
      */
     val home = remember(ownLocator6) { homePosition(ownLocator6) }
+    val selectedTargetOutsideMarkers by remember(markers, selectedTarget) {
+        derivedStateOf {
+            selectedTarget?.takeIf { target ->
+                target.hasUsablePosition() && markers.none { it.callSignRaw() == target.callSignRaw() }
+            }
+        }
+    }
     val clusterResult by remember(markers, groupingEnabled, canvasSize) {
         derivedStateOf {
             StationMapClusterer.cluster(
@@ -205,17 +217,28 @@ fun ComposeStationMap(
     Canvas(
         modifier = modifier
             .clipToBounds()
-            .onSizeChanged { canvasSize = Size(it.width.toFloat(), it.height.toFloat()) }
+            .onSizeChanged {
+                canvasSize = Size(it.width.toFloat(), it.height.toFloat())
+                onCanvasSizeChanged(canvasSize)
+            }
             .onGloballyPositioned { canvasCoordinates = it }
             .onPointerEvent(PointerEventType.Press) { event ->
                 if (event.buttons.isSecondaryPressed) {
                     val local = event.changes.firstOrNull()?.position ?: return@onPointerEvent
                     val viewport = mapState.viewportFor(canvasSize.width, canvasSize.height)
                     val result = StationMapClusterer.cluster(markers, viewport, groupingEnabled)
+                    val selectedOutside = selectedTargetOutsideMarkers?.takeIf { marker ->
+                        within(
+                            local,
+                            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
+                            viewport.screenY(marker.latitudeDeg()).toFloat(),
+                            MARKER_HIT_RADIUS_PX,
+                        )
+                    }
                     val cluster = result.clusters().firstOrNull { candidate ->
                         within(
                             local,
-                            viewport.screenX(candidate.centerLon).toFloat(),
+                            viewport.screenXWrapped(candidate.centerLon).toFloat(),
                             viewport.screenY(candidate.centerLat).toFloat(),
                             clusterRadiusPx(candidate.size()),
                         )
@@ -223,12 +246,14 @@ fun ComposeStationMap(
                     val individual = result.individual().firstOrNull { marker ->
                         within(
                             local,
-                            viewport.screenX(marker.longitudeDeg()).toFloat(),
+                            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
                             viewport.screenY(marker.latitudeDeg()).toFloat(),
                             MARKER_HIT_RADIUS_PX,
                         )
                     }
-                    val targets = cluster?.getMarkers() ?: individual?.let(::listOf)
+                    val targets = selectedOutside?.let(::listOf)
+                        ?: cluster?.getMarkers()
+                        ?: individual?.let(::listOf)
                     val window = canvasCoordinates?.localToWindow(local)
                     if (!targets.isNullOrEmpty() && window != null) {
                         onMarkerContextRequested?.invoke(
@@ -281,15 +306,28 @@ fun ComposeStationMap(
                     }
                 }
             }
-            .pointerInput(markers, groupingEnabled, onMarkerClicked) {
+            .pointerInput(markers, selectedTargetOutsideMarkers, groupingEnabled, onMarkerClicked) {
                 detectTapGestures { offset ->
                     val viewport = mapState.viewportFor(size.width.toFloat(), size.height.toFloat())
                     val result = StationMapClusterer.cluster(markers, viewport, groupingEnabled)
 
+                    val selectedOutside = selectedTargetOutsideMarkers?.takeIf { marker ->
+                        within(
+                            offset,
+                            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
+                            viewport.screenY(marker.latitudeDeg()).toFloat(),
+                            MARKER_HIT_RADIUS_PX,
+                        )
+                    }
+                    if (selectedOutside != null) {
+                        onMarkerClicked?.invoke(selectedOutside)
+                        return@detectTapGestures
+                    }
+
                     val hitCluster = result.clusters().firstOrNull { cluster ->
                         within(
                             offset,
-                            viewport.screenX(cluster.centerLon).toFloat(),
+                            viewport.screenXWrapped(cluster.centerLon).toFloat(),
                             viewport.screenY(cluster.centerLat).toFloat(),
                             clusterRadiusPx(cluster.size()),
                         )
@@ -312,14 +350,12 @@ fun ComposeStationMap(
                     val hit = result.individual().firstOrNull { marker ->
                         within(
                             offset,
-                            viewport.screenX(marker.longitudeDeg()).toFloat(),
+                            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
                             viewport.screenY(marker.latitudeDeg()).toFloat(),
                             MARKER_HIT_RADIUS_PX,
                         )
                     }
-                    if (hit != null) {
-                        onMarkerClicked?.invoke(hit)
-                    }
+                    if (hit != null) onMarkerClicked?.invoke(hit)
                 }
             }
     ) {
@@ -335,11 +371,34 @@ fun ComposeStationMap(
         drawRect(color = if (darkMode) MAP_BACKGROUND_DARK else MAP_BACKGROUND_LIGHT)
 
         drawTiles(viewport, imageCache, darkMode)
+        if (home != null && spatialFilterOverlay != null) {
+            drawSpatialFilterOverlay(
+                viewport = viewport,
+                homeLatitudeDeg = home.first,
+                homeLongitudeDeg = home.second,
+                state = spatialFilterOverlay,
+                darkMode = darkMode,
+            )
+        }
         drawMaidenheadGrid(viewport, textMeasurer, darkMode)
         drawWorkedGrossFields(viewport, workedGrossFields)
-        drawBeamAndPath(viewport, home, antennaAzimuthDeg, antennaBeamWidthDeg, maxQrbKm, markers, selectedMarkerCallsign, darkMode)
+        drawBeamAndPath(
+            viewport,
+            home,
+            antennaAzimuthDeg,
+            antennaBeamWidthDeg,
+            maxQrbKm,
+            selectedTarget,
+            darkMode,
+        )
         drawStations(viewport, clusterResult, selectedMarkerCallsign, textMeasurer, darkMode)
-        drawHover(viewport, hoverPosition, clusterResult, textMeasurer)
+        selectedTargetOutsideMarkers?.let { target ->
+            val x = viewport.screenXWrapped(target.longitudeDeg()).toFloat()
+            val y = viewport.screenY(target.latitudeDeg()).toFloat()
+            drawStationDot(x, y, selected = true, worked = target.worked(), warning = target.warningToMyDirection())
+            drawStationLabel(x, y, target.markerLabel(), target.warningToMyDirection(), textMeasurer, darkMode)
+        }
+        drawHover(viewport, hoverPosition, clusterResult, selectedTargetOutsideMarkers, textMeasurer)
     }
 }
 
@@ -474,8 +533,8 @@ private fun DrawScope.drawMaidenheadGrid(
     val verticals = sortedSetOf<Float>()
     val horizontals = sortedSetOf<Float>()
     for (cell in cells) {
-        verticals.add(viewport.screenX(cell.westLon()).toFloat())
-        verticals.add(viewport.screenX(cell.eastLon()).toFloat())
+        verticals.add(viewport.screenXWrapped(cell.westLon()).toFloat())
+        verticals.add(viewport.screenXWrapped(cell.eastLon()).toFloat())
         horizontals.add(viewport.screenY(cell.northLat()).toFloat())
         horizontals.add(viewport.screenY(cell.southLat()).toFloat())
     }
@@ -516,7 +575,7 @@ private fun DrawScope.drawMaidenheadGrid(
         }
 
         /* Centred in the cell, the way the stylesheet's translate(-50%, -50%) was. */
-        val centerX = viewport.screenX((cell.westLon() + cell.eastLon()) / 2.0).toFloat()
+        val centerX = viewport.screenXWrapped((cell.westLon() + cell.eastLon()) / 2.0).toFloat()
         val centerY = viewport.screenY((cell.southLat() + cell.northLat()) / 2.0).toFloat()
 
         val layout = textMeasurer.measure(cell.locatorLabel(), style = labelStyle)
@@ -540,8 +599,7 @@ private fun DrawScope.drawBeamAndPath(
     antennaAzimuthDeg: Double,
     antennaBeamWidthDeg: Double,
     maxQrbKm: Double,
-    markers: List<MapCallsignRawSnapshot>,
-    selectedMarkerCallsign: String?,
+    selectedTarget: MapCallsignRawSnapshot?,
     darkMode: Boolean,
 ) {
     if (home == null) {
@@ -549,32 +607,40 @@ private fun DrawScope.drawBeamAndPath(
     }
     val (homeLat, homeLon) = home
 
-    if (antennaBeamWidthDeg > 0.0 && maxQrbKm > 0.0) {
+    if (isAntennaSectorDrawable(home, antennaAzimuthDeg, antennaBeamWidthDeg, maxQrbKm)) {
         val polygon = Path()
         buildBeamPolygon(homeLat, homeLon, antennaAzimuthDeg, antennaBeamWidthDeg, maxQrbKm)
             .forEachIndexed { index, point ->
-                val x = viewport.screenX(point.second).toFloat()
+                val x = viewport.screenXWrapped(point.second).toFloat()
                 val y = viewport.screenY(point.first).toFloat()
                 if (index == 0) polygon.moveTo(x, y) else polygon.lineTo(x, y)
             }
         polygon.close()
 
-        drawPath(path = polygon, color = BEAM_COLOR, alpha = BEAM_FILL_ALPHA, style = Fill)
-        drawPath(path = polygon, color = BEAM_COLOR, style = Stroke(width = BEAM_STROKE_WIDTH_PX))
+        drawPath(path = polygon, color = ANTENNA_OVERLAY_COLOR, alpha = BEAM_FILL_ALPHA, style = Fill)
+        drawPath(path = polygon, color = ANTENNA_OVERLAY_COLOR, style = Stroke(width = BEAM_STROKE_WIDTH_PX))
     }
 
-    val selected = markers.firstOrNull {
-        it.callSignRaw() == selectedMarkerCallsign && it.hasUsablePosition()
-    }
+    val selected = selectedTarget?.takeIf(MapCallsignRawSnapshot::hasUsablePosition)
     if (selected != null) {
+        val start = Offset(viewport.screenXWrapped(homeLon).toFloat(), viewport.screenY(homeLat).toFloat())
+        val end = Offset(
+            viewport.screenXWrapped(selected.longitudeDeg()).toFloat(),
+            viewport.screenY(selected.latitudeDeg()).toFloat(),
+        )
+        drawLine(
+            color = if (darkMode) CONNECTION_HALO_DARK else CONNECTION_HALO_LIGHT,
+            alpha = CONNECTION_HALO_ALPHA,
+            start = start,
+            end = end,
+            strokeWidth = CONNECTION_HALO_WIDTH_PX,
+            pathEffect = PathEffect.dashPathEffect(CONNECTION_DASH_PX),
+        )
         drawLine(
             color = if (darkMode) CONNECTION_COLOR_DARK else CONNECTION_COLOR_LIGHT,
             alpha = CONNECTION_ALPHA,
-            start = Offset(viewport.screenX(homeLon).toFloat(), viewport.screenY(homeLat).toFloat()),
-            end = Offset(
-                viewport.screenX(selected.longitudeDeg()).toFloat(),
-                viewport.screenY(selected.latitudeDeg()).toFloat(),
-            ),
+            start = start,
+            end = end,
             strokeWidth = CONNECTION_STROKE_WIDTH_PX,
             pathEffect = PathEffect.dashPathEffect(CONNECTION_DASH_PX),
         )
@@ -585,9 +651,9 @@ private fun DrawScope.drawBeamAndPath(
      * home is, and with the beam switched off there was none. A small dot is kept here
      * deliberately.
      */
-    val homeX = viewport.screenX(homeLon).toFloat()
+    val homeX = viewport.screenXWrapped(homeLon).toFloat()
     val homeY = viewport.screenY(homeLat).toFloat()
-    drawCircle(color = BEAM_COLOR, radius = HOME_RADIUS_PX, center = Offset(homeX, homeY))
+    drawCircle(color = ANTENNA_OVERLAY_COLOR, radius = HOME_RADIUS_PX, center = Offset(homeX, homeY))
     drawCircle(color = Color.White, radius = HOME_INNER_RADIUS_PX, center = Offset(homeX, homeY))
 }
 
@@ -602,7 +668,7 @@ private fun DrawScope.drawStations(
 ) {
     for (cluster in clusterResult.clusters()) {
         drawClusterBubble(
-            x = viewport.screenX(cluster.centerLon).toFloat(),
+            x = viewport.screenXWrapped(cluster.centerLon).toFloat(),
             y = viewport.screenY(cluster.centerLat).toFloat(),
             count = cluster.size(),
             containsWorked = cluster.getMarkers().any { it.worked() },
@@ -611,7 +677,7 @@ private fun DrawScope.drawStations(
     }
 
     for (marker in clusterResult.individual()) {
-        val x = viewport.screenX(marker.longitudeDeg()).toFloat()
+        val x = viewport.screenXWrapped(marker.longitudeDeg()).toFloat()
         val y = viewport.screenY(marker.latitudeDeg()).toFloat()
         val selected = marker.callSignRaw() == selectedMarkerCallsign
 
@@ -729,14 +795,23 @@ private fun DrawScope.drawHover(
     viewport: MapViewport,
     hoverPosition: Offset?,
     clusterResult: StationMapClusterer.Result,
+    selectedTargetOutsideMarkers: MapCallsignRawSnapshot?,
     textMeasurer: TextMeasurer,
 ) {
     val position = hoverPosition ?: return
 
+    val selectedTargetUnderPointer = selectedTargetOutsideMarkers?.takeIf { marker ->
+        within(
+            position,
+            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
+            viewport.screenY(marker.latitudeDeg()).toFloat(),
+            MARKER_HIT_RADIUS_PX,
+        )
+    }
     val clusterUnderPointer = clusterResult.clusters().firstOrNull { cluster ->
         within(
             position,
-            viewport.screenX(cluster.centerLon).toFloat(),
+            viewport.screenXWrapped(cluster.centerLon).toFloat(),
             viewport.screenY(cluster.centerLat).toFloat(),
             clusterRadiusPx(cluster.size()),
         )
@@ -744,13 +819,14 @@ private fun DrawScope.drawHover(
     val markerUnderPointer = clusterResult.individual().firstOrNull { marker ->
         within(
             position,
-            viewport.screenX(marker.longitudeDeg()).toFloat(),
+            viewport.screenXWrapped(marker.longitudeDeg()).toFloat(),
             viewport.screenY(marker.latitudeDeg()).toFloat(),
             MARKER_HIT_RADIUS_PX,
         )
     }
-
     val text = when {
+        selectedTargetUnderPointer != null -> selectedTargetUnderPointer.tooltipText()
+
         clusterUnderPointer != null -> MapMarkerClusterTooltip.build(clusterUnderPointer)
 
         markerUnderPointer != null -> markerUnderPointer.tooltipText()
@@ -804,8 +880,8 @@ private fun DrawScope.drawWorkedGrossFields(
     workedGrossFields: Set<String>,
 ) {
     visibleWorkedGrossFieldCells(viewport, workedGrossFields).forEach { cell ->
-        val left = viewport.screenX(cell.westLon()).toFloat()
-        val right = viewport.screenX(cell.eastLon()).toFloat()
+        val left = viewport.screenXWrapped(cell.westLon()).toFloat()
+        val right = viewport.screenXWrapped(cell.eastLon()).toFloat()
         val top = viewport.screenY(cell.northLat()).toFloat()
         val bottom = viewport.screenY(cell.southLat()).toFloat()
         val topLeft = Offset(minOf(left, right), minOf(top, bottom))
@@ -863,7 +939,7 @@ private fun clusterFontSizePx(count: Int): Float = when {
 }
 
 /** Null rather than a guess when the operator has no usable locator configured. */
-private fun homePosition(ownLocator6: String): Pair<Double, Double>? {
+internal fun homePosition(ownLocator6: String): Pair<Double, Double>? {
     if (ownLocator6.length < 4) {
         return null
     }
@@ -874,6 +950,15 @@ private fun homePosition(ownLocator6: String): Pair<Double, Double>? {
         null
     }
 }
+
+internal fun isAntennaSectorDrawable(
+    home: Pair<Double, Double>?,
+    antennaAzimuthDeg: Double,
+    antennaBeamWidthDeg: Double,
+    maxQrbKm: Double,
+): Boolean = home != null && antennaAzimuthDeg.isFinite() &&
+    antennaBeamWidthDeg.isFinite() && antennaBeamWidthDeg > 0.0 &&
+    maxQrbKm.isFinite() && maxQrbKm > 0.0
 
 fun calculateDestinationPoint(
     startLatDeg: Double,
@@ -982,16 +1067,20 @@ private const val CLUSTER_RADIUS_SMALL_PX = 16f
 private const val CLUSTER_RADIUS_MEDIUM_PX = 18f
 private const val CLUSTER_RADIUS_LARGE_PX = 21f
 
-private val BEAM_COLOR = Color(0xFFFF4D4D)
+internal val ANTENNA_OVERLAY_COLOR = Color(0xFFFF4D4D)
 private const val BEAM_FILL_ALPHA = 0.12f
 private const val BEAM_STROKE_WIDTH_PX = 2f
 private const val HOME_RADIUS_PX = 6f
 private const val HOME_INNER_RADIUS_PX = 2f
 
-private val CONNECTION_COLOR_DARK = Color(0xFF2FD7FF)
-private val CONNECTION_COLOR_LIGHT = Color(0xFF00A4CF)
-private const val CONNECTION_ALPHA = 0.85f
-private const val CONNECTION_STROKE_WIDTH_PX = 2f
+private val CONNECTION_COLOR_DARK = Color(0xFF52E7FF)
+private val CONNECTION_COLOR_LIGHT = Color(0xFF007A9E)
+private val CONNECTION_HALO_DARK = Color.White
+private val CONNECTION_HALO_LIGHT = Color.Black
+private const val CONNECTION_ALPHA = 0.98f
+private const val CONNECTION_HALO_ALPHA = 0.82f
+private const val CONNECTION_STROKE_WIDTH_PX = 3f
+private const val CONNECTION_HALO_WIDTH_PX = 5f
 private val CONNECTION_DASH_PX = floatArrayOf(6f, 6f)
 
 private val TOOLTIP_BACKGROUND = Color.White.copy(alpha = 0.92f)

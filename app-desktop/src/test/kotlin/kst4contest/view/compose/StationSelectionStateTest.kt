@@ -70,12 +70,27 @@ class StationSelectionStateTest {
         val state = StationSelectionState()
         state.select(station("DL1ABC", 2), StationSelectionSource.STATION_TABLE)
         val revision = state.scrollRequestRevision
+        val explicitRevision = state.explicitSelectionRevision
         val refreshed = station("DL1ABC", 2)
 
         state.reconcile(refreshed)
 
         assertSame(refreshed, state.selected)
         assertEquals(revision, state.scrollRequestRevision)
+        assertEquals(explicitRevision, state.explicitSelectionRevision)
+    }
+
+    @Test
+    fun `roster reconciliation does not publish explicit navigation`() {
+        val state = StationSelectionState()
+        val requests = mutableListOf<Pair<ChatMember?, StationSelectionSource>>()
+        state.explicitSelectionListener = { member, source -> requests += member to source }
+        state.select(station("DL1ABC", 2), StationSelectionSource.PUBLIC_MESSAGE)
+
+        state.reconcile(station("DL1ABC", 2))
+
+        assertEquals(1, requests.size)
+        assertEquals(StationSelectionSource.PUBLIC_MESSAGE, requests.single().second)
     }
 
     @Test

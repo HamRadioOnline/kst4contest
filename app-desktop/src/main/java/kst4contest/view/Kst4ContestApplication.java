@@ -3278,6 +3278,16 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 						}),
 				newJoined,
 				reachability);
+		composeMainWindowState.getThreadButtons().registerAction(
+				ChatController.BEACON_STATUS_SOURCE,
+				() -> {
+					chatcontroller.toggleUsableBeacons();
+					return kotlin.Unit.INSTANCE;
+				});
+		composeMainWindowState.getThreadButtons().registerStatusProvider(
+				ChatController.BEACON_STATUS_SOURCE,
+				chatcontroller::currentBeaconStatus);
+		chatcontroller.refreshBeaconStatus();
 
 		/*
 		 * The feed, not the window construction, owns the timeline's data from here.
@@ -4133,6 +4143,17 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 			MainWindowSurroundings target = composeMainWindowState.getSurroundings();
 			target.setSo2rEnabled(preferences.isTrxSynch_so2rEnabled());
 			target.setSecondAntennaOffered(preferences.isTrxSynch_so2rEnabled() && preferences.isStn_pstRotator2Enabled());
+		});
+	}
+
+	@Override
+	public void refreshMapDisplaySettings() {
+		uiDispatcher.runOnUi(() -> {
+			if (composeMainWindowState == null) {
+				return;
+			}
+			composeMainWindowState.refreshMapDisplaySettings();
+			forceChatMemberFilterRefresh();
 		});
 	}
 

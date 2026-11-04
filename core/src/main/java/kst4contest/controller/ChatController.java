@@ -64,9 +64,11 @@ public class ChatController implements ThreadStatusCallback {
 	private static final boolean DEBUG_BAND_UPGRADE_HINT = true; //for new band hint
 
 
-		public static final int MIN_BEACON_INTERVAL_MINUTES = 1;
+	public static final String BEACON_STATUS_SOURCE = "MyBeacon";
+	public static final int MIN_BEACON_INTERVAL_MINUTES = 1;
 	public static final int MAX_BEACON_TEXT_LENGTH = 120;
 	private static final long INITIAL_BEACON_DELAY_MILLIS = 10_000L;
+	private final BeaconStatus beaconStatus = new BeaconStatus();
 
 	private Consumer<Double> viewRotorCallback;
 
@@ -3379,6 +3381,64 @@ private SimpleRoster<String>
 
 	public void setDbHandler(DBController dbHandler) {
 		this.dbHandler = dbHandler;
+	}
+
+	/** Applies the main-category beacon switch to the running session immediately. */
+	public void setMainBeaconEnabled(boolean enabled) {
+		getChatPreferences().setBcn_beaconsEnabledMainCat(enabled);
+		publishBeaconStatus("Beacon configuration changed.");
+	}
+
+	/** Applies the second-category beacon switch to the running session immediately. */
+	public void setSecondBeaconEnabled(boolean enabled) {
+		getChatPreferences().setBcn_beaconsEnabledSecondCat(enabled);
+		publishBeaconStatus("Beacon configuration changed.");
+	}
+
+	/**
+	 * Toggles every beacon usable in the current chat configuration.
+	 *
+	 * <p>The dormant second-category preference is deliberately left unchanged when
+	 * the second chat is disabled. Enabling that chat later therefore restores the
+	 * operator's previous category-specific choice.</p>
+	 */
+	public void toggleUsableBeacons() {
+		ChatPreferences preferences = getChatPreferences();
+		boolean secondAvailable = preferences.isLoginToSecondChatEnabled();
+		boolean anyEnabled = preferences.isBcn_beaconsEnabledMainCat()
+				|| (secondAvailable
+				&& preferences.isBcn_beaconsEnabledSecondCat());
+		boolean enable = !anyEnabled;
+
+		preferences.setBcn_beaconsEnabledMainCat(enable);
+		if (secondAvailable) {
+			preferences.setBcn_beaconsEnabledSecondCat(enable);
+		}
+		publishBeaconStatus("Beacon status toggled from the main window.");
+	}
+
+	/** Publishes the loaded state without changing either category switch. */
+	public void refreshBeaconStatus() {
+		publishBeaconStatus("Beacon configuration loaded.");
+	}
+
+	/** Returns the shared state used by the timer and manual controls. */
+	BeaconStatus beaconStatusState() {
+		return beaconStatus;
+	}
+
+	/** Builds the current aggregate when the UI is ready to display it. */
+	public ThreadStateMessage currentBeaconStatus() {
+		return beaconStatus.message(getChatPreferences());
+	}
+
+	/** Publishes the aggregate state used by the single beacon status chip. */
+	private void publishBeaconStatus(String activity) {
+		beaconStatus.recordActivity(activity);
+		onThreadStatus(
+				BeaconStatus.SOURCE_NAME,
+				currentBeaconStatus()
+		);
 	}
 
 

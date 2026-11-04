@@ -174,6 +174,21 @@ class StationMapClustererTest {
         assertEquals(stations.size(), clustered + result.individual().size());
     }
 
+    @Test
+    void nearby_stations_across_the_anti_meridian_share_a_cluster() {
+        MapViewport viewport = new MapViewport(180.0, 0.0, 5.0, 1000.0, 800.0);
+        List<MapCallsignRawSnapshot> stations = List.of(
+                station("ZL1AAA", 0.0, 179.9),
+                station("ZL1BBB", 0.0, -179.9),
+                station("ZL1CCC", 0.01, 179.8)
+        );
+
+        StationMapClusterer.Result result = StationMapClusterer.cluster(stations, viewport, true);
+
+        assertEquals(1, result.clusters().size());
+        assertTrue(Math.abs(Math.abs(result.clusters().get(0).getCenterLon()) - 180.0) < 0.2);
+    }
+
     /**
      * Selecting a station moves the map to it. It must not throw the operator's zoom
      * away doing so.
