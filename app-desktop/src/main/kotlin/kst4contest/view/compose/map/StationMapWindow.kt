@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +28,7 @@ import kst4contest.view.compose.StationContextOverlays
 import kst4contest.view.compose.StationSelectionSource
 import kst4contest.view.map.MapCallsignRawSnapshotBuilder
 import kst4contest.view.map.PathAnalysisResult
+import kst4contest.view.map.MapViewportNavigation
 import kst4contest.view.map.StationMapStatusText
 import kst4contest.view.map.TileFetcher
 import java.util.EnumSet
@@ -108,9 +111,8 @@ object StationMapWindow {
      * @param chatMembers the roster a marker click looks its station up in; a marker stands
      *        for a raw callsign, and this is where its category variants come from
      * @param mapState where the map is looking
-     * @param pathAnalysis asked each time the selection changes; null means there is no
-     *        running application, and then the map neither pans nor analyses, exactly as
-     *        when no chat controller existed before the split
+     * @param pathAnalysis asked for an explicit selection; null disables only the terrain
+     *        analysis while viewport navigation remains available
      */
     @Composable
     internal fun Content(
@@ -151,8 +153,8 @@ object StationMapWindow {
             
             val ownLocator6 by remember { androidx.compose.runtime.mutableStateOf(mainWindowState.prefs.stn_loginLocatorMainCat) }
             val antennaAzimuthDeg = mainWindowState.antennaQtf.value
-            val antennaBeamWidthDeg = mainWindowState.prefs.stn_antennaBeamWidthDeg
-            val maxQrbKm = mainWindowState.prefs.stn_maxQRBDefault
+            val antennaBeamWidthDeg = mainWindowState.mapDisplaySettings.antennaBeamWidthDeg
+            val maxQrbKm = mainWindowState.mapDisplaySettings.maxQrbKm
 
             /*
              * The markers are the stations the list shows, not all of them (#21): the
@@ -184,20 +186,37 @@ object StationMapWindow {
                 }
             }
 
+            /*
+             * Selection is independent of the filtered marker set. A selected station
+             * remains a target even when an active filter removes its normal marker; it is
+             * drawn in a separate selection layer and never enters marker counts or clusters.
+             */
+            val selectedTarget by remember(
+                selectedMember,
+                mainWindowState.stations.contentRevision,
+                mainWindowState.activeBands,
+            ) {
+                derivedStateOf {
+                    selectedMember?.let { selected ->
+                        val variants = chatMembers().filter { it.callSignRaw == selected.callSignRaw }
+                            .ifEmpty { listOf(selected) }
+                        val bands = EnumSet.noneOf(Band::class.java).apply {
+                            addAll(mainWindowState.activeBands)
+                        }
+                        MapCallsignRawSnapshotBuilder()
+                            .buildSnapshots(variants, selected, bands)
+                            .firstOrNull()
+                    }
+                }
+            }
+
             var pathAnalysisResult by remember { mutableStateOf<PathAnalysisResult?>(null) }
             var automaticAnalysisRevision by remember { mutableStateOf(0L) }
 
             // Read through updated state so a caller passing a new lambda is never served a stale one.
             val currentPathAnalysis by rememberUpdatedState(pathAnalysis)
 
-            /*
-             * Whether the selected station has a marker. A filter can hide it (#21), and a
-             * station without a locator never has one; then there is nothing to analyse.
-             */
-            val selectedHasMarker = selectedMember != null &&
-                markers.any { it.callSignRaw() == selectedMember.callSignRaw }
-
-            LaunchedEffect(selectedMember, selectedHasMarker) {
+            LaunchedEffect(mainWindowState.stationSelection.explicitSelectionRevision) {
                 val automaticRequest = ++automaticAnalysisRevision
                 val explicitRevisionAtStart = mainWindowState.mapReachability.requestRevision
                 if (selectedMember == null) {
@@ -205,34 +224,15 @@ object StationMapWindow {
                     return@LaunchedEffect
                 }
 
-                val selectedSnapshot = markers.find { it.callSignRaw() == selectedMember.callSignRaw }
+                val selectedSnapshot = selectedTarget
                 if (selectedSnapshot == null) {
-                    // No marker: no request, and no "Loading" for a station the map does not show.
+                    // No valid locator: no request and no misleading loading state.
                     pathAnalysisResult = null
                     return@LaunchedEffect
                 }
 
                 val analysis = currentPathAnalysis()
                 if (analysis != null) {
-                    if (selectedSnapshot.hasUsablePosition()) {
-                        /*
-                         * Pan to the station and leave the zoom alone. The Leaflet map
-                         * did exactly this (focusCallsignRaw) and touched the zoom only
-                         * when the station was hidden inside a bubble, and then only far
-                         * enough to break the bubble open. An earlier Compose version
-                         * recomputed a zoom from a bounding box on every selection and
-                         * clamped it into 4..12, which threw an operator working at zoom
-                         * 15 out to about 7 every time they picked the next station.
-                         * AGENTS.md names zoom first among the things not to change as
-                         * an incidental side effect.
-                         */
-                        mapState.centerLon = selectedSnapshot.longitudeDeg()
-                        mapState.centerLat = selectedSnapshot.latitudeDeg()
-                        mapState.zoom = kst4contest.view.map.StationMapClusterer
-                            .zoomToRevealStations(mapState.zoom.toDouble(), groupingEnabled)
-                            .toFloat()
-                    }
-
                     pathAnalysisResult = PathAnalysisResult.loading(
                         prefs.stn_loginLocatorMainCat,
                         selectedSnapshot.locator6(),
@@ -246,6 +246,72 @@ object StationMapWindow {
                             pathAnalysisResult = result
                         }
                     }
+                }
+            }
+
+            var mapCanvasSize by remember { mutableStateOf(Size.Zero) }
+            var consumedNavigationRevision by remember(mapState) { mutableStateOf(Long.MIN_VALUE) }
+            val navigationRevision = mainWindowState.mapNavigation.requestRevision
+            val navigationRequest = mainWindowState.mapNavigation.request
+            val navigationPaddingPx = with(LocalDensity.current) { 40.dp.toPx().toDouble() }
+
+            LaunchedEffect(
+                navigationRevision,
+                navigationRequest,
+                mapCanvasSize,
+                selectedTarget,
+                ownLocator6,
+            ) {
+                if (navigationRevision == consumedNavigationRevision ||
+                    mapCanvasSize.width <= 0f || mapCanvasSize.height <= 0f
+                ) {
+                    return@LaunchedEffect
+                }
+
+                val home = runCatching { kst4contest.locatorUtils.Location(ownLocator6) }.getOrNull()
+                val current = mapState.viewportFor(mapCanvasSize.width, mapCanvasSize.height)
+                val next = when (val request = navigationRequest) {
+                    is MapNavigationRequest.FitSelectedPath -> {
+                        val target = selectedTarget
+                        if (home == null || target == null || !target.hasUsablePosition() ||
+                            request.identity != StationIdentity.of(selectedMember)
+                        ) {
+                            null
+                        } else {
+                            MapViewportNavigation.fitPath(
+                                current,
+                                home.latitude.toDegrees(),
+                                home.longitude.toDegrees(),
+                                target.latitudeDeg(),
+                                target.longitudeDeg(),
+                                navigationPaddingPx,
+                            )
+                        }
+                    }
+
+                    is MapNavigationRequest.CenterOnQtf -> {
+                        if (home == null) null else MapViewportNavigation.centreOnBearing(
+                            current,
+                            home.latitude.toDegrees(),
+                            home.longitude.toDegrees(),
+                            request.qtfDegrees,
+                            QTF_FORWARD_CENTRE_FRACTION,
+                        )
+                    }
+
+                    MapNavigationRequest.ResetToHome -> {
+                        if (home == null) null else MapViewportNavigation.centreOnHome(
+                            current,
+                            home.latitude.toDegrees(),
+                            home.longitude.toDegrees(),
+                        )
+                    }
+
+                    null -> null
+                }
+                consumedNavigationRevision = navigationRevision
+                if (next != null) {
+                    mapState.applyFrom(next)
                 }
             }
 
@@ -264,6 +330,24 @@ object StationMapWindow {
             } else {
                 emptySet()
             }
+            val spatialFilterOverlay = SpatialFilterOverlayState(
+                qtfEnabled = mainWindowState.stationFilter.qtfEnabled,
+                qtfDegrees = mainWindowState.stationFilter.qtfDegrees,
+                beamWidthDeg = antennaBeamWidthDeg,
+                minQrbEnabled = mainWindowState.stationFilter.minQrbEnabled,
+                minQrbKm = mainWindowState.stationFilter.minQrbKm,
+                maxQrbEnabled = mainWindowState.stationFilter.maxQrbEnabled,
+                maxQrbKm = mainWindowState.stationFilter.maxQrbKm,
+            )
+            val mapHome = remember(ownLocator6) { homePosition(ownLocator6) }
+            val showAntennaOverlay = isAntennaSectorDrawable(
+                mapHome,
+                antennaAzimuthDeg ?: 0.0,
+                antennaBeamWidthDeg,
+                maxQrbKm,
+            )
+            val showSpatialFilterOverlay = mapHome != null && spatialFilterOverlay.hasDrawableGeometry
+            val isDarkTheme = isDarkThemeState.value
 
             androidx.compose.material3.Surface(
                 color = androidx.compose.material3.MaterialTheme.colorScheme.background,
@@ -288,7 +372,7 @@ object StationMapWindow {
                         markers.size,
                         mainWindowState.stationFilter.activeFilters.isNotEmpty() ||
                             mainWindowState.stationFilter.searchText.isNotBlank(),
-                        markers.firstOrNull { it.callSignRaw() == selectedMember?.callSignRaw },
+                        selectedTarget,
                     )
 
                     /*
@@ -308,6 +392,12 @@ object StationMapWindow {
                         )
                     }
 
+                    MapOverlayLegend(
+                        showAntenna = showAntennaOverlay,
+                        showSpatialFilters = showSpatialFilterOverlay,
+                        darkMode = isDarkTheme,
+                    )
+
                     if (selectedMember != null) {
                         kst4contest.view.compose.Form.button(strings.mapTriggerClusterSpot) {
                             ApplicationRuntimeLauncher.getCurrent()?.chatController
@@ -317,12 +407,6 @@ object StationMapWindow {
 
                     kst4contest.view.compose.Form.button(strings.mapResetView) {
                         mainWindowState.selectStation(null, StationSelectionSource.RESET_VIEW)
-                        val home = runCatching {
-                            kst4contest.locatorUtils.Location(ownLocator6)
-                        }.getOrNull()
-                        mapState.centerLon = home?.longitude?.toDegrees() ?: 10.0
-                        mapState.centerLat = home?.latitude?.toDegrees() ?: 51.0
-                        /* The zoom is deliberately left alone; see AGENTS.md, UI behaviour. */
                     }
 
                     kst4contest.view.compose.Form.button(strings.filterReset) {
@@ -388,7 +472,6 @@ object StationMapWindow {
 
                 val leftPane: @Composable () -> Unit = {
                     Column(Modifier.fillMaxHeight()) {
-                        val isDarkTheme = isDarkThemeState.value
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth()) {
                         ComposeStationMap(
                             markers = markers,
@@ -400,8 +483,11 @@ object StationMapWindow {
                             antennaAzimuthDeg = antennaAzimuthDeg ?: 0.0,
                             antennaBeamWidthDeg = antennaBeamWidthDeg,
                             maxQrbKm = maxQrbKm,
+                            selectedTarget = selectedTarget,
+                            spatialFilterOverlay = spatialFilterOverlay,
                             darkMode = isDarkTheme,
                             workedGrossFields = workedGrossFields,
+                            onCanvasSizeChanged = { mapCanvasSize = it },
                             onMarkerClicked = { snapshot ->
                                 val variants = chatMembers()
                                     .filter { it.callSignRaw == snapshot.callSignRaw() }
@@ -501,6 +587,7 @@ object StationMapWindow {
     internal const val MAP_CANVAS_TAG = "station-map-canvas"
     internal const val GROUPING_TAG = "station-map-grouping"
     internal const val ALWAYS_ON_TOP_TAG = "station-map-always-on-top"
+    private const val QTF_FORWARD_CENTRE_FRACTION = 0.25
 
     @JvmStatic
     fun applyDarkMode(darkMode: Boolean) {

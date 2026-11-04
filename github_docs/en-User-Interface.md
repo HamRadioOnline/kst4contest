@@ -208,6 +208,8 @@ Subtly bordered surfaces group **QRB**, **QTF** including direction buttons, **H
 
 By default, a valid direct entry in the QTF group or a compass-button click also updates the current local antenna heading. This explicit transfer works whether **Show only QTF** is on or off. Resetting or merely disabling the filter does not change the antenna heading. The profile-specific option **Use QTF filter direction as antenna heading** under **Station → Manual antenna heading** can disable this behaviour. PSTRotator 1 takes temporary priority without changing that saved choice.
 
+The same explicit QTF entry or compass-button click centres an open station map towards the chosen sector without changing its zoom. Restored settings, **Reset filters**, rotor feedback and other background updates do not move the map. This navigation is independent of the optional transfer to the actual antenna heading and never sends a rotor command.
+
 For **New bands**, KST4Contest evaluates current QRGs, band information in the name field and active callsign variants together. Manual NOT-QRV marks take precedence.
 
 The **Tropo >=0dB** filter removes only stations for which a completed calculation returned a negative margin. Stations with pending or failed calculations remain visible. Otherwise, a missing API result would incorrectly be treated as proof that the path is unsuitable.
@@ -363,11 +365,9 @@ The station map can be opened in two ways:
 - **Windows → Show / hide station map** opens or closes the map window.
 - **Show on map** in the **Further Info** panel opens the map and focuses the selected station.
 
-The map uses the stations which remain visible after applying the current user-list filters. Its header shows the number of displayed stations and indicates a filtered view with `filtered view active`.
+The map uses the stations which remain visible after applying the current user-list filters. Its header shows the number of displayed stations and indicates a filtered view with `filtered view active`. Active QTF and QRB limits are also drawn as a separate semi-transparent sector, circle or distance ring. This filter overlay is distinct from the sector showing the actual antenna heading, beamwidth and maximum QRB. A compact header legend identifies the red antenna overlay and the blue active-filter overlay whenever they are visible.
 
-![Station map with a selected station and visible path analysis](station_map_path_analysis.png)
-
-> **Screenshot note:** This image still shows the previous marker label and neither the new context menu nor the Worked-square overlay. It will be replaced after manual map acceptance.
+![Station map with a selected path, red antenna sector and active blue QRB range](station_map_spatial_filters.png)
 
 ### Selecting a Station
 
@@ -379,6 +379,10 @@ A single station marker can be selected directly. KST4Contest then:
 2. scrolls the main user list to that entry,
 3. updates the **Further Info** panel, and
 4. prepares the complete visible callsign as the `/cq` recipient.
+
+Every explicit station selection also fits the complete path from the local station to the target into the map with padding. A zoom level which already shows both ends is retained; longer paths zoom out only as far as required. Ordinary roster refreshes, path-analysis results and other background recompositions do not move the viewport. A station without a usable locator remains selected but does not cause camera movement.
+
+If an already selected station is excluded by a later filter change, it remains visible as the separate selected target with its connection line. It is not reintroduced into the normal marker set, clustering or the visible-station count, so the actual filter result remains unchanged.
 
 Chat logins with the same normalised base callsign and position may share one marker. They nevertheless remain separate message targets inside KST4Contest.
 
@@ -411,7 +415,7 @@ While **Grid color** is enabled, the map marks persistently known, already worke
 
 ### Clearing the Selection with Reset View
 
-**Reset view** clears the selected station without changing the map position or zoom level.
+**Reset view** clears the selected station and returns the map centre to the local station without changing the zoom level.
 
 It:
 
@@ -419,9 +423,10 @@ It:
 - clears the selection in the main user list,
 - removes the connection line to the remote station,
 - discards a pending analysis for the previous station, and
-- removes the right-hand analysis panel.
+- removes the right-hand analysis panel, and
+- centres the map on the local station.
 
-The map itself remains at the previously selected position and zoom level. This function is therefore not a geographical reset to the local station.
+The zoom level remains unchanged. The next explicit station or QTF selection can move the viewport again.
 
 ![Station map after Reset view without a selected station](station_map_reset.png)
 

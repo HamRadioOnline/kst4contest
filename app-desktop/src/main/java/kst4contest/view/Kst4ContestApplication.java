@@ -4146,6 +4146,17 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		});
 	}
 
+	@Override
+	public void refreshMapDisplaySettings() {
+		uiDispatcher.runOnUi(() -> {
+			if (composeMainWindowState == null) {
+				return;
+			}
+			composeMainWindowState.refreshMapDisplaySettings();
+			forceChatMemberFilterRefresh();
+		});
+	}
+
 	/**
 	 * No-op since the JavaFX own-QRG text field was removed with the never-shown window.
 	 *

@@ -62,6 +62,9 @@ interface SettingsHost {
      */
     fun refreshSo2rState()
 
+    /** Pushes applied antenna-beam geometry into the open Compose map. */
+    fun refreshMapDisplaySettings()
+
     /** Rebuilds the Ctrl+1..Ctrl+0 context menus from the snippet list. */
     fun refreshTextSnippetContextMenusFromSettings()
 
@@ -149,6 +152,7 @@ fun buildSettingsTabs(
         connectionState = connectionState,
         applySecondRotator = { controller.reconfigureSecondRotator(); host.refreshSo2rState() },
         refreshBeaconStatus = controller::refreshBeaconStatus,
+        applyMapDisplaySettings = host::refreshMapDisplaySettings,
     )
 
     val notificationState = NotificationTabState(

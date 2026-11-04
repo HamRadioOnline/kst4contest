@@ -91,7 +91,7 @@ public final class StationMapClusterer {
                 continue;
             }
 
-            long cellX = (long) Math.floor(viewport.screenX(marker.longitudeDeg()) / cellSizePx);
+            long cellX = (long) Math.floor(viewport.screenXWrapped(marker.longitudeDeg()) / cellSizePx);
             long cellY = (long) Math.floor(viewport.screenY(marker.latitudeDeg()) / cellSizePx);
 
             buckets.computeIfAbsent(cellKey(cellX, cellY), key -> new ArrayList<>()).add(marker);

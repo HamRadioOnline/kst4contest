@@ -49,6 +49,8 @@ class ComposeStationMapDrawingTest {
 
     private val workedGridBorder = 0x000000
 
+    private val selectedDotBorder = 0xFF9900
+
     /*
      * An empty cache and a source that always fails, so that "tiles never arrive" holds by
      * construction. The default fetcher read the user's disk cache and the real tile
@@ -71,6 +73,10 @@ class ComposeStationMapDrawingTest {
         ownLocator6: String = "",
         workedGrossFields: Set<String> = emptySet(),
         darkMode: Boolean = true,
+        selectedTarget: MapCallsignRawSnapshot? = null,
+        spatialFilterOverlay: SpatialFilterOverlayState? = null,
+        antennaBeamWidthDeg: Double = 0.0,
+        maxQrbKm: Double = 0.0,
     ): BufferedImage {
         return onEventThread {
             val scene = ImageComposeScene(canvasWidth, canvasHeight, Density(1f)) {
@@ -82,8 +88,10 @@ class ComposeStationMapDrawingTest {
                     selectedMarkerCallsign = null,
                     ownLocator6 = ownLocator6,
                     antennaAzimuthDeg = 90.0,
-                    antennaBeamWidthDeg = 0.0,
-                    maxQrbKm = 0.0,
+                    antennaBeamWidthDeg = antennaBeamWidthDeg,
+                    maxQrbKm = maxQrbKm,
+                    selectedTarget = selectedTarget,
+                    spatialFilterOverlay = spatialFilterOverlay,
                     onMarkerClicked = null,
                     workedGrossFields = workedGrossFields,
                     darkMode = darkMode,
@@ -106,6 +114,16 @@ class ComposeStationMapDrawingTest {
             }
         }
         return count
+    }
+
+    private fun changedPixels(before: BufferedImage, after: BufferedImage): Int {
+        var changed = 0
+        for (x in 0 until before.width) {
+            for (y in 0 until before.height) {
+                if (before.getRGB(x, y) != after.getRGB(x, y)) changed++
+            }
+        }
+        return changed
     }
 
     /** The widest horizontal run of a colour, which for a ring is its outer diameter. */
@@ -280,6 +298,54 @@ class ComposeStationMapDrawingTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `active spatial filters add a distinct overlay in both themes`() {
+        val overlay = SpatialFilterOverlayState(
+            qtfEnabled = true,
+            qtfDegrees = 90.0,
+            beamWidthDeg = 60.0,
+            minQrbEnabled = true,
+            minQrbKm = 50.0,
+            maxQrbEnabled = true,
+            maxQrbKm = 400.0,
+        )
+
+        for (darkMode in listOf(false, true)) {
+            val without = render(6f, markers = emptyList(), ownLocator6 = "JO50JP", darkMode = darkMode)
+            val with = render(
+                6f,
+                markers = emptyList(),
+                ownLocator6 = "JO50JP",
+                darkMode = darkMode,
+                spatialFilterOverlay = overlay,
+            )
+
+            assertTrue(changedPixels(without, with) > 1_000) {
+                "the spatial filter overlay was not visible in darkMode=$darkMode"
+            }
+        }
+    }
+
+    @Test
+    fun `a filtered selected target is drawn without joining the normal marker list`() {
+        val targetLocation = kst4contest.locatorUtils.Location("JO51AA")
+        val target = station(
+            "DL1HIDE",
+            "JO51AA",
+            targetLocation.latitude.toDegrees(),
+            targetLocation.longitude.toDegrees(),
+        )
+
+        val image = render(
+            6f,
+            markers = emptyList(),
+            ownLocator6 = "JO50JP",
+            selectedTarget = target,
+        )
+
+        assertTrue(countColour(image, selectedDotBorder) > 0, "the separate selected marker is missing")
     }
 
     /**

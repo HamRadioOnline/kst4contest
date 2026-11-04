@@ -8,6 +8,8 @@ public final class MapMarkerCluster {
     private final List<MapCallsignRawSnapshot> markers = new ArrayList<>();
     private double sumLon = 0.0;
     private double sumLat = 0.0;
+    private double sumLonSin = 0.0;
+    private double sumLonCos = 0.0;
 
     public MapMarkerCluster(MapCallsignRawSnapshot first) {
         add(first);
@@ -17,10 +19,16 @@ public final class MapMarkerCluster {
         markers.add(marker);
         sumLon += marker.longitudeDeg();
         sumLat += marker.latitudeDeg();
+        double longitudeRad = Math.toRadians(marker.longitudeDeg());
+        sumLonSin += Math.sin(longitudeRad);
+        sumLonCos += Math.cos(longitudeRad);
     }
 
     public double getCenterLon() {
-        return sumLon / markers.size();
+        if (Math.abs(sumLonSin) < 1e-12 && Math.abs(sumLonCos) < 1e-12) {
+            return sumLon / markers.size();
+        }
+        return Math.toDegrees(Math.atan2(sumLonSin, sumLonCos));
     }
 
     public double getCenterLat() {

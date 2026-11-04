@@ -1,7 +1,9 @@
 package kst4contest.view.map;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 
 /**
@@ -81,11 +83,38 @@ public final class MaidenheadGridUtils {
                                                    double northLat,
                                                    double eastLon,
                                                    GridPrecision precision) {
-
-        if (westLon > eastLon) {
-            // Anti-meridian handling is not needed for Europe in this project stage.
+        if (!Double.isFinite(westLon) || !Double.isFinite(eastLon)) {
             return List.of();
         }
+
+        double unwrappedEast = eastLon;
+        if (unwrappedEast < westLon) {
+            unwrappedEast += 360.0;
+        }
+
+        if (unwrappedEast - westLon >= 360.0) {
+            return buildVisibleCellsWithinWorld(southLat, -180.0, northLat, 180.0, precision);
+        }
+
+        int firstWorld = (int) Math.floor((westLon + 180.0) / 360.0);
+        int lastWorld = (int) Math.floor((unwrappedEast + 180.0 - EPSILON) / 360.0);
+        Map<String, GridCell> cells = new LinkedHashMap<>();
+        for (int world = firstWorld; world <= lastWorld; world++) {
+            double worldWest = -180.0 + world * 360.0;
+            double worldEast = 180.0 + world * 360.0;
+            double localWest = Math.max(westLon, worldWest) - world * 360.0;
+            double localEast = Math.min(unwrappedEast, worldEast) - world * 360.0;
+            buildVisibleCellsWithinWorld(southLat, localWest, northLat, localEast, precision)
+                    .forEach(cell -> cells.putIfAbsent(cell.locatorLabel(), cell));
+        }
+        return List.copyOf(cells.values());
+    }
+
+    private static List<GridCell> buildVisibleCellsWithinWorld(double southLat,
+                                                               double westLon,
+                                                               double northLat,
+                                                               double eastLon,
+                                                               GridPrecision precision) {
 
         double clampedSouth = clamp(southLat, -90.0 + EPSILON, 90.0 - EPSILON);
         double clampedNorth = clamp(northLat, -90.0 + EPSILON, 90.0 - EPSILON);

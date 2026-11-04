@@ -90,6 +90,13 @@ class StationSelectionState : TableSelectionModel<ChatMember> {
     var lastSource: StationSelectionSource by mutableStateOf(StationSelectionSource.PROGRAMMATIC)
         private set
 
+    /** Changes only for deliberate station choices, including repeated choices. */
+    var explicitSelectionRevision: Long by mutableStateOf(0L)
+        private set
+
+    /** Receives deliberate station choices without observing roster reconciliation. */
+    internal var explicitSelectionListener: ((ChatMember?, StationSelectionSource) -> Unit)? = null
+
     val identity: StationIdentity?
         get() = StationIdentity.of(current)
 
@@ -101,6 +108,10 @@ class StationSelectionState : TableSelectionModel<ChatMember> {
         current = row
         lastSource = source
         selectionRevision++
+        if (source.isExplicitSelection()) {
+            explicitSelectionRevision++
+            explicitSelectionListener?.invoke(row, source)
+        }
         if (row != null && source.requestsStationTableScroll()) {
             scrollRequestRevision++
         }
@@ -116,6 +127,11 @@ class StationSelectionState : TableSelectionModel<ChatMember> {
             scrollRequestRevision++
         }
     }
+}
+
+private fun StationSelectionSource.isExplicitSelection(): Boolean = when (this) {
+    StationSelectionSource.PROGRAMMATIC -> false
+    else -> true
 }
 
 private fun StationSelectionSource.requestsStationTableScroll(): Boolean = when (this) {

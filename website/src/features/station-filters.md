@@ -71,9 +71,13 @@ This is deliberately strict. Adding another filter narrows the result; it does n
 
 ## User list and map share the result
 
-The user list and [Station Map](/features/station-map/) use the same filtered station set. If a station disappears from the table because of QTF, QRB, Worked, band or propagation criteria, it also disappears from the geographical view.
+The user list and [Station Map](/features/station-map/) use the same filtered station set. If a station disappears from the table because of QTF, QRB, Worked, band or propagation criteria, it also disappears from the normal geographical marker set.
 
 This makes the map useful as a spatial worklist rather than a second list with different rules.
+
+One deliberate exception preserves navigation context: a station which is already selected remains visible as a separate selected marker and path even when a later filter hides it. It is not counted, clustered or reintroduced into the filter result.
+
+Active QTF and QRB limits are drawn directly on the map as a separate semi-transparent filter overlay. Depending on the combination, this is a directional sector, a maximum-distance circle, the area beyond a minimum distance, an annulus or the corresponding annular sector. The overlay uses the same inclusive maximum, exclusive minimum and beamwidth semantics as the actual station filter.
 
 ## Hidden does not mean deleted
 
