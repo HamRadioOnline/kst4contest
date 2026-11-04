@@ -44,6 +44,8 @@ class StationTabState(
      * TRX synch tab through [SECOND_ROTATOR], so it runs once per apply.
      */
     private val applySecondRotator: () -> Unit = {},
+    /** Recomputes status whose available-count depends on the second-chat switch. */
+    private val refreshBeaconStatus: () -> Unit = {},
 ) {
 
     var loginChatCategoryMain: ChatCategory?
@@ -234,7 +236,10 @@ class StationTabState(
      * pickers it governs. It decides what the Connect button does, so it belongs with
      * the login settings and not with the display options.
      */
-    var loginToSecondChatEnabled: Boolean by draft.setting({ prefs.isLoginToSecondChatEnabled() }) { prefs.setLoginToSecondChatEnabled(it) }
+    var loginToSecondChatEnabled: Boolean by draft.setting(
+        { prefs.isLoginToSecondChatEnabled() },
+        effect = { refreshBeaconStatus() },
+    ) { prefs.setLoginToSecondChatEnabled(it) }
 
     /**
      * Whether the login fields may be edited. The JavaFX window disabled callsign,

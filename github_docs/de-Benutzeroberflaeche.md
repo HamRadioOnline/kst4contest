@@ -560,7 +560,7 @@ Bei einer ungünstigen Aufteilung sollten zuerst die Divider und Spaltenbreiten 
 
 ## Tipps zur Bedienung
 
-- **Einstellungsfenster geöffnet lassen**: Schneller Zugriff auf Beacon-Aktivierung/Deaktivierung.
+- **Beacon schnell schalten**: Die Aktivierung ist im geöffneten Einstellungsfenster je Kategorie möglich. Ein Klick auf den Status-Chip **MyBeacon** schaltet alle derzeit nutzbaren Beacons gemeinsam ein oder aus.
 - **Rechtsklick in der Benutzerliste**: Öffnet das Snippet-Menü und weitere Aktionen (QRZ.com-Profil, NOT-QRV-Tags setzen).
 - **Enter aus dem Chat heraus**: Wenn im Sendfeld Text steht, sendet Enter direkt – auch wenn der Fokus woanders liegt.
 - **Beacon stoppen**: Beim Scannen von Frequenzen den Beacon ausschalten, damit der Chat nicht mit Meldungen überflutet wird.

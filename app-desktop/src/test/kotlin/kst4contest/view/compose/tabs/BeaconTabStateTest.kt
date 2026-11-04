@@ -41,7 +41,7 @@ class BeaconTabStateTest(@TempDir private val tempDir: Path) {
     }
 
     @Test
-    fun `beacon edits wait for apply, and the timer restarts only then`() {
+    fun `enable changes immediately while template and interval wait for apply`() {
         val s = Session(draft = SettingsDraft())
         s.prefs.setBcn_beaconIntervalInMinutesMainCat(5)
         s.prefs.setBcn_beaconsEnabledMainCat(false)
@@ -51,7 +51,7 @@ class BeaconTabStateTest(@TempDir private val tempDir: Path) {
         assertNull(state.commitBeaconTextMainCat("CQ MYCALL"))
         assertNull(state.commitBeaconInterval("7"))
 
-        assertFalse(s.prefs.isBcn_beaconsEnabledMainCat(), "an edit took effect before Apply")
+        assertTrue(s.prefs.isBcn_beaconsEnabledMainCat(), "the runtime switch did not take effect immediately")
         assertEquals(5, s.prefs.getBcn_beaconIntervalInMinutesMainCat())
         assertEquals(0, s.timerRestarts, "the timer restarted before Apply")
         assertEquals(7, state.beaconIntervalMinutes, "the tab shows the edit")
@@ -63,6 +63,18 @@ class BeaconTabStateTest(@TempDir private val tempDir: Path) {
         assertEquals("CQ MYCALL", s.prefs.getBcn_beaconTextMainCat())
         assertEquals(7, s.prefs.getBcn_beaconIntervalInMinutesSecondCat())
         assertEquals(1, s.timerRestarts)
+    }
+
+    @Test
+    fun `enable changes do not become pending draft edits`() {
+        val s = Session(draft = SettingsDraft())
+        s.prefs.setBcn_beaconsEnabledMainCat(false)
+        val state = s.state()
+
+        state.bcn_beaconsEnabledMainCat = true
+
+        assertTrue(s.prefs.isBcn_beaconsEnabledMainCat())
+        assertFalse(s.draft.hasPendingChanges)
     }
 
     @Test

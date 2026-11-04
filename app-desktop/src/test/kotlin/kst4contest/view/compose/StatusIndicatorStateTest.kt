@@ -407,6 +407,52 @@ class StatusIndicatorStateTest {
         assertEquals("Cluster: b", button.label)
     }
 
+    @Test
+    fun `an action registered before the first report reaches the created button`() {
+        val buttons = ThreadStatusButtons()
+        var clicks = 0
+        buttons.registerAction("MyBeacon") { clicks++ }
+
+        buttons.update("MyBeacon", threadState(nick = "beacon", description = "off", info = "disabled"))
+        buttons.buttons.single().activate()
+
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun `an action registered after a report reaches the existing button`() {
+        val buttons = ThreadStatusButtons()
+        var clicks = 0
+        buttons.update("MyBeacon", threadState(nick = "beacon", description = "off", info = "disabled"))
+
+        buttons.registerAction("MyBeacon") { clicks++ }
+        buttons.buttons.single().activate()
+
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun `a thread without an action cannot be activated`() {
+        val buttons = ThreadStatusButtons()
+        buttons.update("Cluster", threadState(nick = "cluster", description = "on", info = "running"))
+
+        assertFalse(buttons.buttons.single().activate())
+    }
+
+    @Test
+    fun `a status provider replaces a stale worker snapshot when the UI applies it`() {
+        val buttons = ThreadStatusButtons()
+        var current = threadState(nick = "beacon", description = "on", info = "enabled")
+        buttons.registerStatusProvider("MyBeacon") { current }
+        val queuedSnapshot = current
+        current = threadState(nick = "beacon", description = "off", info = "disabled")
+
+        buttons.update("MyBeacon", queuedSnapshot)
+
+        assertEquals("MyBeacon: off", buttons.buttons.single().label)
+        assertEquals("disabled", buttons.buttons.single().tooltip)
+    }
+
     private fun threadState(nick: String, description: String, info: String): ThreadStateMessage =
         ThreadStateMessage(nick, true, info, false).apply {
             setRunningInformationTextDescription(description)

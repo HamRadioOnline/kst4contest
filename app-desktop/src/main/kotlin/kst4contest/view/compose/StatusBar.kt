@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,11 +41,9 @@ import kst4contest.controller.On4KstConnectionState
  * only the indicators are left here — which is also what finally makes the bar wrap
  * properly on a narrow window instead of pushing the badges out of sight.
  *
- * Nothing in this bar is clickable. The three indicators were mouse-transparent and
- * non-focusable in JavaFX and stay that way: the operator is typing into the chat, and a
- * status badge must never take the keyboard. The background-thread buttons were ordinary
- * focusable Buttons there, with no action attached — they are drawn as plain labels here,
- * which is what they always behaved like.
+ * The connection and notice indicators remain non-clickable. A background-thread status is
+ * actionable only when the application explicitly registers an action for that source; the
+ * beacon uses this for its quick switch, while every other worker remains a plain label.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -206,10 +206,16 @@ private fun ThreadStatusButtonView(button: ThreadStatusButton) {
     val foreground = if (button.highlighted) scheme.onPrimary else scheme.onSurfaceVariant
 
     TooltipArea(tooltip = { TooltipCard(button.tooltip) }) {
+        val actionModifier = if (button.hasAction) {
+            Modifier.clickable(role = Role.Button) { button.activate() }
+        } else {
+            Modifier
+        }
         Box(
             modifier = Modifier
                 .defaultMinSize(minHeight = 22.dp)
                 .background(background, NOTICE_SHAPE)
+                .then(actionModifier)
                 .padding(NOTICE_PADDING),
             contentAlignment = Alignment.Center,
         ) {

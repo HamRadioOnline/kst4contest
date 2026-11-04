@@ -35,7 +35,9 @@ class SettingsFieldCoverageTest {
             ""
         }
 
-        val missing = expected.filterNot { composeSources.contains("$it(") }
+        val missing = expected.filterNot {
+            composeSources.contains("$it(") || composeSources.contains("::$it")
+        }
 
         assertTrue(missing.isEmpty(),
             "settings not written by any Compose source (${missing.size} of ${expected.size}):\n" +

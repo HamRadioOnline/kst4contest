@@ -107,14 +107,14 @@ class SettingsApplyScreenTest {
     }
 
     @Test
-    fun anEditTakesEffectOnlyWithApplyAndClose() = runComposeUiTest {
+    fun beaconEnableTakesEffectImmediatelyWhileTheIntervalWaitsForApply() = runComposeUiTest {
         val w = Window()
         show(w)
 
         toggle("Send the beacon in this category")
         typeAndCommit("Interval in whole minutes", "9")
 
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat, "the box took effect before Apply")
+        assertTrue(w.prefs.isBcn_beaconsEnabledMainCat, "the runtime switch did not take effect immediately")
         assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat)
         assertEquals(0, w.restarts, "the timer restarted before Apply")
 
@@ -178,19 +178,19 @@ class SettingsApplyScreenTest {
     fun aRefusalAppliesNothingSoDiscardIsStillPossible() = runComposeUiTest {
         val w = Window()
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
         type("Server port", "23x")
 
         onNodeWithText(APPLY_AND_CLOSE).performClick()
         waitForIdle()
 
         assertFalse(w.closed)
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat, "the valid edit went into effect despite the refusal")
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat, "the valid edit went into effect despite the refusal")
         assertTrue(w.draft.hasPendingChanges)
         runOnIdle { w.notices.dismiss() }
 
         runOnIdle { w.draft.discard() }
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat)
     }
 
     /*
@@ -264,7 +264,7 @@ class SettingsApplyScreenTest {
     fun theXAsksAboutPendingEditsAndApplyAppliesThem() = runComposeUiTest {
         val w = Window()
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.x() }
         awaitNode(inDialog(PENDING_QUESTION))
@@ -273,7 +273,7 @@ class SettingsApplyScreenTest {
         awaitNode(inDialog("Apply")).performClick()
         awaitGone(inDialog(PENDING_QUESTION))
 
-        assertTrue(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertEquals(9, w.prefs.bcn_beaconIntervalInMinutesMainCat)
         assertTrue(w.closed)
     }
 
@@ -288,7 +288,7 @@ class SettingsApplyScreenTest {
         awaitNode(inDialog("Discard")).performClick()
         awaitGone(inDialog(PENDING_QUESTION))
 
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertTrue(w.prefs.isBcn_beaconsEnabledMainCat, "the immediate runtime switch was unexpectedly reverted")
         assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat)
         assertEquals(0, w.restarts)
         assertTrue(w.closed)
@@ -299,7 +299,7 @@ class SettingsApplyScreenTest {
     fun goingBackKeepsTheWindowAndTheEdits() = runComposeUiTest {
         val w = Window()
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.x() }
         awaitNode(inDialog("Back to the settings")).performClick()
@@ -307,7 +307,7 @@ class SettingsApplyScreenTest {
 
         assertFalse(w.closed)
         assertTrue(w.draft.hasPendingChanges)
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat)
         checkBeside("Send the beacon in this category").assertExists()
     }
 
@@ -377,13 +377,13 @@ class SettingsApplyScreenTest {
         val w = Window()
         var wentOn = false
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.switchOrExit { wentOn = true } }
         awaitNode(inDialog("Apply")).performClick()
         awaitGone(inDialog(PENDING_QUESTION))
 
-        assertTrue(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertEquals(9, w.prefs.bcn_beaconIntervalInMinutesMainCat)
         assertTrue(wentOn)
         assertFalse(w.closed, "the window closed itself instead of leaving that to the teardown")
     }
@@ -393,7 +393,7 @@ class SettingsApplyScreenTest {
         val w = Window()
         var wentOn = false
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.switchOrExit { wentOn = true } }
         awaitNode(inDialog("Back to the settings")).performClick()
@@ -408,14 +408,14 @@ class SettingsApplyScreenTest {
         val w = Window()
         var wentOn = false
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.switchOrExit { wentOn = true } }
         awaitNode(inDialog("Discard")).performClick()
         awaitGone(inDialog(PENDING_QUESTION))
 
         assertTrue(wentOn)
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat)
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat)
     }
 
     @Test
@@ -423,7 +423,7 @@ class SettingsApplyScreenTest {
         val w = Window()
         var wentOn = false
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.switchOrExit { wentOn = true } }
         awaitNode(inDialog(PENDING_QUESTION))
@@ -432,7 +432,7 @@ class SettingsApplyScreenTest {
         awaitGone(inDialog(PENDING_QUESTION))
 
         assertFalse(wentOn, "went on over a refused entry")
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat, "applied despite the refusal")
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat, "applied despite the refusal")
     }
 
     @Test
@@ -457,7 +457,7 @@ class SettingsApplyScreenTest {
         val w = Window()
         var wentOn = false
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
 
         runOnIdle { w.switchOrExit { wentOn = true } }
         awaitNode(inDialog(PENDING_QUESTION))
@@ -477,7 +477,7 @@ class SettingsApplyScreenTest {
     fun anInvalidFieldStillLetsTheXDiscard() = runComposeUiTest {
         val w = Window()
         show(w)
-        toggle("Send the beacon in this category")
+        typeAndCommit("Interval in whole minutes", "9")
         type("Server port", "23x")
 
         runOnIdle { w.x() }
@@ -489,7 +489,7 @@ class SettingsApplyScreenTest {
         awaitGone(inDialog(PENDING_QUESTION))
 
         assertTrue(w.closed)
-        assertFalse(w.prefs.isBcn_beaconsEnabledMainCat, "something was applied")
+        assertEquals(5, w.prefs.bcn_beaconIntervalInMinutesMainCat, "something was applied")
     }
 
     /* The same for a switch or the exit, even when only the invalid field is unsettled. */

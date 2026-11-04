@@ -148,6 +148,7 @@ fun buildSettingsTabs(
         applySecondCategory = { category -> controller.setChatCategorySecondChat(category) },
         connectionState = connectionState,
         applySecondRotator = { controller.reconfigureSecondRotator(); host.refreshSo2rState() },
+        refreshBeaconStatus = controller::refreshBeaconStatus,
     )
 
     val notificationState = NotificationTabState(
@@ -185,6 +186,8 @@ fun buildSettingsTabs(
         draft,
         validateBeaconTemplate = { template -> controller.validateBeaconTemplate(template) },
         restartBeaconTimer = { controller.restartBeaconTimer() },
+        setMainBeaconEnabled = controller::setMainBeaconEnabled,
+        setSecondBeaconEnabled = controller::setSecondBeaconEnabled,
         mainCategoryName = categoryName(controller.chatCategoryMain, kst4contest.view.i18n.CurrentStrings.get().settingsCategoryMainFallback),
         secondCategoryName = categoryName(controller.chatCategorySecondChat, kst4contest.view.i18n.CurrentStrings.get().settingsCategorySecondFallback),
     )

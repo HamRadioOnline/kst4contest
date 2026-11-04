@@ -565,7 +565,7 @@ If the layout has become inconvenient, first move the dividers and column widths
 
 ## Operating Tips
 
-- **Keep the settings window open**: This provides quick access to the beacon controls.
+- **Toggle beacons quickly**: Keep the settings window open to control each category separately. Click the **MyBeacon** status chip to enable or disable all currently usable beacons together.
 - **Right-click in the user list**: Opens the snippet menu and additional actions, including QRZ.com profiles and NOT-QRV marks.
 - **Press Enter while working in the chat**: If the send field contains text, Enter sends it directly even when another control has focus.
 - **Stop the beacon while scanning**: Disable the beacon while moving through frequencies to avoid flooding the chat with unnecessary messages.

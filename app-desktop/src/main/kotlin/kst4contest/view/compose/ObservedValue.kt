@@ -1,7 +1,11 @@
 package kst4contest.view.compose
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kst4contest.observe.ObservableValue
 import java.util.function.Consumer
@@ -34,4 +38,20 @@ class ObservedValue<T>(private val source: ObservableValue<T>) {
     fun release() {
         source.removeListener(follower)
     }
+}
+
+/** Observes a domain value only for the lifetime of the current composition. */
+@Composable
+internal fun <T> ObservableValue<T>.observeAsState(): State<T?> {
+    val state = remember(this) { mutableStateOf(get()) }
+
+    DisposableEffect(this) {
+        val follower = Consumer<T> { updated -> state.value = updated }
+        addListener(follower)
+        // Close the gap between the initial read and listener registration.
+        state.value = get()
+        onDispose { removeListener(follower) }
+    }
+
+    return state
 }

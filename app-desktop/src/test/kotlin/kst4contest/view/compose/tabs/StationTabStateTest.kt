@@ -20,6 +20,7 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
         var secondApplied: ChatCategory? = null
         var secondWasApplied = false
         val secondRotatorCalls = mutableListOf<Unit>()
+        var beaconStatusRefreshes = 0
         val draft = SettingsDraft()
         val state = StationTabState(
             prefs,
@@ -27,6 +28,7 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
             { mainApplied = it },
             { secondApplied = it; secondWasApplied = true },
             applySecondRotator = { secondRotatorCalls.add(Unit) },
+            refreshBeaconStatus = { beaconStatusRefreshes++ },
         )
     }
 
@@ -303,6 +305,18 @@ class StationTabStateTest(@param:TempDir private val tempDir: Path) {
 
         assertTrue(prefs.isLoginToSecondChatEnabled())
         assertEquals(true, state.loginToSecondChatEnabled)
+    }
+
+    @Test
+    fun `applying the second chat switch refreshes aggregate beacon status`() {
+        val session = Session()
+
+        session.state.loginToSecondChatEnabled = true
+        assertEquals(0, session.beaconStatusRefreshes)
+
+        session.draft.apply()
+
+        assertEquals(1, session.beaconStatusRefreshes)
     }
 
     @Test

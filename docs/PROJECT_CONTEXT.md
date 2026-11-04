@@ -215,6 +215,8 @@ CR/LF framing, XML framing, ports/transports, callsign normalization and frequen
 - Automated-message loops must be prevented.
 - Cooldown/minimum-interval rules must be preserved.
 - A reply rejected before a complete valid TX item is queued must not consume cooldown.
+- Both category beacons share one timer, while their enable flags and templates remain profile-scoped and independent. The enable flags are observable runtime preferences: Settings changes and the `MyBeacon` status-chip action update them immediately, and every timer run reads their current values without restarting the timer or causing an immediate transmission. Only the explicit full settings write persists those flags; layout autosave deliberately leaves the on-disk functional state untouched.
+- `MyBeacon` owns one aggregate thread-status entry for both categories (`off`, a partial `enabled/available` count, `on`, or `FAILED`). Its action disables all currently usable beacons if any is enabled, otherwise it enables all currently usable beacons. A disabled second chat is not usable and its dormant enable flag must not be changed by the aggregate action. Category-specific timer failures remain authoritative while the affected beacon stays active; independent switch changes cannot hide them. The status bar resolves the aggregate from current controller state when a queued UI update is applied, so a delayed timer snapshot cannot overwrite a newer manual switch. Open Settings views observe the same preference values, so changes from the status chip remain synchronized without a parallel UI state.
 - Current implementation/tests define the exact message markers and timer details.
 
 ## Build / Verification

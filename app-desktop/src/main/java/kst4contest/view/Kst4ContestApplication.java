@@ -3278,6 +3278,16 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 						}),
 				newJoined,
 				reachability);
+		composeMainWindowState.getThreadButtons().registerAction(
+				ChatController.BEACON_STATUS_SOURCE,
+				() -> {
+					chatcontroller.toggleUsableBeacons();
+					return kotlin.Unit.INSTANCE;
+				});
+		composeMainWindowState.getThreadButtons().registerStatusProvider(
+				ChatController.BEACON_STATUS_SOURCE,
+				chatcontroller::currentBeaconStatus);
+		chatcontroller.refreshBeaconStatus();
 
 		/*
 		 * The feed, not the window construction, owns the timeline's data from here.
