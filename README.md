@@ -103,3 +103,5 @@ You can sponsor KST4Contest here: [Support on Ko-Fi](https://ko-fi.com/praktimar
 
 The following people are sponsoring KST4Contest:
 - Marco (DJ5KW)
+- Steve (G1YBB/M1B/MW1B)
+- Jens (DH1AKY)
