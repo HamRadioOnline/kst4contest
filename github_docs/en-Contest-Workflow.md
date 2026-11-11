@@ -95,7 +95,7 @@ During operation on a mainly fixed CQ frequency, `MYQRG` and `SECONDQRG` should 
 
 The beacon can publish the current QRG, locator and antenna direction in the chat at regular intervals. Its variables are evaluated again for every transmission.
 
-Disable the beacon while scanning across several frequencies. An automatically published QRG is useful only while it is still correct.
+Disable the beacon while scanning across several frequencies. An automatically published QRG is useful only while it is still correct. When the logger supplies the frequency, KST4Contest switches the beacon off [by itself](en-Configuration#automatic-switch-off-after-a-frequency-change) once the radio has moved by more than 2 kHz. After every program start the beacon is off and has to be enabled again.
 
 Shortcuts and snippets should cover the messages required regularly, for example:
 

@@ -535,6 +535,7 @@ public class ReadUDPByWintestThread extends Thread {
              * interpreted as frequencies.
              */
             String formattedPassQrg = null;
+            long usablePassFrequencyRaw = 0L;
 
             if (parts.size() > 11) {
                 try {
@@ -548,6 +549,7 @@ public class ReadUDPByWintestThread extends Thread {
                                 helper_formatWinTestFrequency(
                                         passFrequencyRaw
                                 );
+                        usablePassFrequencyRaw = passFrequencyRaw;
                     }
                 } catch (IllegalArgumentException
                          | ArithmeticException ignored) {
@@ -569,7 +571,18 @@ public class ReadUDPByWintestThread extends Thread {
 
             if (prefs.isLogsynch_wintestQrgSyncEnabled()) {
                 RadioSlot target = slot.get();
-                client.uiDispatcher().runOnUi(() -> target.qrgIn(prefs).set(qrgToSet));
+                /*
+                 * The beacon guard is told the frequency that is shown. STATUS
+                 * counts in 100 Hz.
+                 */
+                final long shownFrequencyHz = 100L
+                        * (usePassQrg && formattedPassQrg != null
+                                ? usablePassFrequencyRaw
+                                : mainFrequencyRaw);
+                client.uiDispatcher().runOnUi(() -> {
+                    target.qrgIn(prefs).set(qrgToSet);
+                    client.onTrxFrequencyReported(target, shownFrequencyHz);
+                });
             }
 
             System.out.println(

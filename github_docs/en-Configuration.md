@@ -603,13 +603,15 @@ KST4Contest uses one shared timer for both chat categories. Each category nevert
 
 When both beacons are enabled, they are sent one after the other in their respective categories during the same timer run. The second beacon is only considered while the second category is enabled and fully synchronised in the same ON4KST session.
 
-Both enable settings affect the running timer immediately. They neither restart the countdown nor send a message straight away; the next regular timer run checks the current state. Only **Save Settings** stores the enable state for the next program start. Message templates and the interval continue to follow the normal Apply/Save workflow.
+Both enable settings affect the running timer immediately. They neither restart the countdown nor send a message straight away; the next regular timer run checks the current state. Message templates and the interval continue to follow the normal Apply/Save workflow.
 
-The **MyBeacon** status chip in the main window combines the currently usable categories: **off** means that no beacon is enabled, **1/2** that one of two categories is enabled, and **on** that every usable category is enabled. Clicking the chip enables or disables all usable beacons together. If the second chat is disabled, the chip changes only the primary-category beacon and leaves the stored secondary-beacon setting untouched.
+The enable state applies to the running program session only. After every program start and after every profile switch both beacons are off and have to be enabled again deliberately. **Save Settings** stores the message templates and the interval, but not the enable state. A beacon can therefore no longer keep running unnoticed from an earlier session.
+
+The **MyBeacon** status chip in the main window combines the currently usable categories: **off** means that no beacon is enabled, **1/2** that one of two categories is enabled, and **on** that every usable category is enabled. Clicking the chip enables or disables all usable beacons together. If the second chat is disabled, the chip changes only the primary-category beacon and leaves the secondary-beacon switch untouched.
 
 ### Interval and timer behaviour
 
-The interval is entered in whole minutes. The minimum permitted value is one minute.
+The interval is entered in whole minutes. The minimum permitted value is five minutes; a new installation starts with ten minutes. A smaller value from an earlier version is raised to five minutes when the timer starts.
 
 After the chat connection has been established, KST4Contest performs the first beacon check after approximately ten seconds. The configured interval applies after that initial check.
 
@@ -668,7 +670,18 @@ The beacon is useful only while its QRG matches the actual operation. Leaving it
 
 In plain terms: the beacon saves work while calling CQ on a fixed QRG. It should be disabled while moving around the band.
 
-Changes take effect during the current connection. Use **Save Settings** afterwards to retain the enable settings, message templates and interval for the next program start.
+### Automatic switch-off after a frequency change
+
+When the logger reports the transceiver frequency, KST4Contest switches the beacon off by itself as soon as the radio has moved more than 2 kHz away from the frequency on which the beacon was enabled. The comparison is made with the frequency at the time of enabling, not with the previous report. Tuning slowly across the band therefore triggers the switch-off just as a jump does.
+
+- The reports evaluated are those which also fill `MYQRG` and `SECONDQRG`: UCXLog `RadioInfo` while TRX synchronisation is enabled, and Win-Test `STATUS` while QRG synchronisation is enabled. Without this coupling the beacon stays on until it is disabled by hand.
+- A frequency typed into the QRG field by hand switches nothing off.
+- Without **SO2R** the one reported radio stands for both categories: both beacons are switched off.
+- With **SO2R**, radio 1 switches off only the primary-category beacon and radio 2 only the secondary-category beacon.
+
+After the switch-off the **MyBeacon** status chip shows the new state and its tooltip names the reason. When the beacon is enabled again, the frequency reported at that time becomes the new reference.
+
+Changes take effect during the current connection. Use **Save Settings** afterwards to retain the message templates and interval for the next program start. The enable state is not stored.
 
 ---
 

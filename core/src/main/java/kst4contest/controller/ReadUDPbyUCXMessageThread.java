@@ -463,9 +463,13 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 
 						final String finalFormattedQRG = formattedQRG;
 						final RadioSlot target = slot.get();
-						helper_runOnFxThread(() ->
-								target.qrgIn(this.client.getChatPreferences()).set(finalFormattedQRG)
-						);
+						final Long reportedHz = helper_radioInfoFrequencyHz(qrg);
+						helper_runOnFxThread(() -> {
+							target.qrgIn(this.client.getChatPreferences()).set(finalFormattedQRG);
+							if (reportedHz != null) {
+								this.client.onTrxFrequencyReported(target, reportedHz);
+							}
+						});
 
 //						System.out.println("[ReadUDPbyUCXTh: ] Radioinfo processed: " + formattedQRG);
 					}
@@ -533,6 +537,21 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 
 		return true;
 
+	}
+
+	/**
+	 * Reads the {@code Freq} of a RadioInfo, which counts in 10 Hz, as Hz.
+	 *
+	 * @return the frequency, or {@code null} when the text is no usable number; the
+	 *         text is then still shown as received, but nothing can be compared with it
+	 */
+	private static Long helper_radioInfoFrequencyHz(String radioInfoFreq) {
+		try {
+			long tensOfHz = Long.parseLong(radioInfoFreq.trim());
+			return tensOfHz > 0 ? Math.multiplyExact(tensOfHz, 10L) : null;
+		} catch (NumberFormatException | ArithmeticException unusable) {
+			return null;
+		}
 	}
 
 	/**

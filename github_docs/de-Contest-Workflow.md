@@ -95,7 +95,7 @@ Bei einer weitgehend festen CQ-QRG sollten `MYQRG` beziehungsweise `SECONDQRG` d
 
 Der Beacon kann die aktuelle QRG, den Locator und die Antennenrichtung regelmäßig im Chat veröffentlichen. Seine Variablen werden bei jedem Sendedurchlauf erneut ausgewertet.
 
-Wird während des CQ-Betriebs über mehrere Frequenzen gescannt, sollte der Beacon deaktiviert werden. Eine automatisch veröffentlichte QRG ist nur hilfreich, solange sie noch stimmt.
+Wird während des CQ-Betriebs über mehrere Frequenzen gescannt, sollte der Beacon deaktiviert werden. Eine automatisch veröffentlichte QRG ist nur hilfreich, solange sie noch stimmt. Liefert das Logprogramm die Frequenz, schaltet KST4Contest den Beacon bei einer Abweichung von mehr als 2 kHz [selbst ab](de-Konfiguration#automatische-abschaltung-beim-frequenzwechsel). Nach jedem Programmstart ist der Beacon aus und muss neu eingeschaltet werden.
 
 Shortcuts und Snippets sollten die regelmäßig benötigten Nachrichten abdecken, beispielsweise:
 

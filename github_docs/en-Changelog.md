@@ -52,6 +52,8 @@ Several operators sharing one computer can now use their own callsigns, locators
 
 - **Settings take effect with Apply:** changes in the settings window no longer take effect while they are typed, but with **Apply/Close prefs** or **Save settings**; **Connect** applies them first as well. This also works during a running session. Closing the window, switching the operator profile or exiting with changes pending first asks whether to apply or discard them, or to go back. Colours, language and the login data on the **Station** tab still take effect immediately.
 
+- **Beacons only deliberately and less often:** forgotten beacons filled the chat while nobody was at the station ([Issue #171](https://github.com/HamRadioOnline/kst4contest/issues/171)). Three things change because of that. The enable state now applies to the running program session only: after every program start and every profile switch both beacons are off, and **Save settings** no longer stores the switches. The minimum interval rises from one to five minutes, and a new installation starts with ten. And KST4Contest switches the beacon off by itself as soon as the logger reports a frequency more than 2 kHz away from the one at the time of enabling; without SO2R this concerns both categories, with SO2R only the category of the respective radio. The **MyBeacon** status chip shows the switch-off and its tooltip names the reason.
+
 - **Windows open on the main window's screen:** the station map, monitor, settings, update window, top candidates and the notice dialogs used to open on the primary screen, even when the main window was on another one or the primary screen was switched off. They now open centred on the screen the main window is currently on. A window that was moved during the running session reopens there next time, as long as its title bar can still be reached on a connected screen. With the new option **Reopen windows across restarts where they were last moved to** on the **GUI** tab (off by default), the main window and all other windows also keep their position across restarts; a stored position is only used when the very same screen (same place and resolution) is connected again. A window larger than the screen is reduced to its usable area, also when it is moved onto a smaller screen later, for example a 640x480 monitor; the stored window size stays unchanged. This fixes [Issue #59](https://github.com/HamRadioOnline/kst4contest/issues/59).
 
 ### Fixed
@@ -86,6 +88,7 @@ Several operators sharing one computer can now use their own callsigns, locators
 - A profile registry only appears when the second profile is created. Anyone using a single profile will not notice the change.
 - Going back to an older KST4Contest release stays possible; it finds its files unchanged.
 - Passwords are still stored in clear text in each profile's `preferences.xml`. Profiles separate configuration; they are not an access control mechanism.
+- A beacon that was stored as enabled by an earlier version no longer starts by itself; it has to be enabled again after the program start. A stored beacon interval below five minutes is raised to five minutes. Message texts and longer intervals stay unchanged.
 
 ---
 

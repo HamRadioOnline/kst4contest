@@ -73,7 +73,7 @@ class RemainingTextsFollowTheLanguageTest {
 
             assertEquals("Wertung", score.title(), "the column title stayed in the old language")
             assertEquals(
-                "Einen ganzzahligen Bakenabstand von mindestens 1 Minute eingeben.",
+                "Einen ganzzahligen Bakenabstand von mindestens 5 Minuten eingeben.",
                 beacon.commitBeaconInterval("0"),
                 "the refusal from the tab state stayed in the old language",
             )

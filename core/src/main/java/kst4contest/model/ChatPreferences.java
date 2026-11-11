@@ -78,6 +78,9 @@ public class ChatPreferences {
 	 */
 	public static final String PREFERENCE_RESOURCE = "/praktiKSTpreferences.xml";
 
+	/** What the file stores for a beacon switch, whatever the running session has set. */
+	private static final String BEACON_SWITCH_AS_STORED = "false";
+
 
 
 	/**
@@ -366,7 +369,14 @@ public class ChatPreferences {
 	 * Beacon prefs
 	 */
 
-	MutableValue<Boolean> bcn_beaconsEnabledMainCat = new SimpleValue<>(true);
+	/*
+	 * The two switches are state of the running session and nothing else: they start
+	 * off, the preferences file is never read into them and always stores "false".
+	 * A stored switch started beacons on every program start that nobody had asked
+	 * for in that session, and the former default of "on" started one whenever the
+	 * file was unreadable (issue #171).
+	 */
+	MutableValue<Boolean> bcn_beaconsEnabledMainCat = new SimpleValue<>(false);
 	MutableValue<Boolean> bcn_beaconsEnabledSecondCat = new SimpleValue<>(false);
 	int bcn_beaconIntervalInMinutesMainCat = 20;
 	int bcn_beaconIntervalInMinutesSecondCat = 20;
@@ -2197,12 +2207,17 @@ public class ChatPreferences {
 			bcn_beaconIntervalInMinutesMainCat.setTextContent(this.getBcn_beaconIntervalInMinutesMainCat()+"");
 			beaconCQ.appendChild(bcn_beaconIntervalInMinutesMainCat);
 
+			/*
+			 * The four switch elements stay in the file so that its layout does not
+			 * change, but they always say "false": a release that still reads them
+			 * must not start a beacon from a file this one has written.
+			 */
 			Element beaconCQEnabled = doc.createElement("beaconCQEnabled");
-			beaconCQEnabled.setTextContent(this.isBcn_beaconsEnabledMainCat()+"");
+			beaconCQEnabled.setTextContent(BEACON_SWITCH_AS_STORED);
 			beaconCQ.appendChild(beaconCQEnabled);
 
 			Element bcn_beaconsEnabledMainCat = doc.createElement("bcn_beaconsEnabledMainCat");
-			bcn_beaconsEnabledMainCat.setTextContent(this.isBcn_beaconsEnabledMainCat()+"");
+			bcn_beaconsEnabledMainCat.setTextContent(BEACON_SWITCH_AS_STORED);
 			beaconCQ.appendChild(bcn_beaconsEnabledMainCat);
 
 
@@ -2223,11 +2238,11 @@ public class ChatPreferences {
 			beaconCQ.appendChild(bcn_beaconIntervalInMinutesSecondCat);
 
 			Element beaconCQEnabledSecondCat = doc.createElement("beaconCQEnabledSecondCat");
-			beaconCQEnabledSecondCat.setTextContent(this.isBcn_beaconsEnabledSecondCat()+"");
+			beaconCQEnabledSecondCat.setTextContent(BEACON_SWITCH_AS_STORED);
 			beaconCQ.appendChild(beaconCQEnabledSecondCat);
 
 			Element bcn_beaconsEnabledSecondCat = doc.createElement("bcn_beaconsEnabledSecondCat");
-			bcn_beaconsEnabledSecondCat.setTextContent(this.isBcn_beaconsEnabledSecondCat()+"");
+			bcn_beaconsEnabledSecondCat.setTextContent(BEACON_SWITCH_AS_STORED);
 			beaconCQ.appendChild(bcn_beaconsEnabledSecondCat);
 
 			/**
@@ -3178,11 +3193,14 @@ public class ChatPreferences {
 
 			Element beaconCQEl = getFirstElement(doc, "beaconCQ");
 			if (beaconCQEl != null) {
-				setBcn_beaconsEnabledMainCat(getBoolean(beaconCQEl, isBcn_beaconsEnabledMainCat(), "bcn_beaconsEnabledMainCat", "beaconCQEnabled"));
+				/*
+				 * The enable switches of both categories are deliberately not read. They
+				 * belong to the running session, so a file of an earlier release cannot
+				 * switch a beacon on and reading again cannot switch a running one off.
+				 */
 				bcn_beaconIntervalInMinutesMainCat = getInt(beaconCQEl, bcn_beaconIntervalInMinutesMainCat, "bcn_beaconIntervalInMinutesMainCat", "beaconCQIntervalMinutes");
 				bcn_beaconTextMainCat = getText(beaconCQEl, bcn_beaconTextMainCat, "bcn_beaconTextMainCat", "beaconCQText");
 
-				setBcn_beaconsEnabledSecondCat(getBoolean(beaconCQEl, isBcn_beaconsEnabledSecondCat(), "bcn_beaconsEnabledSecondCat", "beaconCQEnabledSecondCat"));
 				bcn_beaconIntervalInMinutesSecondCat = getInt(beaconCQEl, bcn_beaconIntervalInMinutesSecondCat, "bcn_beaconIntervalInMinutesSecondCat", "beaconCQIntervalMinutesSecondCat");
 				bcn_beaconTextSecondCat = getText(beaconCQEl, bcn_beaconTextSecondCat, "bcn_beaconTextSecondCat", "beaconCQTextSecondText");
 

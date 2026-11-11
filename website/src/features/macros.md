@@ -174,7 +174,7 @@ Each chat category has its own enable setting and message template. Both categor
 
 Global variables are evaluated again on every timer run. A QRG changed by the logger can therefore be included in the next beacon without editing its template.
 
-The completely resolved beacon text must not exceed 120 characters. The configured minimum interval is one minute.
+The completely resolved beacon text must not exceed 120 characters. The configured minimum interval is five minutes.
 
 A suitable template is:
 

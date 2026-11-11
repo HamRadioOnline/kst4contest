@@ -180,6 +180,20 @@ class BeaconTabStateTest(@TempDir private val tempDir: Path) {
             "restarting the timer per rejected keystroke would disturb the cooldown")
     }
 
+    /** Issue #171: one minute was allowed and was what the template shipped. */
+    @Test
+    fun `an interval below five minutes is refused and five is accepted`() {
+        val s = Session()
+        s.prefs.setBcn_beaconIntervalInMinutesMainCat(9)
+        val state = s.state()
+
+        assertNotNull(state.commitBeaconInterval("4"))
+        assertEquals(9, state.beaconIntervalMinutes)
+
+        assertNull(state.commitBeaconInterval("5"))
+        assertEquals(5, state.beaconIntervalMinutes)
+    }
+
     @Test
     fun `an interval that is not a whole number is refused`() {
         val s = Session()

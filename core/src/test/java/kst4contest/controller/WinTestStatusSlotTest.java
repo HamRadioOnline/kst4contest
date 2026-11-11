@@ -10,7 +10,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** A Win-Test STATUS of the second station writes SECONDQRG when SO2R is on. */
@@ -48,6 +52,24 @@ class WinTestStatusSlotTest {
 
         assertEquals(1, second.size());
         assertTrue(first.isEmpty());
+    }
+
+    /** STATUS counts in 100 Hz; the beacon guard of issue #171 is told in Hz. */
+    @Test
+    void aStatusReportsTheTransceiverFrequencyOfItsRadioToTheBeaconGuard() {
+        thread(true).parseStatus(STATUS_STN2);
+
+        verify(controller).onTrxFrequencyReported(RadioSlot.SECOND, 432_200_000L);
+    }
+
+    @Test
+    void withQrgSyncSwitchedOffAStatusReportsNothingToTheBeaconGuard() {
+        ReadUDPByWintestThread thread = thread(true);
+        when(prefs.isLogsynch_wintestQrgSyncEnabled()).thenReturn(false);
+
+        thread.parseStatus(STATUS_STN2);
+
+        verify(controller, never()).onTrxFrequencyReported(any(), anyLong());
     }
 
     @Test

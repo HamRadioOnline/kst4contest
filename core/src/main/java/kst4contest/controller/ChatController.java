@@ -65,10 +65,15 @@ public class ChatController implements ThreadStatusCallback {
 
 
 	public static final String BEACON_STATUS_SOURCE = "MyBeacon";
-	public static final int MIN_BEACON_INTERVAL_MINUTES = 1;
+	/**
+	 * Shortest interval the shared beacon timer accepts. One minute was allowed until
+	 * issue #171: forgotten beacons at that rate flooded the chat.
+	 */
+	public static final int MIN_BEACON_INTERVAL_MINUTES = 5;
 	public static final int MAX_BEACON_TEXT_LENGTH = 120;
 	private static final long INITIAL_BEACON_DELAY_MILLIS = 10_000L;
 	private final BeaconStatus beaconStatus = new BeaconStatus();
+	private final BeaconFrequencyGuard beaconFrequencyGuard = new BeaconFrequencyGuard();
 
 	private Consumer<Double> viewRotorCallback;
 
@@ -3385,12 +3390,18 @@ private SimpleRoster<String>
 
 	/** Applies the main-category beacon switch to the running session immediately. */
 	public void setMainBeaconEnabled(boolean enabled) {
+		if (enabled) {
+			beaconFrequencyGuard.arm(BeaconFrequencyGuard.Beacon.MAIN);
+		}
 		getChatPreferences().setBcn_beaconsEnabledMainCat(enabled);
 		publishBeaconStatus("Beacon configuration changed.");
 	}
 
 	/** Applies the second-category beacon switch to the running session immediately. */
 	public void setSecondBeaconEnabled(boolean enabled) {
+		if (enabled) {
+			beaconFrequencyGuard.arm(BeaconFrequencyGuard.Beacon.SECOND);
+		}
 		getChatPreferences().setBcn_beaconsEnabledSecondCat(enabled);
 		publishBeaconStatus("Beacon configuration changed.");
 	}
@@ -3410,11 +3421,65 @@ private SimpleRoster<String>
 				&& preferences.isBcn_beaconsEnabledSecondCat());
 		boolean enable = !anyEnabled;
 
+		if (enable) {
+			beaconFrequencyGuard.arm(BeaconFrequencyGuard.Beacon.MAIN);
+			if (secondAvailable) {
+				beaconFrequencyGuard.arm(BeaconFrequencyGuard.Beacon.SECOND);
+			}
+		}
 		preferences.setBcn_beaconsEnabledMainCat(enable);
 		if (secondAvailable) {
 			preferences.setBcn_beaconsEnabledSecondCat(enable);
 		}
 		publishBeaconStatus("Beacon status toggled from the main window.");
+	}
+
+	/**
+	 * Takes a frequency a logging program reported for one of the transceivers and
+	 * switches off every beacon whose radio has left the frequency it was switched on
+	 * at by more than {@link BeaconFrequencyGuard#LIMIT_HZ}.
+	 *
+	 * <p>A beacon keeps announcing its frequency after the operator has tuned away.
+	 * Only reports that also update MYQRG or SECONDQRG arrive here, so a disabled
+	 * frequency synchronisation leaves the beacons alone, and so does typing into the
+	 * frequency field.</p>
+	 *
+	 * @param slot the radio the report belongs to
+	 * @param frequencyHz the reported frequency in Hz
+	 */
+	public void onTrxFrequencyReported(RadioSlot slot, long frequencyHz) {
+		ChatPreferences preferences = getChatPreferences();
+		if (preferences == null || slot == null) {
+			return;
+		}
+
+		Set<BeaconFrequencyGuard.Beacon> enabled =
+				EnumSet.noneOf(BeaconFrequencyGuard.Beacon.class);
+		if (preferences.isBcn_beaconsEnabledMainCat()) {
+			enabled.add(BeaconFrequencyGuard.Beacon.MAIN);
+		}
+		if (preferences.isBcn_beaconsEnabledSecondCat()) {
+			enabled.add(BeaconFrequencyGuard.Beacon.SECOND);
+		}
+
+		Set<BeaconFrequencyGuard.Beacon> moved = beaconFrequencyGuard.report(
+				slot,
+				frequencyHz,
+				preferences.isTrxSynch_so2rEnabled(),
+				enabled
+		);
+		if (moved.isEmpty()) {
+			return;
+		}
+
+		if (moved.contains(BeaconFrequencyGuard.Beacon.MAIN)) {
+			preferences.setBcn_beaconsEnabledMainCat(false);
+		}
+		if (moved.contains(BeaconFrequencyGuard.Beacon.SECOND)) {
+			preferences.setBcn_beaconsEnabledSecondCat(false);
+		}
+		publishBeaconStatus(
+				"Beacon switched off: the transceiver moved by more than 2 kHz.");
 	}
 
 	/** Publishes the loaded state without changing either category switch. */

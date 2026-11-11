@@ -2,6 +2,12 @@
 
 Freigegeben von Marc am 2026-11-04.
 
+> **Teilweise abgelöst durch Issue #171 (2026-11-11):** Die Beacon-Zustände werden nicht mehr
+> gespeichert und nicht mehr beim Profilstart geladen; jede Sitzung beginnt mit „aus“. Das
+> Mindestintervall beträgt fünf Minuten, und eine TRX-Frequenzänderung über 2 kHz schaltet die
+> Beacon ab. Der aktuelle Stand steht in `docs/PROJECT_CONTEXT.md` unter „Autoanswer / Beacon“.
+> Alles Übrige in diesem Dokument gilt weiter.
+
 ## Ziel
 
 Die beiden Beacon-Aktivierungsschalter wirken in der laufenden Sitzung sofort. Der gemeinsame

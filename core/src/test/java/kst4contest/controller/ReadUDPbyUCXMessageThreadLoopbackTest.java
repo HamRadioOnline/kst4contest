@@ -310,6 +310,18 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 		assertEquals(List.of("1296.200.00"), firstWrites, "only the marker may write MYQRG");
 	}
 
+	/** RadioInfo counts in 10 Hz; the beacon guard of issue #171 is told in Hz. */
+	@Test
+	void aRadioInfoReportsTheTransceiverFrequencyOfItsRadioToTheBeaconGuard(@TempDir Path tempDir) throws Exception {
+		givenRadioInfoMarkerEnabled();
+		givenSo2r(true);
+
+		sendThenAwaitMarker("<RadioInfo><RadioNr>2</RadioNr><Freq>43220000</Freq><Mode>SSB</Mode></RadioInfo>");
+
+		org.mockito.Mockito.verify(controller).onTrxFrequencyReported(RadioSlot.SECOND, 432_200_000L);
+		org.mockito.Mockito.verify(controller).onTrxFrequencyReported(RadioSlot.FIRST, 1_296_200_000L);
+	}
+
 	@Test
 	void withSo2rARadioInfoWithoutRadioNumberIsRadioOne(@TempDir Path tempDir) throws Exception {
 		givenRadioInfoMarkerEnabled();

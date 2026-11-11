@@ -112,10 +112,10 @@
     </textSnippets>
     <beaconCQ>
         <beaconCQText>_.~'"´"'~.__.~'´ CQ CQ CQ NAC de MYCALL, pse try 144.317 for JO54 `'~.__.~'"`"'~._</beaconCQText>
-        <beaconCQIntervalMinutes>1</beaconCQIntervalMinutes>
+        <beaconCQIntervalMinutes>10</beaconCQIntervalMinutes>
         <beaconCQEnabled>false</beaconCQEnabled>
         <beaconCQTextSecondText>_.~'"´"'~.__.~'´ CQ CQ CQ de MYCALL, pse sked or SECONDQRG `'~.__.~'"`"'~._</beaconCQTextSecondText>
-        <beaconCQIntervalMinutesSecondCat>3</beaconCQIntervalMinutesSecondCat>
+        <beaconCQIntervalMinutesSecondCat>10</beaconCQIntervalMinutesSecondCat>
         <beaconCQEnabledSecondCat>false</beaconCQEnabledSecondCat>
     </beaconCQ>
     <beaconUnworkedstations>

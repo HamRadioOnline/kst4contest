@@ -64,6 +64,13 @@ class ChatPreferencesRoundTripTest {
             Map.entry("setMessageHandling_autoAnswerEnabledSecondCat",
                     "Same deliberate mirroring as the second-category auto-answer text; the "
                             + "main-category flag wins after every read"),
+            Map.entry("setBcn_beaconsEnabledMainCat",
+                    "Session state since issue #171: the file always stores 'false' and "
+                            + "readPreferencesFromXmlFile never reads the switch, so a beacon has "
+                            + "to be switched on in every session (see the comment above "
+                            + "'bcn_beaconsEnabledMainCat')"),
+            Map.entry("setBcn_beaconsEnabledSecondCat",
+                    "Session state like the main-category beacon switch"),
             Map.entry("setBcn_contestScoreSum",
                     "DEAD FIELD: declared with accessors only, no caller in core or app-desktop, "
                             + "never written nor read")

@@ -603,13 +603,15 @@ KST4Contest verwendet einen gemeinsamen Timer für beide Chat-Kategorien. Aktivi
 
 Sind beide Beacons aktiviert, werden sie beim selben Timer-Lauf nacheinander in ihren jeweiligen Kategorien gesendet. Der zweite Beacon wird nur berücksichtigt, wenn die zweite Kategorie in derselben ON4KST-Sitzung aktiviert und vollständig synchronisiert ist.
 
-Die beiden Aktivierungsschalter wirken sofort auf den laufenden Timer. Sie starten weder den Countdown neu noch senden sie unmittelbar eine Nachricht; der nächste reguläre Timer-Lauf prüft den aktuellen Zustand. Erst **Save Settings** speichert die Aktivierung für den nächsten Programmstart. Nachrichtentexte und Intervall folgen weiterhin der normalen Apply-/Save-Logik.
+Die beiden Aktivierungsschalter wirken sofort auf den laufenden Timer. Sie starten weder den Countdown neu noch senden sie unmittelbar eine Nachricht; der nächste reguläre Timer-Lauf prüft den aktuellen Zustand. Nachrichtentexte und Intervall folgen weiterhin der normalen Apply-/Save-Logik.
 
-Der Status-Chip **MyBeacon** im Hauptfenster fasst beide nutzbaren Kategorien zusammen: **off** bedeutet kein aktiver Beacon, **1/2** genau eine von zwei aktiven Kategorien und **on** alle derzeit nutzbaren Kategorien. Ein Klick auf den Chip schaltet alle nutzbaren Beacons gemeinsam ein oder aus. Ist der zweite Chat deaktiviert, ändert der Chip nur den Beacon der Hauptkategorie und lässt die gespeicherte Einstellung des zweiten Beacons unverändert.
+Die Aktivierung gilt nur für die laufende Programmsitzung. Nach jedem Programmstart und nach jedem Profilwechsel sind beide Beacons ausgeschaltet und müssen bewusst wieder eingeschaltet werden. **Save Settings** speichert Nachrichtentexte und Intervall, aber nicht die Aktivierung. Ein Beacon kann dadurch nicht mehr unbemerkt aus einer früheren Sitzung weiterlaufen.
+
+Der Status-Chip **MyBeacon** im Hauptfenster fasst beide nutzbaren Kategorien zusammen: **off** bedeutet kein aktiver Beacon, **1/2** genau eine von zwei aktiven Kategorien und **on** alle derzeit nutzbaren Kategorien. Ein Klick auf den Chip schaltet alle nutzbaren Beacons gemeinsam ein oder aus. Ist der zweite Chat deaktiviert, ändert der Chip nur den Beacon der Hauptkategorie und lässt den Schalter des zweiten Beacons unverändert.
 
 ### Intervall und Timer-Verhalten
 
-Das Intervall wird in ganzen Minuten angegeben. Der kleinste zulässige Wert ist eine Minute.
+Das Intervall wird in ganzen Minuten angegeben. Der kleinste zulässige Wert sind fünf Minuten; eine neue Installation beginnt mit zehn Minuten. Ein kleinerer Wert aus einer früheren Version wird beim Start des Timers auf fünf Minuten angehoben.
 
 Nach dem Aufbau der Chat-Verbindung prüft KST4Contest die Beacons erstmals nach ungefähr zehn Sekunden. Anschließend gilt das eingestellte Intervall.
 
@@ -668,7 +670,18 @@ Der Beacon ist nur dann hilfreich, wenn seine QRG-Angabe zum tatsächlichen Betr
 
 Im Klartext: Solange auf einer festen QRG CQ gerufen wird, spart der Beacon Arbeit. Beim „Schleichen“ über das Band sollte er ausgeschaltet werden.
 
-Änderungen wirken während der laufenden Verbindung. Damit Aktivierung, Texte und Intervall auch nach dem nächsten Programmstart erhalten bleiben, anschließend **Save Settings** verwenden.
+### Automatische Abschaltung beim Frequenzwechsel
+
+Meldet das Logprogramm die Frequenz des Transceivers, schaltet KST4Contest den Beacon selbst ab, sobald sich das Funkgerät um mehr als 2 kHz von der Frequenz entfernt hat, auf der der Beacon eingeschaltet wurde. Verglichen wird mit der Frequenz beim Einschalten, nicht mit der vorherigen Meldung. Langsames Drehen über das Band löst die Abschaltung deshalb ebenso aus wie ein Sprung.
+
+- Ausgewertet werden die Meldungen, die auch `MYQRG` und `SECONDQRG` füllen: UCXLog-`RadioInfo` bei eingeschaltetem TRX-Abgleich und Win-Test-`STATUS` bei eingeschalteter QRG-Übernahme. Ohne diese Kopplung bleibt der Beacon an, bis er von Hand ausgeschaltet wird.
+- Eine von Hand in das QRG-Feld eingetragene Frequenz schaltet nichts ab.
+- Ohne **SO2R** steht das eine gemeldete Funkgerät für beide Kategorien: Beide Beacons werden abgeschaltet.
+- Mit **SO2R** schaltet Funkgerät 1 nur den Beacon der Hauptkategorie ab und Funkgerät 2 nur den der zweiten Kategorie.
+
+Nach der Abschaltung zeigt der Status-Chip **MyBeacon** den neuen Zustand, sein Tooltip nennt den Grund. Wird der Beacon wieder eingeschaltet, gilt die dann gemeldete Frequenz als neuer Bezug.
+
+Änderungen wirken während der laufenden Verbindung. Damit Texte und Intervall auch nach dem nächsten Programmstart erhalten bleiben, anschließend **Save Settings** verwenden. Die Aktivierung wird nicht gespeichert.
 
 ---
 
