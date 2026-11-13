@@ -8,6 +8,9 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     target-branch: "main"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     ignore:
       # Kotlin and Compose Multiplatform are coupled; bump them manually together
       - dependency-name: "org.jetbrains.kotlin*"
@@ -26,6 +29,26 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     target-branch: "main"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # npm dependencies of the Eleventy website in website/
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    target-branch: "main"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     groups:
       minor-and-patch:
         update-types:
