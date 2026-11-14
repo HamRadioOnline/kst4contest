@@ -163,12 +163,12 @@ fun ChatInputRow(
         // profile on every keystroke.
         InlineCommittedField(
             stored = ownQrgMain.value.orEmpty(),
-            onCommit = { prefs.getMYQRGFirstCat().set(it) },
+            onCommit = { state.commitOwnQrg(mainCategory = true, it) },
             tooltip = kst4contest.view.i18n.CurrentStrings.get().chatOwnQrgTooltip,
         )
         InlineCommittedField(
             stored = ownQrgSecond.value.orEmpty(),
-            onCommit = { prefs.getMYQRGSecondCat().set(it) },
+            onCommit = { state.commitOwnQrg(mainCategory = false, it) },
             tooltip = if (so2rEnabled) {
                 kst4contest.view.i18n.CurrentStrings.get().chatSecondQrgTooltipSo2r
             } else {

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import kst4contest.controller.RadioSlot
 import kst4contest.model.ChatCategory
 import kst4contest.model.ChatMember
 import kst4contest.model.ChatMessage
@@ -46,6 +47,8 @@ interface ChatInputActions {
     fun ownQrgMain(): String
 
     fun ownQrgSecond(): String
+
+    fun applyManualQrg(slot: RadioSlot, value: String) {}
 }
 
 /**
@@ -148,6 +151,10 @@ class ChatInputState(private val actions: ChatInputActions) {
     fun appendOwnQrg(mainCategory: Boolean) {
         val qrg = if (mainCategory) actions.ownQrgMain() else actions.ownQrgSecond()
         appendAndFocus("$qrg ")
+    }
+
+    fun commitOwnQrg(mainCategory: Boolean, value: String) {
+        actions.applyManualQrg(if (mainCategory) RadioSlot.FIRST else RadioSlot.SECOND, value)
     }
 
     /**

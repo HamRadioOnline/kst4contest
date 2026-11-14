@@ -307,16 +307,20 @@ If the second chat category uses a different QRG, its template must contain `SEC
 calling cq at SECONDQRG, ant MYQTF deg, loc MYLOCATOR
 ```
 
-Global variables are evaluated again on every timer run. A QRG updated by the logging software can therefore already appear in the next beacon message.
+Global variables are evaluated again on every timer run. `MYQRG` and `MYQRGSHORT` always require a valid primary-category QRG, while `SECONDQRG` always requires a valid secondary-category QRG, regardless of which beacon template contains them. If a required QRG is unavailable, only the affected beacon cannot be enabled or is disabled. A template without a QRG variable may still be enabled without an available QRG.
 
-The fully resolved beacon text:
+When enabled, each beacon remembers the QRG of its own category. A manual QRG change moves this reference. If UCXLog or Win-Test later changes the assigned QRG by more than 5 kHz, KST4Contest disables the affected beacon instead of silently including the new frequency in its next transmission. If no own QRG exists when the beacon is enabled, the first valid frequency entered or received later becomes the reference.
+
+The fully resolved beacon content before the fixed ` *a*` suffix:
 
 - must contain at least one valid character,
 - must not exceed 120 characters,
 - must not contain the protocol separator `|`, and
 - must not contain line breaks.
 
-If the text is empty or invalid when transmission is due, that beacon run is skipped.
+KST4Contest appends the suffix automatically afterwards. The transmitted beacon message may therefore contain up to 124 characters.
+
+If the resolved text is empty or invalid for another reason when transmission is due, that beacon run is skipped and the status chip shows **FAILED**.
 
 The interval, activation and behaviour of both categories are described under [Configuration – Beacon Settings](en-Configuration#beacon-settings).
 

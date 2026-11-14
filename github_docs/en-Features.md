@@ -300,7 +300,7 @@ When two chat categories are connected, the original context is retained. The re
 
 If the required QRG is missing, KST4Contest sends no incomplete answer. Empty or locally invalid general reply texts are rejected as well.
 
-Automatic replies need limits. KST4Contest adds the fixed prefix `[KST4C Automsg]`, ignores incoming messages which already contain that prefix and permits only one automatic reply to the same complete callsign in the same category within two minutes. The cooldown is shared by the general and QRG-specific reply functions.
+Automatic replies need limits. KST4Contest adds the fixed prefix `[KST4C Automsg]`, ignores incoming messages which already contain that prefix and permits only one automatic reply to the same complete callsign in the same category within two minutes. The cooldown is shared by the general and QRG-specific reply functions. In addition, every automatically generated chat message, including `//VER` replies and beacons, ends with ` *a*`.
 
 A rejected reply does not start the cooldown. After entering the missing QRG or correcting the configured text, KST4Contest can therefore answer the next request immediately.
 
@@ -796,13 +796,13 @@ The timeline is a preview. AirScout data can change, and a stored sked guarantee
 
 KST4Contest can send recurring CQ messages to the public chat. The beacon is intended for longer periods of calling CQ on a fixed frequency: it publishes the local QRG regularly without requiring the operator to enter the same text again.
 
-Both chat categories use one shared interval, but each category has its own enable setting and message template. The second beacon is only sent while the second category is enabled and fully synchronised in the shared ON4KST session.
+Both chat categories use one shared interval of at least five minutes, but each category has its own enable setting and message template. Activation lasts only for the current program session and must be repeated after a program start or profile switch. An ON4KST reconnect does not change it. The second beacon is only sent while the second category is enabled and fully synchronised in the shared ON4KST session.
 
-Global variables such as `MYQRG`, `SECONDQRG`, `MYLOCATOR` and `MYQTF` are resolved immediately before every transmission. A QRG updated by the logging software can therefore appear in the next beacon.
+Global variables such as `MYQRG`, `SECONDQRG`, `MYLOCATOR` and `MYQTF` are resolved immediately before every transmission. Each active beacon also monitors the QRG of its own category. A manual change moves the reference; an automatic jump of more than 5 kHz from UCXLog or Win-Test disables the affected beacon.
 
-Before transmission, KST4Contest validates the completely resolved message. Empty messages, line breaks, the protocol separator `|` and messages exceeding 120 characters are not sent.
+Before transmission, KST4Contest validates the completely resolved beacon content. Empty content, line breaks, the protocol separator `|` and content exceeding 120 characters are not sent. It then appends ` *a*`, so the transmitted message may contain up to 124 characters.
 
-Disable the beacon while searching the band or changing QRG frequently. An automatically published frequency is useful only while somebody is actually listening and calling there.
+The coloured **MyBeacon** chip shows active, partially active, off and failed states. Its tooltip lists the state or last deactivation reason for each category.
 
 Configuration, timer behaviour and available variables: [Configuration – Beacon Settings](en-Configuration#beacon-settings).
 

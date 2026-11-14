@@ -187,9 +187,11 @@ class ThreadStatusButtons {
         val button = bySource.getOrPut(sourceName) {
             ThreadStatusButton(sourceName, actions[sourceName]).also { ordered.add(it) }
         }
+        val beacon = effectiveMessage.beaconStatusSnapshot?.let(BeaconStatusPresentation::from)
         button.report(
-            label = "$sourceName: ${effectiveMessage.runningInformationTextDescription}",
-            tooltip = effectiveMessage.runningInformation.orEmpty(),
+            label = "$sourceName: ${beacon?.label ?: effectiveMessage.runningInformationTextDescription}",
+            tooltip = beacon?.tooltip ?: effectiveMessage.runningInformation.orEmpty(),
+            style = beacon?.style ?: ThreadStatusVisualStyle.DEFAULT,
         )
     }
 
@@ -226,6 +228,9 @@ class ThreadStatusButton(
     var highlighted: Boolean by mutableStateOf(false)
         private set
 
+    var visualStyle: ThreadStatusVisualStyle by mutableStateOf(ThreadStatusVisualStyle.DEFAULT)
+        private set
+
     var revision: Int by mutableStateOf(0)
         private set
 
@@ -235,10 +240,16 @@ class ThreadStatusButton(
     val hasAction: Boolean
         get() = action != null
 
-    internal fun report(label: String, tooltip: String) {
+    internal fun report(
+        label: String,
+        tooltip: String,
+        style: ThreadStatusVisualStyle = ThreadStatusVisualStyle.DEFAULT,
+    ) {
         this.label = label
         this.tooltip = tooltip
-        highlighted = true
+        visualStyle = style
+        highlighted = style == ThreadStatusVisualStyle.DEFAULT ||
+            style == ThreadStatusVisualStyle.BEACON_ACTIVE
         revision++
     }
 

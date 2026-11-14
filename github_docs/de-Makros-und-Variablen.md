@@ -305,16 +305,20 @@ Verwendet die zweite Chat-Kategorie eine andere QRG, muss deren Vorlage `SECONDQ
 calling cq at SECONDQRG, ant MYQTF deg, loc MYLOCATOR
 ```
 
-Die globalen Variablen werden bei jedem Timer-Lauf erneut ausgewertet. Eine inzwischen vom Logprogramm aktualisierte QRG kann dadurch bereits in der nächsten Beacon-Nachricht erscheinen.
+Die globalen Variablen werden bei jedem Timer-Lauf erneut ausgewertet. `MYQRG` und `MYQRGSHORT` benötigen immer eine gültige QRG der Hauptkategorie, `SECONDQRG` immer eine gültige QRG der zweiten Kategorie – unabhängig davon, in welcher Beacon-Vorlage sie stehen. Fehlt eine benötigte QRG, lässt sich nur der betroffene Beacon nicht aktivieren beziehungsweise wird ausgeschaltet. Eine Vorlage ohne QRG-Variable darf auch ohne vorhandene QRG aktiviert werden.
 
-Der vollständig aufgelöste Beacon-Text:
+Beim Einschalten merkt sich jeder Beacon die QRG seiner eigenen Kategorie. Eine manuelle QRG-Änderung verschiebt diese Referenz. Ändert UCXLog oder Win-Test die zugeordnete QRG später um mehr als 5 kHz, schaltet KST4Contest den betreffenden Beacon automatisch aus, statt die neue Frequenz unbemerkt in die nächste Aussendung zu übernehmen. Ist beim Einschalten noch keine eigene QRG vorhanden, wird die erste später gültig eingegebene oder empfangene Frequenz zur Referenz.
+
+Der vollständig aufgelöste Beacon-Inhalt vor dem festen Suffix ` *a*`:
 
 - muss mindestens ein gültiges Zeichen enthalten,
 - darf höchstens 120 Zeichen lang sein,
 - darf das Protokoll-Trennzeichen `|` nicht enthalten und
 - darf keine Zeilenumbrüche enthalten.
 
-Ist der Text beim vorgesehenen Versand leer oder ungültig, wird der betreffende Beacon-Lauf ausgelassen.
+KST4Contest hängt das Suffix anschließend automatisch an. Die tatsächlich gesendete Beacon-Nachricht kann deshalb bis zu 124 Zeichen lang sein.
+
+Ist der aufgelöste Text beim vorgesehenen Versand aus einem anderen Grund leer oder ungültig, wird der betreffende Beacon-Lauf ausgelassen und der Status-Chip zeigt **FAILED**.
 
 Intervall, Aktivierung und Verhalten beider Kategorien sind unter [Konfiguration – Beacon Settings](de-Konfiguration#beacon-settings-automatischer-beacon) beschrieben.
 

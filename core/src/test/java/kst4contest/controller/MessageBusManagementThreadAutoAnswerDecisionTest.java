@@ -116,7 +116,7 @@ class MessageBusManagementThreadAutoAnswerDecisionTest {
     @Test
     void buildsTheQrgReply() {
         assertEquals(
-                "/CQ DL1ABC " + MARKER + " QRG is: 144.300",
+                "/CQ DL1ABC " + MARKER + " QRG is: 144.300 *a*",
                 MessageBusManagementThread.buildAutoAnswerMessageText(
                         "DL1ABC", VUHF, true, " 144.300 ", false, null));
     }
@@ -124,7 +124,7 @@ class MessageBusManagementThreadAutoAnswerDecisionTest {
     @Test
     void qrgRequestWinsOverTheGenericReply() {
         assertEquals(
-                "/CQ DL1ABC " + MARKER + " QRG is: 144.300",
+                "/CQ DL1ABC " + MARKER + " QRG is: 144.300 *a*",
                 MessageBusManagementThread.buildAutoAnswerMessageText(
                         "DL1ABC", VUHF, true, "144.300", true, "not qrv"));
     }
@@ -143,7 +143,7 @@ class MessageBusManagementThreadAutoAnswerDecisionTest {
     @Test
     void buildsTheGenericReplyTrimmed() {
         assertEquals(
-                "/CQ DL1ABC " + MARKER + " not qrv, back at 18z",
+                "/CQ DL1ABC " + MARKER + " not qrv, back at 18z *a*",
                 MessageBusManagementThread.buildAutoAnswerMessageText(
                         "DL1ABC", VUHF, false, "144.300", true, "  not qrv, back at 18z  "));
     }
@@ -169,7 +169,7 @@ class MessageBusManagementThreadAutoAnswerDecisionTest {
     @Test
     void senderCallSignIsTrimmedButNotUpperCased() {
         assertEquals(
-                "/CQ dl1abc " + MARKER + " QRG is: 144.300",
+                "/CQ dl1abc " + MARKER + " QRG is: 144.300 *a*",
                 MessageBusManagementThread.buildAutoAnswerMessageText(
                         " dl1abc ", VUHF, true, "144.300", false, null));
     }

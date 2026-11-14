@@ -570,7 +570,7 @@ If the layout has become inconvenient, first move the dividers and column widths
 
 ## Operating Tips
 
-- **Toggle beacons quickly**: Keep the settings window open to control each category separately. Click the **MyBeacon** status chip to enable or disable all currently usable beacons together.
+- **Toggle beacons quickly**: Keep the settings window open to control each category separately. Click the **MyBeacon** status chip to enable or disable all currently usable beacons together. **off** uses red text, **1/2** and **on** are green, and the chip flashes orange when activity is reported. **FAILED** stays red with white text. The tooltip lists the state or last deactivation reason for each category.
 - **Right-click in the user list**: Opens the snippet menu and additional actions, including QRZ.com profiles and NOT-QRV marks.
 - **Press Enter while working in the chat**: If the send field contains text, Enter sends it directly even when another control has focus.
-- **Stop the beacon while scanning**: Disable the beacon while moving through frequencies to avoid flooding the chat with unnecessary messages.
+- **Check the beacon after startup**: Both beacons are off after a program start or profile switch. A normal ON4KST reconnect within the same program session does not change their state.

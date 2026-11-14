@@ -30,6 +30,7 @@ class BeaconTabState(
     val secondCategoryName: String,
     private val setMainBeaconEnabled: (Boolean) -> Unit = prefs::setBcn_beaconsEnabledMainCat,
     private val setSecondBeaconEnabled: (Boolean) -> Unit = prefs::setBcn_beaconsEnabledSecondCat,
+    private val onBeaconTemplatesApplied: () -> Unit = {},
 ) {
 
     val mainBeaconEnabled = prefs.bcnBeaconsEnabledMainCatProperty()
@@ -45,10 +46,14 @@ class BeaconTabState(
 
     private var textMainCat: String by draft.setting(
         { prefs.getBcn_beaconTextMainCat() },
+        effectKey = BEACON_TEMPLATE_EFFECT,
+        effect = onBeaconTemplatesApplied,
     ) { prefs.setBcn_beaconTextMainCat(it) }
 
     private var textSecondCat: String by draft.setting(
         { prefs.getBcn_beaconTextSecondCat() },
+        effectKey = BEACON_TEMPLATE_EFFECT,
+        effect = onBeaconTemplatesApplied,
     ) { prefs.setBcn_beaconTextSecondCat(it) }
 
     /*
@@ -122,5 +127,9 @@ class BeaconTabState(
 
         interval = minutes
         return null
+    }
+
+    private companion object {
+        const val BEACON_TEMPLATE_EFFECT = "beaconTemplates"
     }
 }

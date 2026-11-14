@@ -40,6 +40,10 @@ Several operators sharing one computer can now use their own callsigns, locators
 
 ### Changed
 
+- **Automatic chat messages marked consistently:** general and QRG-specific automatic replies, `//VER` replies and both beacons now end with ` *a*`. Automatic replies keep their existing `[KST4C Automsg]` prefix. Resolved beacon content remains limited to 120 characters; including the fixed suffix, the transmitted message may contain 124 characters.
+
+- **Beacon session and QRG safeguards:** beacons start off after every program start and profile switch, but remain active across a normal ON4KST reconnect. The minimum interval is five minutes. Each active beacon monitors the QRG of its own category: manual changes move the reference, while an automatic UCXLog or Win-Test jump of more than 5 kHz disables only the affected beacon. The **MyBeacon** chip shows `off`, `1/2`, `on` and `FAILED` with clear traffic-light colours; its tooltip lists the state or last deactivation reason for each category.
+
 - **New home on GitHub:** the project moved from the `praktimarc` account to the [HamRadioOnline](https://github.com/HamRadioOnline) GitHub organisation and now lives at [HamRadioOnline/kst4contest](https://github.com/HamRadioOnline/kst4contest). Old links to the repository, the releases, the issues and the wiki redirect to the new address. The Flatpak repository moved as well and now lives at `https://hamradioonline.github.io/kst4contest/`; existing Flatpak installations keep updating through the redirect of the old address, new setups use the new address from the installation manual. The AUR packages point to the new address too.
 
 - **The terrain profile cache is separate:** computed terrain profiles now live in their own shared file `terrainprofilecache.db` and are stored per owner. Previously the whole cache was dropped whenever the callsign or locator changed, which would have discarded every computed profile on each profile switch.

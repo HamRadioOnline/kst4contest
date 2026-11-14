@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -202,8 +203,20 @@ private fun ThreadStatusButtonView(button: ThreadStatusButton) {
     }
 
     val scheme = MaterialTheme.colorScheme
-    val background = if (button.highlighted) scheme.primary else scheme.surfaceVariant
-    val foreground = if (button.highlighted) scheme.onPrimary else scheme.onSurfaceVariant
+    val colors = if (button.visualStyle == ThreadStatusVisualStyle.DEFAULT) {
+        ThreadButtonColors(
+            background = if (button.highlighted) scheme.primary else scheme.surfaceVariant,
+            border = null,
+            text = if (button.highlighted) scheme.onPrimary else scheme.onSurfaceVariant,
+        )
+    } else {
+        beaconThreadButtonColors(
+            style = button.visualStyle,
+            highlighted = button.highlighted,
+            darkTheme = scheme.surface.luminance() < 0.5f,
+            neutralBackground = scheme.surfaceVariant,
+        )
+    }
 
     TooltipArea(tooltip = { TooltipCard(button.tooltip) }) {
         val actionModifier = if (button.hasAction) {
@@ -211,22 +224,52 @@ private fun ThreadStatusButtonView(button: ThreadStatusButton) {
         } else {
             Modifier
         }
-        Box(
-            modifier = Modifier
+        var boxModifier = Modifier
                 .defaultMinSize(minHeight = 22.dp)
-                .background(background, NOTICE_SHAPE)
+                .background(colors.background, NOTICE_SHAPE)
                 .then(actionModifier)
-                .padding(NOTICE_PADDING),
+        colors.border?.let { border ->
+            boxModifier = boxModifier.border(1.dp, border, NOTICE_SHAPE)
+        }
+        Box(
+            modifier = boxModifier.padding(NOTICE_PADDING),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = button.label,
-                color = foreground,
+                color = colors.text,
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
             )
         }
     }
+}
+
+internal data class ThreadButtonColors(
+    val background: Color,
+    val border: Color?,
+    val text: Color,
+)
+
+internal fun beaconThreadButtonColors(
+    style: ThreadStatusVisualStyle,
+    highlighted: Boolean,
+    darkTheme: Boolean,
+    neutralBackground: Color,
+): ThreadButtonColors = when (style) {
+    ThreadStatusVisualStyle.BEACON_ACTIVE -> if (highlighted) {
+        ThreadButtonColors(Color(0xFFFFB300), Color(0xFFFFE082), Color(0xFF1B1B1B))
+    } else {
+        ThreadButtonColors(Color(0xFF238636), Color(0xFF56D364), Color.White)
+    }
+    ThreadStatusVisualStyle.BEACON_FAILED ->
+        ThreadButtonColors(Color(0xFFD50000), Color(0xFFFF6B6B), Color.White)
+    ThreadStatusVisualStyle.BEACON_OFF -> ThreadButtonColors(
+        neutralBackground,
+        null,
+        if (darkTheme) Color(0xFFFF6B6B) else Color(0xFFD50000),
+    )
+    ThreadStatusVisualStyle.DEFAULT -> error("Default worker colours come from the theme")
 }
 
 /** The tooltips in this bar carry the long text the badges had to cut. */

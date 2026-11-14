@@ -366,7 +366,8 @@ public class ChatPreferences {
 	 * Beacon prefs
 	 */
 
-	MutableValue<Boolean> bcn_beaconsEnabledMainCat = new SimpleValue<>(true);
+	private static final int MIN_BEACON_INTERVAL_MINUTES = 5;
+	MutableValue<Boolean> bcn_beaconsEnabledMainCat = new SimpleValue<>(false);
 	MutableValue<Boolean> bcn_beaconsEnabledSecondCat = new SimpleValue<>(false);
 	int bcn_beaconIntervalInMinutesMainCat = 20;
 	int bcn_beaconIntervalInMinutesSecondCat = 20;
@@ -2198,11 +2199,11 @@ public class ChatPreferences {
 			beaconCQ.appendChild(bcn_beaconIntervalInMinutesMainCat);
 
 			Element beaconCQEnabled = doc.createElement("beaconCQEnabled");
-			beaconCQEnabled.setTextContent(this.isBcn_beaconsEnabledMainCat()+"");
+			beaconCQEnabled.setTextContent("false");
 			beaconCQ.appendChild(beaconCQEnabled);
 
 			Element bcn_beaconsEnabledMainCat = doc.createElement("bcn_beaconsEnabledMainCat");
-			bcn_beaconsEnabledMainCat.setTextContent(this.isBcn_beaconsEnabledMainCat()+"");
+			bcn_beaconsEnabledMainCat.setTextContent("false");
 			beaconCQ.appendChild(bcn_beaconsEnabledMainCat);
 
 
@@ -2223,11 +2224,11 @@ public class ChatPreferences {
 			beaconCQ.appendChild(bcn_beaconIntervalInMinutesSecondCat);
 
 			Element beaconCQEnabledSecondCat = doc.createElement("beaconCQEnabledSecondCat");
-			beaconCQEnabledSecondCat.setTextContent(this.isBcn_beaconsEnabledSecondCat()+"");
+			beaconCQEnabledSecondCat.setTextContent("false");
 			beaconCQ.appendChild(beaconCQEnabledSecondCat);
 
 			Element bcn_beaconsEnabledSecondCat = doc.createElement("bcn_beaconsEnabledSecondCat");
-			bcn_beaconsEnabledSecondCat.setTextContent(this.isBcn_beaconsEnabledSecondCat()+"");
+			bcn_beaconsEnabledSecondCat.setTextContent("false");
 			beaconCQ.appendChild(bcn_beaconsEnabledSecondCat);
 
 			/**
@@ -3178,12 +3179,18 @@ public class ChatPreferences {
 
 			Element beaconCQEl = getFirstElement(doc, "beaconCQ");
 			if (beaconCQEl != null) {
-				setBcn_beaconsEnabledMainCat(getBoolean(beaconCQEl, isBcn_beaconsEnabledMainCat(), "bcn_beaconsEnabledMainCat", "beaconCQEnabled"));
-				bcn_beaconIntervalInMinutesMainCat = getInt(beaconCQEl, bcn_beaconIntervalInMinutesMainCat, "bcn_beaconIntervalInMinutesMainCat", "beaconCQIntervalMinutes");
+				setBcn_beaconsEnabledMainCat(false);
+				bcn_beaconIntervalInMinutesMainCat = Math.max(
+						MIN_BEACON_INTERVAL_MINUTES,
+						getInt(beaconCQEl, bcn_beaconIntervalInMinutesMainCat, "bcn_beaconIntervalInMinutesMainCat", "beaconCQIntervalMinutes")
+				);
 				bcn_beaconTextMainCat = getText(beaconCQEl, bcn_beaconTextMainCat, "bcn_beaconTextMainCat", "beaconCQText");
 
-				setBcn_beaconsEnabledSecondCat(getBoolean(beaconCQEl, isBcn_beaconsEnabledSecondCat(), "bcn_beaconsEnabledSecondCat", "beaconCQEnabledSecondCat"));
-				bcn_beaconIntervalInMinutesSecondCat = getInt(beaconCQEl, bcn_beaconIntervalInMinutesSecondCat, "bcn_beaconIntervalInMinutesSecondCat", "beaconCQIntervalMinutesSecondCat");
+				setBcn_beaconsEnabledSecondCat(false);
+				bcn_beaconIntervalInMinutesSecondCat = Math.max(
+						MIN_BEACON_INTERVAL_MINUTES,
+						getInt(beaconCQEl, bcn_beaconIntervalInMinutesSecondCat, "bcn_beaconIntervalInMinutesSecondCat", "beaconCQIntervalMinutesSecondCat")
+				);
 				bcn_beaconTextSecondCat = getText(beaconCQEl, bcn_beaconTextSecondCat, "bcn_beaconTextSecondCat", "beaconCQTextSecondText");
 
 				System.out.println("[ChatPreferences, info]: beaconCQ main='" + bcn_beaconTextMainCat + "', second='" + bcn_beaconTextSecondCat + "'");

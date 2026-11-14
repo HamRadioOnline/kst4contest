@@ -872,10 +872,14 @@ public class MessageBusManagementThread extends Thread {
 						versionInfo.setSender(itsMe);
 						versionInfo.setReceiver(newMessageArrived.getSender());
 						versionInfo.setChatCategory(newMessageArrived.getChatCategory());
-						versionInfo.setMessageText("/CQ " + newMessageArrived.getSender().getCallSign()
-								+ " " + AUTOANSWER_PREFIX
-								+ " KST4Contest v" + ApplicationConstants.APPLICATION_CURRENT_VERSION
-								+ " by DO5AMF");
+						versionInfo.setMessageText(
+								AutomaticChatMessageFormatter.appendSuffix(
+										"/CQ " + newMessageArrived.getSender().getCallSign()
+												+ " " + AUTOANSWER_PREFIX
+												+ " KST4Contest v" + ApplicationConstants.APPLICATION_CURRENT_VERSION
+												+ " by DO5AMF"
+								)
+						);
 
 						this.client.getMessageTXBus().add(versionInfo);
 					}
@@ -2070,7 +2074,9 @@ public class MessageBusManagementThread extends Thread {
 						+ payload;
 
 		try {
-			return On4KstProtocol.messageText(messageText);
+			return On4KstProtocol.messageText(
+					AutomaticChatMessageFormatter.appendSuffix(messageText)
+			);
 
 		} catch (IllegalArgumentException invalidMessage) {
 			LOGGER.warning(

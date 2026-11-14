@@ -154,7 +154,7 @@ Configuration of the individual logging applications, band and locator handling,
 
 ## TRX Sync Settings
 
-TRX synchronisation imports the current frequency from the logging application and makes it available in KST4Contest as the local QRG of the first chat category. QSO and frequency synchronisation may use the same UDP receiver, but they remain separate functions: receiving a `RadioInfo` packet does not mark a station as worked, and receiving a QSO packet does not automatically change the local QRG.
+TRX synchronisation imports the current frequency from the logging application and makes it available as a local QRG in KST4Contest. Without SO2R this is `MYQRG` for the first chat category; with SO2R, radio 2 can update `SECONDQRG` separately. QSO and frequency synchronisation may use the same UDP receiver, but they remain separate functions: receiving a `RadioInfo` packet does not mark a station as worked, and receiving a QSO packet does not automatically change the local QRG.
 
 ![TRX synchronisation settings](client_settings_window_trxsync.png)
 
@@ -172,11 +172,11 @@ Restart KST4Contest after changing the shared UDP port. Changes to the two QRG-s
 
 ### Which QRG Is Updated?
 
-Both automatic sources update `MYQRG` only. This is the local QRG of the first or primary chat category.
+Without SO2R, both automatic sources update `MYQRG` only. This is the local QRG of the first or primary chat category; `SECONDQRG` remains independent and can be entered manually.
 
-If a second chat is enabled, its QRG remains independent. It is not derived from incoming TRX packets and is available through `SECONDQRG`. The first category can therefore follow the logging application's frequency automatically while a separate QRG is entered manually for the second category.
+With SO2R, KST4Contest assigns packets to a radio: radio 1 updates `MYQRG`, while radio 2 updates `SECONDQRG`. The exact assignment is described under [SO2R: Keeping Two Radios Apart](#so2r-keeping-two-radios-apart).
 
-When at least one automatic QRG source is enabled and supplies a valid value, the first category's QRG field in the main window follows the received frequency. If the expected packets do not arrive, verify the interface before the contest. Manual entry is available when both the general RadioInfo listener and Win-Test STATUS synchronisation are disabled.
+When at least one automatic QRG source is enabled and supplies a valid value, the assigned QRG field in the main window follows the received frequency. If the expected packets do not arrive, verify the interface before the contest. Manual entry remains possible and is treated as the deliberate new reference for beacon safety; a later logger packet is compared with that value.
 
 ### Main or Pass Frequency from Win-Test
 
@@ -220,7 +220,7 @@ The synchronised QRG can be used in every text processed by the common KST4Conte
 - snippets, and
 - automatic beacons.
 
-`MYQRG` contains the complete QRG of the first chat category. `MYQRGSHORT` uses only its first seven characters. `SECONDQRG` contains the separately entered QRG of the second chat category.
+`MYQRG` contains the complete QRG of the first chat category. `MYQRGSHORT` uses only its first seven characters. `SECONDQRG` contains the QRG of the second chat category, whether it was entered manually or supplied by radio 2 with SO2R enabled.
 
 Examples:
 
@@ -603,13 +603,13 @@ KST4Contest uses one shared timer for both chat categories. Each category nevert
 
 When both beacons are enabled, they are sent one after the other in their respective categories during the same timer run. The second beacon is only considered while the second category is enabled and fully synchronised in the same ON4KST session.
 
-Both enable settings affect the running timer immediately. They neither restart the countdown nor send a message straight away; the next regular timer run checks the current state. Only **Save Settings** stores the enable state for the next program start. Message templates and the interval continue to follow the normal Apply/Save workflow.
+Both enable settings affect the running timer immediately. They neither restart the countdown nor send a message straight away; the next regular timer run checks the current state. Activation deliberately lasts only for the current program session: both beacons are off after every program start and profile switch. A normal ON4KST reconnect within the same program session preserves their state. Message templates and the interval continue to follow the normal Apply/Save workflow.
 
-The **MyBeacon** status chip in the main window combines the currently usable categories: **off** means that no beacon is enabled, **1/2** that one of two categories is enabled, and **on** that every usable category is enabled. Clicking the chip enables or disables all usable beacons together. If the second chat is disabled, the chip changes only the primary-category beacon and leaves the stored secondary-beacon setting untouched.
+The **MyBeacon** status chip in the main window combines the currently usable categories: **off** means that no beacon is enabled, **1/2** that one of two categories is enabled, and **on** that every usable category is enabled. Clicking the chip enables or disables all usable beacons together. If the second chat is disabled, the chip changes only the primary-category beacon. **off** uses red text, while **1/2** and **on** remain green. The active chip briefly flashes orange when activity is reported. **FAILED** overrides this with a persistent red background and white text; no orange activity flash is shown then. The tooltip lists the current state or last general deactivation reason for each category.
 
 ### Interval and timer behaviour
 
-The interval is entered in whole minutes. The minimum permitted value is one minute.
+The interval is entered in whole minutes. The minimum permitted value is five minutes. Smaller values from an older configuration are raised to five minutes when loaded.
 
 After the chat connection has been established, KST4Contest performs the first beacon check after approximately ten seconds. The configured interval applies after that initial check.
 
@@ -635,15 +635,19 @@ A suitable message for the primary chat category is:
 calling cq at MYQRGSHORT, ant MYQTF deg, loc MYLOCATOR
 ```
 
+KST4Contest automatically appends the fixed suffix ` *a*` to every transmitted beacon message. It therefore does not belong in the configured template.
+
 Use `SECONDQRG` for the second chat if it operates on a different frequency:
 
 ```text
 calling cq at SECONDQRG, ant MYQTF deg, loc MYLOCATOR
 ```
 
-Variables are resolved again on every timer run. If the logging software changes the QRG stored in `MYQRG`, the next beacon can already contain the updated value. The message template does not have to be edited.
+Variables are resolved again on every timer run. `MYQRG` and `MYQRGSHORT` always require a valid primary-category QRG, while `SECONDQRG` always requires a valid secondary-category QRG. This assignment is independent of which beacon template contains the variable.
 
-`MYQRG` and `MYQRGSHORT` always refer to the primary chat category. Enabling or selecting the second chat does not change this assignment.
+If a beacon template contains one of these QRG variables, that beacon can remain enabled only while the assigned QRG is valid. If the value is missing or invalid, only that beacon remains off or is disabled, and its tooltip states the reason. A template without a QRG variable may still be enabled when no QRG is available.
+
+When enabled, each beacon remembers the valid QRG of its own category as its reference. If no valid own QRG exists yet and the template has no QRG variable, the first valid frequency reported later by the user or logger becomes the reference. A manual QRG change is treated as intentional and moves the reference to the new value. If UCXLog or Win-Test later changes the assigned QRG by more than 5 kHz from that reference, KST4Contest disables the affected beacon automatically. Exactly 5 kHz is still permitted. Without SO2R, an automatic logger QRG affects only the primary beacon; with SO2R, the secondary QRG and beacon are handled separately.
 
 Station-specific variables such as `QRZNAME`, `FIRSTAP` and `SECONDAP` require a selected remote station. A public beacon has no such destination, so these variables are not resolved in beacon messages.
 
@@ -651,16 +655,16 @@ Station-specific variables such as `QRZNAME`, `FIRSTAP` and `SECONDAP` require a
 
 KST4Contest validates both the configured template and the message which remains after all variables have been resolved.
 
-The following restrictions apply:
+The following restrictions apply to the resolved beacon content before the fixed suffix:
 
-- The final message must not be empty.
+- It must not be empty.
 - It must not exceed 120 characters.
 - The protocol separator `|` is not permitted.
 - Line breaks are not permitted.
 
-An invalid entry is not accepted as the new beacon configuration. If a template becomes invalid only after resolving its variables, for example because the resulting text exceeds 120 characters, that beacon run is skipped.
+KST4Contest then appends ` *a*`, so the transmitted beacon message may contain up to 124 characters. An invalid entry is not accepted as the new beacon configuration. If a template becomes invalid only after resolving its variables, for example because the resolved content exceeds 120 characters, that beacon run is skipped.
 
-A template which consists only of a temporarily empty global variable may still be stored. This can happen during startup before the first QRG has been received from the logger. KST4Contest does not send an empty message while the variable has no usable value.
+A template containing a QRG variable may be stored before a matching QRG is available, but the affected beacon cannot then be enabled. If a required QRG becomes invalid later, an active beacon is disabled. If the template contains no QRG variable, an invalid own QRG only clears the reference and the beacon remains enabled.
 
 ### When should the beacon be disabled?
 
@@ -668,7 +672,7 @@ The beacon is useful only while its QRG matches the actual operation. Leaving it
 
 In plain terms: the beacon saves work while calling CQ on a fixed QRG. It should be disabled while moving around the band.
 
-Changes take effect during the current connection. Use **Save Settings** afterwards to retain the enable settings, message templates and interval for the next program start.
+Changes take effect during the current connection. **Save Settings** stores the message templates and interval for the next program start. Activation is deliberately not stored and must be performed again in every program session.
 
 ---
 
@@ -690,12 +694,12 @@ A suitable message is:
 Sri, I am not taking part in this contest. No skeds.
 ```
 
-Do not add the `[KST4C Automsg]` prefix to the configured text. KST4Contest inserts it automatically.
+Do not add the `[KST4C Automsg]` prefix or the fixed ` *a*` suffix to the configured text. KST4Contest inserts both automatically.
 
 The message received by the remote station may therefore be:
 
 ```text
-[KST4C Automsg] Sri, I am not taking part in this contest. No skeds.
+[KST4C Automsg] Sri, I am not taking part in this contest. No skeds. *a*
 ```
 
 The incoming private message remains visible. The function neither blocks nor discards the request; it merely avoids entering the same answer repeatedly.
@@ -726,7 +730,7 @@ The answer contains only the QRG belonging to the category in which the request 
 A possible reply is:
 
 ```text
-[KST4C Automsg] QRG is: 144.300.00
+[KST4C Automsg] QRG is: 144.300.00 *a*
 ```
 
 The values come from the same QRG fields used by `MYQRG` and `SECONDQRG`. The primary QRG may be entered manually or updated through [TRX synchronisation](#trx-sync-settings). The second category uses the value configured or entered for that category; with SO2R, radio 2 writes this field (`SECONDQRG`).
@@ -762,13 +766,15 @@ The existing `client_settings_window_messagehandling.png` screenshot does not ye
 
 ### Protection against repeated replies
 
-Every automatically generated reply contains the fixed prefix:
+Every automatic reply contains the fixed prefix:
 
 ```text
 [KST4C Automsg]
 ```
 
 The general and QRG-specific functions ignore messages which already contain this prefix. This prevents two clients with automatic replies enabled from answering each other indefinitely.
+
+In addition, every chat message generated automatically by KST4Contest ends with ` *a*`. This applies to general and QRG-specific replies, `//VER` replies and both beacons. The suffix is always appended, even if the configured text already ends with it. Manually sent messages and internal ON4KST control frames remain unchanged.
 
 A common two-minute cooldown additionally applies to both reply types. The cooldown is tracked separately for each complete callsign and chat category.
 

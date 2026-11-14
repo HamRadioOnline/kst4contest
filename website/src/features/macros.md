@@ -170,11 +170,13 @@ A public beacon has no selected remote station. It can therefore use only global
 
 ![Beacon settings for both chat categories](/manual/assets/client_settings_window_beacon.png)
 
-Each chat category has its own enable setting and message template. Both categories use the same timer interval. The second beacon is sent only when the second category and its beacon are enabled in the shared ON4KST session.
+Each chat category has its own enable setting and message template. Both categories use the same timer interval. Beacon activation is session-only: both are off after a program start or profile switch, but an ON4KST reconnect within the same program session preserves their state. The second beacon is sent only when the second category and its beacon are enabled in the shared ON4KST session.
 
-Global variables are evaluated again on every timer run. A QRG changed by the logger can therefore be included in the next beacon without editing its template.
+Global variables are evaluated again on every timer run. `MYQRG` and `MYQRGSHORT` require a valid primary QRG, while `SECONDQRG` requires a valid secondary QRG, regardless of which beacon template contains them. A template without a QRG variable may be enabled before any QRG is known.
 
-The completely resolved beacon text must not exceed 120 characters. The configured minimum interval is one minute.
+When enabled, each beacon remembers the QRG of its own category. A manual QRG change moves that reference. A later UCXLog or Win-Test change of more than 5 kHz disables the affected beacon automatically; exactly 5 kHz remains allowed. If no reference exists yet, the first valid manual or logger QRG establishes it.
+
+The completely resolved beacon content before the fixed suffix must not exceed 120 characters. KST4Contest then appends ` *a*`, so the transmitted message may contain up to 124 characters. The configured minimum interval is five minutes.
 
 A suitable template is:
 

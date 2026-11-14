@@ -565,7 +565,7 @@ Bei einer ungünstigen Aufteilung sollten zuerst die Divider und Spaltenbreiten 
 
 ## Tipps zur Bedienung
 
-- **Beacon schnell schalten**: Die Aktivierung ist im geöffneten Einstellungsfenster je Kategorie möglich. Ein Klick auf den Status-Chip **MyBeacon** schaltet alle derzeit nutzbaren Beacons gemeinsam ein oder aus.
+- **Beacon schnell schalten**: Die Aktivierung ist im geöffneten Einstellungsfenster je Kategorie möglich. Ein Klick auf den Status-Chip **MyBeacon** schaltet alle derzeit nutzbaren Beacons gemeinsam ein oder aus. **off** hat rote Schrift, **1/2** und **on** sind grün, bei gemeldeter Aktivität blitzt der Chip orange. **FAILED** bleibt rot mit weißer Schrift. Der Tooltip nennt den Zustand oder letzten Abschaltgrund je Kategorie.
 - **Rechtsklick in der Benutzerliste**: Öffnet das Snippet-Menü und weitere Aktionen (QRZ.com-Profil, NOT-QRV-Tags setzen).
 - **Enter aus dem Chat heraus**: Wenn im Sendfeld Text steht, sendet Enter direkt – auch wenn der Fokus woanders liegt.
-- **Beacon stoppen**: Beim Scannen von Frequenzen den Beacon ausschalten, damit der Chat nicht mit Meldungen überflutet wird.
+- **Beacon nach dem Start prüfen**: Nach einem Programmstart oder Profilwechsel sind beide Beacons ausgeschaltet. Ein normaler ON4KST-Reconnect innerhalb derselben Programmsitzung verändert ihren Zustand nicht.

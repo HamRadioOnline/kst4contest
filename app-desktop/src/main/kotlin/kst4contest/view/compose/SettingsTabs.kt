@@ -194,6 +194,10 @@ fun buildSettingsTabs(
         setSecondBeaconEnabled = controller::setSecondBeaconEnabled,
         mainCategoryName = categoryName(controller.chatCategoryMain, kst4contest.view.i18n.CurrentStrings.get().settingsCategoryMainFallback),
         secondCategoryName = categoryName(controller.chatCategorySecondChat, kst4contest.view.i18n.CurrentStrings.get().settingsCategorySecondFallback),
+        onBeaconTemplatesApplied = {
+            controller.onMainBeaconTemplateApplied()
+            controller.onSecondBeaconTemplateApplied()
+        },
     )
 
     val logSynchState = LogSynchTabState(

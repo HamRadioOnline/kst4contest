@@ -36,8 +36,7 @@ class BeaconControlTest {
 	@Test
 	void toggleWithSecondChatDisabledChangesOnlyTheMainBeacon() {
 		preferences.setLoginToSecondChatEnabled(false);
-		preferences.setBcn_beaconsEnabledMainCat(false);
-		preferences.setBcn_beaconsEnabledSecondCat(true);
+		controller.setSecondBeaconEnabled(true);
 
 		controller.toggleUsableBeacons();
 
@@ -56,8 +55,6 @@ class BeaconControlTest {
 	@Test
 	void toggleWithSecondChatEnabledSwitchesBothUsableBeacons() {
 		preferences.setLoginToSecondChatEnabled(true);
-		preferences.setBcn_beaconsEnabledMainCat(false);
-		preferences.setBcn_beaconsEnabledSecondCat(false);
 
 		controller.toggleUsableBeacons();
 
@@ -65,7 +62,7 @@ class BeaconControlTest {
 		assertTrue(preferences.isBcn_beaconsEnabledSecondCat());
 		assertLastDescription("on");
 
-		preferences.setBcn_beaconsEnabledSecondCat(false);
+		controller.setSecondBeaconEnabled(false);
 		controller.toggleUsableBeacons();
 
 		assertFalse(preferences.isBcn_beaconsEnabledMainCat());
@@ -76,14 +73,53 @@ class BeaconControlTest {
 	@Test
 	void anIndividualCheckboxPublishesThePartialStateImmediately() {
 		preferences.setLoginToSecondChatEnabled(true);
-		preferences.setBcn_beaconsEnabledMainCat(false);
-		preferences.setBcn_beaconsEnabledSecondCat(false);
 
 		controller.setMainBeaconEnabled(true);
 
 		assertTrue(preferences.isBcn_beaconsEnabledMainCat());
 		assertFalse(preferences.isBcn_beaconsEnabledSecondCat());
 		assertLastDescription("1/2");
+	}
+
+	@Test
+	void activationRejectsOnlyTheTemplateWhoseRequiredQrgIsMissing() {
+		preferences.setLoginToSecondChatEnabled(true);
+		preferences.setMYQRGSecondCat("1296.200");
+		preferences.setBcn_beaconTextMainCat("CQ SECONDQRG");
+		preferences.setBcn_beaconTextSecondCat("CQ MYQRG");
+
+		controller.toggleUsableBeacons();
+
+		assertTrue(preferences.isBcn_beaconsEnabledMainCat());
+		assertFalse(preferences.isBcn_beaconsEnabledSecondCat());
+	}
+
+	@Test
+	void manualQrgRebasesBeforeAnAutomaticMoveIsCompared() {
+		preferences.setBcn_beaconTextMainCat("CQ");
+		controller.setMainBeaconEnabled(true);
+		controller.applyManualQrg(RadioSlot.FIRST, "144.300");
+		controller.applyExternalQrg(RadioSlot.FIRST, "144.305", 144_305_000L);
+		assertTrue(preferences.isBcn_beaconsEnabledMainCat());
+
+		controller.applyManualQrg(RadioSlot.FIRST, "144.310");
+		controller.applyExternalQrg(RadioSlot.FIRST, "144.315.01", 144_315_010L);
+
+		assertFalse(preferences.isBcn_beaconsEnabledMainCat());
+	}
+
+	@Test
+	void nonPositiveExternalQrgCannotOverwriteTheDisplayOrClearTheReference() {
+		preferences.setBcn_beaconTextMainCat("CQ");
+		controller.applyManualQrg(RadioSlot.FIRST, "144.300");
+		controller.setMainBeaconEnabled(true);
+
+		controller.applyExternalQrg(RadioSlot.FIRST, "0", 0L);
+
+		assertEquals("144.300", preferences.getMYQRGFirstCat().get());
+		controller.applyExternalQrg(RadioSlot.FIRST, "144.306", 144_306_000L);
+		assertFalse(preferences.isBcn_beaconsEnabledMainCat(),
+				"the rejected packet must not clear the 144.300 reference");
 	}
 
 	private void assertLastDescription(String expected) {

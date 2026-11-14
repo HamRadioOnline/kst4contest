@@ -134,7 +134,7 @@ class MessageBusManagementThreadChatFrameTest {
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
                         + " KST4Contest v" + ApplicationConstants.APPLICATION_CURRENT_VERSION
-                        + " by DO5AMF",
+                        + " by DO5AMF *a*",
                 txBus.peek().getMessageText());
         verify(controller, times(1)).publishChatMessage(any(ChatMessage.class));
     }

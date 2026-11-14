@@ -5,6 +5,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import kst4contest.model.ChatCategory
 import kst4contest.model.ChatMember
 import kst4contest.model.ChatMessage
+import kst4contest.controller.RadioSlot
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -233,6 +234,20 @@ class ChatInputStateTest {
         assertEquals("432.200 ", state.value.text)
     }
 
+    @Test
+    fun `manual QRG commits keep their radio source explicit`() {
+        val actions = FakeActions()
+        val state = ChatInputState(actions)
+
+        state.commitOwnQrg(mainCategory = true, "144.300")
+        state.commitOwnQrg(mainCategory = false, "1296.100")
+
+        assertEquals(
+            listOf(RadioSlot.FIRST to "144.300", RadioSlot.SECOND to "1296.100"),
+            actions.manualQrgs,
+        )
+    }
+
     // ---- the snippets ------------------------------------------------------
 
     /**
@@ -407,6 +422,7 @@ class ChatInputStateTest {
         val resolvedTemplates = mutableListOf<String>()
         val recordedCqs = mutableListOf<String>()
         val recomputeReasons = mutableListOf<String>()
+        val manualQrgs = mutableListOf<Pair<RadioSlot, String>>()
 
         override fun panelSelection(): ChatMember? = panelSelection
         override fun tableSelection(): ChatMember? = tableSelection
@@ -431,5 +447,6 @@ class ChatInputStateTest {
         override fun queue(message: ChatMessage) { queued += message }
         override fun ownQrgMain(): String = ownQrgMain
         override fun ownQrgSecond(): String = ownQrgSecond
+        override fun applyManualQrg(slot: RadioSlot, value: String) { manualQrgs += slot to value }
     }
 }

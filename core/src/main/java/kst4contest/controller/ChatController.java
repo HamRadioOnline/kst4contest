@@ -65,9 +65,13 @@ public class ChatController implements ThreadStatusCallback {
 
 
 	public static final String BEACON_STATUS_SOURCE = "MyBeacon";
-	public static final int MIN_BEACON_INTERVAL_MINUTES = 1;
-	public static final int MAX_BEACON_TEXT_LENGTH = 120;
+	public static final int MIN_BEACON_INTERVAL_MINUTES = 5;
+	public static final int MAX_BEACON_PAYLOAD_LENGTH = 120;
+	public static final int MAX_BEACON_TEXT_LENGTH =
+			MAX_BEACON_PAYLOAD_LENGTH
+					+ AutomaticChatMessageFormatter.SUFFIX.length();
 	private static final long INITIAL_BEACON_DELAY_MILLIS = 10_000L;
+	private final BeaconSessionState beaconSessionState = new BeaconSessionState();
 	private final BeaconStatus beaconStatus = new BeaconStatus();
 
 	private Consumer<Double> viewRotorCallback;
@@ -3036,6 +3040,7 @@ private SimpleRoster<String>
 
         chatPreferences = new ChatPreferences(preferencesRelativeFileName);
         chatPreferences.readPreferencesFromXmlFile();
+		beaconSessionState.resetSession(chatPreferences);
 		Path historyFile = Path.of(ApplicationFileUtils.getDebugFilePath(
 				ApplicationConstants.APPLICATION_NAME,
 				MessageHistoryRecorder.CURRENT_FILE_NAME));
@@ -3288,6 +3293,7 @@ private SimpleRoster<String>
 
 	public void setChatPreferences(ChatPreferences chatPreferences) {
 		this.chatPreferences = chatPreferences;
+		beaconSessionState.resetSession(chatPreferences);
 	}
 
 	public ChatMember getownChatMemberObject() {
@@ -3385,13 +3391,21 @@ private SimpleRoster<String>
 
 	/** Applies the main-category beacon switch to the running session immediately. */
 	public void setMainBeaconEnabled(boolean enabled) {
-		getChatPreferences().setBcn_beaconsEnabledMainCat(enabled);
+		beaconSessionState.setEnabled(
+				BeaconSessionState.Channel.MAIN,
+				enabled,
+				getChatPreferences()
+		);
 		publishBeaconStatus("Beacon configuration changed.");
 	}
 
 	/** Applies the second-category beacon switch to the running session immediately. */
 	public void setSecondBeaconEnabled(boolean enabled) {
-		getChatPreferences().setBcn_beaconsEnabledSecondCat(enabled);
+		beaconSessionState.setEnabled(
+				BeaconSessionState.Channel.SECOND,
+				enabled,
+				getChatPreferences()
+		);
 		publishBeaconStatus("Beacon configuration changed.");
 	}
 
@@ -3405,16 +3419,64 @@ private SimpleRoster<String>
 	public void toggleUsableBeacons() {
 		ChatPreferences preferences = getChatPreferences();
 		boolean secondAvailable = preferences.isLoginToSecondChatEnabled();
-		boolean anyEnabled = preferences.isBcn_beaconsEnabledMainCat()
+		boolean anyEnabled = beaconSessionState.isEnabled(BeaconSessionState.Channel.MAIN)
 				|| (secondAvailable
-				&& preferences.isBcn_beaconsEnabledSecondCat());
+				&& beaconSessionState.isEnabled(BeaconSessionState.Channel.SECOND));
 		boolean enable = !anyEnabled;
 
-		preferences.setBcn_beaconsEnabledMainCat(enable);
+		beaconSessionState.setEnabled(
+				BeaconSessionState.Channel.MAIN,
+				enable,
+				preferences
+		);
 		if (secondAvailable) {
-			preferences.setBcn_beaconsEnabledSecondCat(enable);
+			beaconSessionState.setEnabled(
+					BeaconSessionState.Channel.SECOND,
+					enable,
+					preferences
+			);
 		}
 		publishBeaconStatus("Beacon status toggled from the main window.");
+	}
+
+	/** Applies a deliberate operator QRG entry and rebases the affected beacon. */
+	public void applyManualQrg(RadioSlot slot, String value) {
+		BeaconSessionState.Channel channel = slot == RadioSlot.FIRST
+				? BeaconSessionState.Channel.MAIN
+				: BeaconSessionState.Channel.SECOND;
+		beaconSessionState.onManualQrgChanged(channel, value, getChatPreferences());
+		publishBeaconStatus("QRG changed by the operator.");
+	}
+
+	/** Applies a logger QRG report and enforces the automatic-QSY safety boundary. */
+	public void applyExternalQrg(RadioSlot slot, String displayValue, long frequencyHz) {
+		if (frequencyHz <= 0L) {
+			return;
+		}
+		slot.qrgIn(getChatPreferences()).set(displayValue);
+		BeaconSessionState.Channel channel = slot == RadioSlot.FIRST
+				? BeaconSessionState.Channel.MAIN
+				: BeaconSessionState.Channel.SECOND;
+		beaconSessionState.onExternalQrgChanged(channel, frequencyHz, getChatPreferences());
+		publishBeaconStatus("QRG updated by logging software.");
+	}
+
+	/** Revalidates the applied main-category template. */
+	public void onMainBeaconTemplateApplied() {
+		beaconSessionState.onTemplateChanged(
+				BeaconSessionState.Channel.MAIN,
+				getChatPreferences()
+		);
+		publishBeaconStatus("Beacon template changed.");
+	}
+
+	/** Revalidates the applied second-category template. */
+	public void onSecondBeaconTemplateApplied() {
+		beaconSessionState.onTemplateChanged(
+				BeaconSessionState.Channel.SECOND,
+				getChatPreferences()
+		);
+		publishBeaconStatus("Beacon template changed.");
 	}
 
 	/** Publishes the loaded state without changing either category switch. */
@@ -3427,9 +3489,13 @@ private SimpleRoster<String>
 		return beaconStatus;
 	}
 
+	BeaconSessionState beaconSessionState() {
+		return beaconSessionState;
+	}
+
 	/** Builds the current aggregate when the UI is ready to display it. */
 	public ThreadStateMessage currentBeaconStatus() {
-		return beaconStatus.message(getChatPreferences());
+		return beaconStatus.message(getChatPreferences(), beaconSessionState);
 	}
 
 	/** Publishes the aggregate state used by the single beacon status chip. */
@@ -3454,7 +3520,7 @@ private SimpleRoster<String>
 	 * @param configuredText configured beacon template
 	 * @throws IllegalArgumentException if the template contains invalid protocol
 	 *                                  content or currently resolves to more than
-	 *                                  {@value MAX_BEACON_TEXT_LENGTH} characters
+	 *                                  {@value MAX_BEACON_PAYLOAD_LENGTH} characters
 	 */
 	public void validateBeaconTemplate(String configuredText) {
 		String normalizedTemplate =
@@ -3473,7 +3539,10 @@ private SimpleRoster<String>
 			return;
 		}
 
-		validateResolvedBeaconText(resolvedText);
+		validateBeaconText(
+				resolvedText,
+				MAX_BEACON_PAYLOAD_LENGTH
+		);
 	}
 
 	/**
@@ -3494,22 +3563,29 @@ private SimpleRoster<String>
 				new MessageVariableResolver(chatPreferences)
 						.resolveGlobalVariables(configuredText);
 
-		return validateResolvedBeaconText(resolvedText);
+		String normalizedPayload = validateBeaconText(
+				resolvedText,
+				MAX_BEACON_PAYLOAD_LENGTH
+		);
+		return validateBeaconText(
+				AutomaticChatMessageFormatter.appendSuffix(normalizedPayload),
+				MAX_BEACON_TEXT_LENGTH
+		);
 	}
 
 	/**
-	 * Applies the message-text and length rules to a fully resolved beacon.
+	 * Applies the message-text and length rules to a beacon processing stage.
 	 */
-	private String validateResolvedBeaconText(String resolvedText) {
+	private String validateBeaconText(String resolvedText, int maximumLength) {
 		String normalizedText =
 				On4KstProtocol.messageText(resolvedText);
 
-		if (normalizedText.length() > MAX_BEACON_TEXT_LENGTH) {
+		if (normalizedText.length() > maximumLength) {
 			throw new IllegalArgumentException(
 					"The resolved beacon message contains "
 							+ normalizedText.length()
 							+ " characters; maximum is "
-							+ MAX_BEACON_TEXT_LENGTH
+							+ maximumLength
 							+ "."
 			);
 		}

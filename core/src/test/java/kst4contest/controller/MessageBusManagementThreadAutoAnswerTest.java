@@ -104,7 +104,7 @@ class MessageBusManagementThreadAutoAnswerTest {
         ChatMessage reply = replies.get(0);
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
-                        + " QRG is: " + FIRST_QRG,
+                        + " QRG is: " + FIRST_QRG + " *a*",
                 reply.getMessageText());
         assertEquals(MY_CALL, reply.getSender().getCallSign());
         assertEquals(REMOTE_CALL, reply.getReceiver().getCallSign());
@@ -152,7 +152,7 @@ class MessageBusManagementThreadAutoAnswerTest {
                 "another station and another category each get their own reply");
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
-                        + " QRG is: " + SECOND_QRG,
+                        + " QRG is: " + SECOND_QRG + " *a*",
                 replies.get(2).getMessageText(),
                 "the second-category question is answered with the second QRG");
         assertSame(secondCategory, replies.get(2).getChatCategory());
@@ -232,7 +232,7 @@ class MessageBusManagementThreadAutoAnswerTest {
                 "the rejected reply must not have started the cooldown");
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
-                        + " QRG is: " + FIRST_QRG,
+                        + " QRG is: " + FIRST_QRG + " *a*",
                 txBus.peek().getMessageText());
     }
 
@@ -248,7 +248,7 @@ class MessageBusManagementThreadAutoAnswerTest {
         assertEquals(1, txBus.size());
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
-                        + " not qrv, back at 18z",
+                        + " not qrv, back at 18z *a*",
                 txBus.peek().getMessageText(),
                 "the configured text is trimmed");
     }
@@ -265,7 +265,7 @@ class MessageBusManagementThreadAutoAnswerTest {
         assertEquals(1, txBus.size());
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
-                        + " QRG is: " + FIRST_QRG,
+                        + " QRG is: " + FIRST_QRG + " *a*",
                 txBus.peek().getMessageText());
     }
 
@@ -282,7 +282,7 @@ class MessageBusManagementThreadAutoAnswerTest {
 
         assertEquals(1, txBus.size(),
                 "the blank generic reply is dropped; the QRG reply still goes out");
-        assertTrue(txBus.peek().getMessageText().endsWith("QRG is: " + FIRST_QRG));
+        assertTrue(txBus.peek().getMessageText().endsWith("QRG is: " + FIRST_QRG + " *a*"));
     }
 
     @Test
@@ -295,7 +295,7 @@ class MessageBusManagementThreadAutoAnswerTest {
         assertEquals(
                 "/CQ " + REMOTE_CALL + " " + ApplicationConstants.AUTOANSWER_PREFIX
                         + " KST4Contest v" + ApplicationConstants.APPLICATION_CURRENT_VERSION
-                        + " by DO5AMF",
+                        + " by DO5AMF *a*",
                 txBus.peek().getMessageText());
     }
 

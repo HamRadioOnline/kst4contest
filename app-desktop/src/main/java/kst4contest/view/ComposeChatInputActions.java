@@ -1,5 +1,6 @@
 package kst4contest.view;
 
+import kst4contest.controller.RadioSlot;
 import kst4contest.model.ChatCategory;
 import kst4contest.model.ChatMember;
 import kst4contest.model.ChatMessage;
@@ -96,5 +97,10 @@ public final class ComposeChatInputActions implements ChatInputActions {
     public String ownQrgSecond() {
         String value = application.chatcontroller.getChatPreferences().getMYQRGSecondCat().get();
         return value == null ? "" : value;
+    }
+
+    @Override
+    public void applyManualQrg(final RadioSlot slot, final String value) {
+        application.chatcontroller.applyManualQrg(slot, value);
     }
 }

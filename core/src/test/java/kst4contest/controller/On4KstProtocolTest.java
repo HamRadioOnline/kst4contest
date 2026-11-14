@@ -89,10 +89,29 @@ class On4KstProtocolTest {
         );
 
         assertEquals(
-                "calling cq at 144.300",
+                "calling cq at 144.300 *a*",
                 controller.resolveAndValidateBeaconText(
                         "calling cq at MYQRG"
                 )
+        );
+    }
+
+    @Test
+    void keepsThe120CharacterPayloadAllowanceWithA124CharacterFinalBeacon() {
+        ChatPreferences preferences = new ChatPreferences(tempDir.resolve("preferences.xml"));
+        ChatController controller = new ChatController();
+        controller.setChatPreferences(preferences);
+        String payload = "x".repeat(120);
+
+        assertDoesNotThrow(() -> controller.validateBeaconTemplate(payload));
+
+        String finalMessage = controller.resolveAndValidateBeaconText(payload);
+        assertEquals(124, finalMessage.length());
+        assertEquals(payload + " *a*", finalMessage);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> controller.validateBeaconTemplate("x".repeat(121))
         );
     }
 
@@ -136,10 +155,7 @@ class On4KstProtocolTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> controller.validateBeaconTemplate(
-                        "x".repeat(
-                                ChatController.MAX_BEACON_TEXT_LENGTH
-                                        + 1
-                        )
+                        "x".repeat(121)
                 )
         );
     }

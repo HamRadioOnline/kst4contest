@@ -1,25 +1,18 @@
 package kst4contest.controller;
 
+import kst4contest.model.BeaconStatusSnapshot;
 import kst4contest.model.ChatPreferences;
 import kst4contest.model.ThreadStateMessage;
 
-/** Keeps category failures and builds the single status shown for both beacons. */
+/** Builds the single status shown for both beacons from their session state. */
 final class BeaconStatus {
 
 	static final String SOURCE_NAME = ChatController.BEACON_STATUS_SOURCE;
 
-	private boolean mainInvalid;
-	private boolean secondInvalid;
 	private String activity = "Beacon configuration loaded.";
 
 	/** Records the result of one complete timer run. */
-	synchronized void recordRun(
-			boolean mainInvalid,
-			boolean secondInvalid,
-			String activity
-	) {
-		this.mainInvalid = mainInvalid;
-		this.secondInvalid = secondInvalid;
+	synchronized void recordRun(String activity) {
 		this.activity = activity;
 	}
 
@@ -29,47 +22,33 @@ final class BeaconStatus {
 	}
 
 	/** Builds a fresh aggregate from the current preferences and remembered failures. */
-	synchronized ThreadStateMessage message(ChatPreferences preferences) {
-		boolean secondAvailable = preferences.isLoginToSecondChatEnabled();
-		boolean mainEnabled = preferences.isBcn_beaconsEnabledMainCat();
-		boolean secondEnabled = secondAvailable
-				&& preferences.isBcn_beaconsEnabledSecondCat();
-		int available = secondAvailable ? 2 : 1;
-		int enabled = (mainEnabled ? 1 : 0) + (secondEnabled ? 1 : 0);
-		boolean critical = (mainInvalid && mainEnabled)
-				|| (secondInvalid && secondEnabled);
+	synchronized ThreadStateMessage message(
+			ChatPreferences preferences,
+			BeaconSessionState sessionState
+	) {
+		BeaconStatusSnapshot snapshot = sessionState.snapshot(preferences);
+		boolean critical = snapshot.getAggregateState()
+				== BeaconStatusSnapshot.AggregateState.FAILED;
+		boolean running = snapshot.getAggregateState()
+				!= BeaconStatusSnapshot.AggregateState.OFF;
 
 		String description;
-		if (critical) {
-			description = "FAILED";
-		} else if (enabled == 0) {
-			description = "off";
-		} else if (enabled == available) {
-			description = "on";
-		} else {
-			description = enabled + "/" + available;
+		switch (snapshot.getAggregateState()) {
+			case FAILED -> description = "FAILED";
+			case OFF -> description = "off";
+			case ON -> description = "on";
+			case PARTIAL -> description = "1/2";
+			default -> throw new IllegalStateException("Unknown beacon status");
 		}
-
-		String details = "Main category beacon: " + onOff(mainEnabled)
-				+ "; second category beacon: "
-				+ (secondAvailable
-						? onOff(secondEnabled)
-						: "unavailable");
-		String information = activity == null || activity.isBlank()
-				? details
-				: activity + "\n" + details;
 
 		ThreadStateMessage message = new ThreadStateMessage(
 				SOURCE_NAME,
-				enabled > 0,
-				information,
+				running,
+				activity,
 				critical
 		);
 		message.setRunningInformationTextDescription(description);
+		message.setBeaconStatusSnapshot(snapshot);
 		return message;
-	}
-
-	private static String onOff(boolean enabled) {
-		return enabled ? "on" : "off";
 	}
 }

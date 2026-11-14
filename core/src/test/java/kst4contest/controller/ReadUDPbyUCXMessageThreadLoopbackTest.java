@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -105,6 +108,7 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 		when(preferences.isTrxSynch_ucxLogUDPListenerEnabled()).thenReturn(true);
 		SimpleValue<String> qrg = new SimpleValue<>("");
 		when(preferences.getMYQRGFirstCat()).thenReturn(qrg);
+		stubExternalQrgWrites(qrg);
 		CountDownLatch firstQrg = new CountDownLatch(1);
 		CountDownLatch secondQrg = new CountDownLatch(1);
 		qrg.addListener(value -> {
@@ -230,6 +234,29 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 		assertEquals("1296.200.00", markerQrg.get());
 	}
 
+	/** A malformed Freq is expected external input and must be ignored without the safety net. */
+	@Test
+	void malformedRadioInfoFrequencyIsSkippedWithoutAnUnexpectedError(@TempDir Path tempDir) throws Exception {
+		givenQsoProcessingEnabled(tempDir.resolve("udp-backup.txt"));
+
+		sendThenAwaitMarker("<RadioInfo><Freq>not-a-number</Freq><Mode>CW</Mode></RadioInfo>");
+
+		assertEquals("1296.200.00", markerQrg.get());
+		assertFalse(statusMessages.stream()
+				.anyMatch(message -> message.getRunningInformation().startsWith("packet dropped after error")));
+	}
+
+	@Test
+	void nonPositiveRadioInfoFrequencyIsIgnoredBeforeItReachesTheController(@TempDir Path tempDir)
+			throws Exception {
+		givenQsoProcessingEnabled(tempDir.resolve("udp-backup.txt"));
+
+		sendThenAwaitMarker("<RadioInfo><Freq>0</Freq><Mode>CW</Mode></RadioInfo>");
+
+		verify(controller, never()).applyExternalQrg(any(RadioSlot.class), eq("0"), eq(0L));
+		assertEquals("1296.200.00", markerQrg.get());
+	}
+
 	/**
 	 * Any runtime exception while processing one packet drops that packet,
 	 * reports a non-critical status and leaves the receive loop running.
@@ -275,6 +302,16 @@ class ReadUDPbyUCXMessageThreadLoopbackTest {
 		when(controller.uiDispatcher()).thenReturn(new DirectUiDispatcher());
 		when(preferences.isTrxSynch_ucxLogUDPListenerEnabled()).thenReturn(true);
 		when(preferences.getMYQRGFirstCat()).thenReturn(markerQrg);
+		stubExternalQrgWrites(markerQrg);
+	}
+
+	private void stubExternalQrgWrites(SimpleValue<String> firstQrg) {
+		doAnswer(invocation -> {
+			RadioSlot slot = invocation.getArgument(0);
+			String value = invocation.getArgument(1);
+			(slot == RadioSlot.FIRST ? firstQrg : secondQrg).set(value);
+			return null;
+		}).when(controller).applyExternalQrg(any(RadioSlot.class), anyString(), anyLong());
 	}
 
 	/**

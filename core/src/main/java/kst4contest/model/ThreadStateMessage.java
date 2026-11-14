@@ -14,6 +14,7 @@ public class ThreadStateMessage {
 
     boolean criticalState;
     String criticalStateFurtherInfo;
+    BeaconStatusSnapshot beaconStatusSnapshot;
 
 
 
@@ -98,6 +99,14 @@ public class ThreadStateMessage {
 
     public void setCriticalStateFurtherInfo(String criticalStateFurtherInfo) {
         this.criticalStateFurtherInfo = criticalStateFurtherInfo;
+    }
+
+    public BeaconStatusSnapshot getBeaconStatusSnapshot() {
+        return beaconStatusSnapshot;
+    }
+
+    public void setBeaconStatusSnapshot(BeaconStatusSnapshot beaconStatusSnapshot) {
+        this.beaconStatusSnapshot = beaconStatusSnapshot;
     }
 }
 

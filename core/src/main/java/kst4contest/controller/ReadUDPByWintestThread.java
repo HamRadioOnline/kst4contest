@@ -535,6 +535,7 @@ public class ReadUDPByWintestThread extends Thread {
              * interpreted as frequencies.
              */
             String formattedPassQrg = null;
+            Long passFrequencyRawValue = null;
 
             if (parts.size() > 11) {
                 try {
@@ -544,6 +545,7 @@ public class ReadUDPByWintestThread extends Thread {
                             passFrequencyRaw / 10.0;
 
                     if (passFrequencyKHz > 100.0) {
+                        passFrequencyRawValue = passFrequencyRaw;
                         formattedPassQrg =
                                 helper_formatWinTestFrequency(
                                         passFrequencyRaw
@@ -566,10 +568,16 @@ public class ReadUDPByWintestThread extends Thread {
                     usePassQrg && formattedPassQrg != null
                             ? formattedPassQrg
                             : formattedMainQrg;
+            final long selectedFrequencyRaw =
+                    usePassQrg && passFrequencyRawValue != null
+                            ? passFrequencyRawValue
+                            : mainFrequencyRaw;
+            final long selectedFrequencyHz = Math.multiplyExact(selectedFrequencyRaw, 100L);
 
             if (prefs.isLogsynch_wintestQrgSyncEnabled()) {
                 RadioSlot target = slot.get();
-                client.uiDispatcher().runOnUi(() -> target.qrgIn(prefs).set(qrgToSet));
+                client.uiDispatcher().runOnUi(() ->
+                        client.applyExternalQrg(target, qrgToSet, selectedFrequencyHz));
             }
 
             System.out.println(

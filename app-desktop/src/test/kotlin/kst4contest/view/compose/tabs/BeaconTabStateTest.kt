@@ -173,11 +173,22 @@ class BeaconTabStateTest(@TempDir private val tempDir: Path) {
         s.prefs.setBcn_beaconIntervalInMinutesMainCat(5)
         val state = s.state()
 
-        assertNotNull(state.commitBeaconInterval("0"))
+        assertNotNull(state.commitBeaconInterval("4"))
 
         assertEquals(5, s.prefs.getBcn_beaconIntervalInMinutesMainCat())
         assertEquals(0, s.timerRestarts,
             "restarting the timer per rejected keystroke would disturb the cooldown")
+    }
+
+    @Test
+    fun `exactly five minutes is accepted`() {
+        val s = Session()
+        val state = s.state()
+
+        assertNull(state.commitBeaconInterval("5"))
+
+        assertEquals(5, s.prefs.getBcn_beaconIntervalInMinutesMainCat())
+        assertEquals(5, s.prefs.getBcn_beaconIntervalInMinutesSecondCat())
     }
 
     @Test

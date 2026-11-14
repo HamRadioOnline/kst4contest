@@ -47,7 +47,7 @@ pse qrg
 and answers with the QRG belonging to the chat category in which the request was received:
 
 ```text
-[KST4C Automsg] QRG is: 144.300.00
+[KST4C Automsg] QRG is: 144.300.00 *a*
 ```
 
 When both functions are enabled, a recognised QRG request receives the QRG reply only. It does not additionally trigger the general answer.
@@ -81,6 +81,8 @@ Every automatic reply contains:
 ```
 
 Messages which already contain this prefix are not answered automatically. Two KST4Contest clients therefore do not continue replying to each other.
+
+Every chat message generated automatically by KST4Contest also ends with ` *a*`. This includes general and QRG-specific replies, `//VER` replies and both beacons. The suffix is added even when the configured text already ends with it; manual messages are unchanged.
 
 A shared two-minute cooldown additionally applies to the general and QRG-specific functions. It is tracked separately for each complete callsign and chat category.
 

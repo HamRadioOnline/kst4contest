@@ -65,8 +65,9 @@ class BeaconTaskTest {
 
 	@Test
 	void invalidEnabledBeaconIsNotQueuedAndReportsOneCriticalAggregateState() {
-		preferences.setBcn_beaconsEnabledMainCat(true);
+		controller.setMainBeaconEnabled(true);
 		preferences.setBcn_beaconTextMainCat("invalid|template");
+		statuses.clear();
 
 		task.run();
 
@@ -80,8 +81,9 @@ class BeaconTaskTest {
 
 	@Test
 	void changingTheOtherCheckboxDoesNotHideAnActiveCategoryFailure() {
-		preferences.setBcn_beaconsEnabledMainCat(true);
+		controller.setMainBeaconEnabled(true);
 		preferences.setBcn_beaconTextMainCat("invalid|template");
+		statuses.clear();
 		task.run();
 		statuses.clear();
 
@@ -94,22 +96,51 @@ class BeaconTaskTest {
 	}
 
 	@Test
+	void unavailableCategoryRetainsFailureUntilItsNextSuccessfulRun() {
+		controller.setSecondBeaconEnabled(true);
+		preferences.setBcn_beaconTextSecondCat("invalid|template");
+		task.run();
+		assertTrue(controller.currentBeaconStatus()
+				.getBeaconStatusSnapshot().getSecond().isFailed());
+
+		preferences.setLoginToSecondChatEnabled(false);
+		task.run();
+		assertTrue(controller.currentBeaconStatus()
+				.getBeaconStatusSnapshot().getSecond().isFailed(),
+				"an unavailable run did not succeed and must not clear the failure");
+
+		preferences.setLoginToSecondChatEnabled(true);
+		assertEquals("FAILED", controller.currentBeaconStatus()
+				.getRunningInformationTextDescription());
+		preferences.setBcn_beaconTextSecondCat("CQ SECOND");
+		task.run();
+		assertFalse(controller.currentBeaconStatus()
+				.getBeaconStatusSnapshot().getSecond().isFailed());
+	}
+
+	@Test
 	void everyRunUsesTheCurrentEnableFlagsAndReportsOneAggregateState() {
 		task.run();
 		assertTrue(txBus.isEmpty());
 		assertAggregateStatus("off", false);
 
 		statuses.clear();
-		preferences.setBcn_beaconsEnabledMainCat(true);
+		controller.setMainBeaconEnabled(true);
+		statuses.clear();
 		task.run();
 		assertEquals(1, txBus.size());
 		assertEquals(ChatCategory.VUHF, txBus.peek().getChatCategory().getCategoryNumber());
+		assertEquals("CQ MAIN *a*", txBus.peek().getMessageText());
 		assertAggregateStatus("1/2", true);
 
 		statuses.clear();
-		preferences.setBcn_beaconsEnabledSecondCat(true);
+		controller.setSecondBeaconEnabled(true);
+		statuses.clear();
 		task.run();
 		assertEquals(3, txBus.size());
+		List<ChatMessage> sentMessages = new ArrayList<>(txBus);
+		assertEquals("CQ MAIN *a*", sentMessages.get(1).getMessageText());
+		assertEquals("CQ SECOND *a*", sentMessages.get(2).getMessageText());
 		assertAggregateStatus("on", true);
 	}
 

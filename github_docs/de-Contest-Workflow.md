@@ -93,9 +93,9 @@ KST4Contest hält die benötigten Informationen zwischen diesen Schritten zusamm
 
 Bei einer weitgehend festen CQ-QRG sollten `MYQRG` beziehungsweise `SECONDQRG` den tatsächlich verwendeten Frequenzen entsprechen. Eine aktivierte und tatsächlich liefernde TRX-Synchronisation kann `MYQRG` automatisch aktualisieren. Die Aktivierung allein reicht nicht: Vor dem Contest sollte mit einer realen Frequenzänderung geprüft werden, ob gültige Pakete ankommen. Ohne funktionierende automatische Quelle muss der Wert von Hand gepflegt werden.
 
-Der Beacon kann die aktuelle QRG, den Locator und die Antennenrichtung regelmäßig im Chat veröffentlichen. Seine Variablen werden bei jedem Sendedurchlauf erneut ausgewertet.
+Der Beacon kann die aktuelle QRG, den Locator und die Antennenrichtung regelmäßig im Chat veröffentlichen. Er muss nach jedem Programmstart oder Profilwechsel bewusst aktiviert werden. Eine manuell geänderte QRG wird zur neuen Referenz; meldet UCXLog oder Win-Test danach einen Sprung von mehr als 5 kHz, wird der betroffene Beacon automatisch ausgeschaltet.
 
-Wird während des CQ-Betriebs über mehrere Frequenzen gescannt, sollte der Beacon deaktiviert werden. Eine automatisch veröffentlichte QRG ist nur hilfreich, solange sie noch stimmt.
+Beim Scannen über mehrere Frequenzen verhindert diese Sicherung eine unbeabsichtigte Aussendung mit einer neuen Logger-QRG. Der Status-Tooltip zeigt, welche Kategorie abgeschaltet wurde und warum.
 
 Shortcuts und Snippets sollten die regelmäßig benötigten Nachrichten abdecken, beispielsweise:
 

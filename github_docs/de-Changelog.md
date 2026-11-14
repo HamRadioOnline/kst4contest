@@ -40,6 +40,10 @@ Mehrere Operateure an einem Rechner können jetzt eigene Rufzeichen, Locators un
 
 ### Geändert
 
+- **Automatische Chatmeldungen eindeutig markiert:** Allgemeine und QRG-bezogene Autoantworten, `//VER`-Antworten sowie beide Beacons enden jetzt mit ` *a*`. Das bestehende Präfix `[KST4C Automsg]` der Autoantworten bleibt erhalten. Der aufgelöste Beacon-Inhalt bleibt auf 120 Zeichen begrenzt; mit dem festen Suffix kann die gesendete Nachricht 124 Zeichen lang sein.
+
+- **Beacon mit Sitzungs- und QRG-Sicherung:** Beacons starten nach jedem Programmstart und Profilwechsel ausgeschaltet, bleiben bei einem normalen ON4KST-Reconnect aber aktiv. Das Mindestintervall beträgt fünf Minuten. Jeder aktive Beacon überwacht die QRG seiner eigenen Kategorie: Manuelle Änderungen verschieben die Referenz, ein automatischer Sprung durch UCXLog oder Win-Test von mehr als 5 kHz schaltet nur den betroffenen Beacon aus. Der **MyBeacon**-Chip zeigt `off`, `1/2`, `on` und `FAILED` mit eindeutigen Verkehrsfarben; sein Tooltip nennt den Zustand oder letzten Abschaltgrund je Kategorie.
+
 - **Neues Zuhause auf GitHub:** Das Projekt ist vom Konto `praktimarc` in die GitHub-Organisation [HamRadioOnline](https://github.com/HamRadioOnline) umgezogen und liegt jetzt unter [HamRadioOnline/kst4contest](https://github.com/HamRadioOnline/kst4contest). Alte Links auf das Repository, die Releases, die Issues und das Wiki leiten auf die neue Adresse weiter. Auch das Flatpak-Repository ist umgezogen und liegt jetzt unter `https://hamradioonline.github.io/kst4contest/`; bestehende Flatpak-Installationen aktualisieren über die Weiterleitung der alten Adresse weiter, neue Einrichtungen verwenden die neue Adresse aus der Installationsanleitung. Die AUR-Pakete zeigen ebenfalls auf die neue Adresse.
 
 - **Zwischenspeicher der Geländeprofile getrennt:** Berechnete Geländeprofile liegen jetzt in der eigenen, gemeinsam genutzten Datei `terrainprofilecache.db` und werden nach Besitzer getrennt gespeichert. Bisher wurde der gesamte Zwischenspeicher gelöscht, sobald sich Rufzeichen oder Locator änderten; bei einem Profilwechsel wäre damit jedes berechnete Profil verloren gegangen.

@@ -417,7 +417,19 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 						}
 
 						String qrg = freqNode.getTextContent();
+						qrg = qrg == null ? "" : qrg.trim();
 						String mode = modeNode.getTextContent();
+						final long frequencyHz;
+						try {
+							frequencyHz = Math.multiplyExact(Long.parseLong(qrg), 10L);
+						} catch (NumberFormatException | ArithmeticException invalidFrequency) {
+							System.out.println("[ReadUDPFromUCX, warning]: RadioInfo with invalid Freq ignored");
+							continue;
+						}
+						if (frequencyHz <= 0L) {
+							System.out.println("[ReadUDPFromUCX, warning]: RadioInfo with non-positive Freq ignored");
+							continue;
+						}
 
 //						System.out.println("QRG Length: " + qrg.length() + " // " + qrg);
 
@@ -464,7 +476,7 @@ public class ReadUDPbyUCXMessageThread extends Thread {
 						final String finalFormattedQRG = formattedQRG;
 						final RadioSlot target = slot.get();
 						helper_runOnFxThread(() ->
-								target.qrgIn(this.client.getChatPreferences()).set(finalFormattedQRG)
+								this.client.applyExternalQrg(target, finalFormattedQRG, frequencyHz)
 						);
 
 //						System.out.println("[ReadUDPbyUCXTh: ] Radioinfo processed: " + formattedQRG);

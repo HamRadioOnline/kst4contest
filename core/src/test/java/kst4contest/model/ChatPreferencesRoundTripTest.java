@@ -64,6 +64,10 @@ class ChatPreferencesRoundTripTest {
             Map.entry("setMessageHandling_autoAnswerEnabledSecondCat",
                     "Same deliberate mirroring as the second-category auto-answer text; the "
                             + "main-category flag wins after every read"),
+            Map.entry("setBcn_beaconsEnabledMainCat",
+                    "Session-only safety switch; every XML write stores false and every read starts false"),
+            Map.entry("setBcn_beaconsEnabledSecondCat",
+                    "Session-only safety switch; every XML write stores false and every read starts false"),
             Map.entry("setBcn_contestScoreSum",
                     "DEAD FIELD: declared with accessors only, no caller in core or app-desktop, "
                             + "never written nor read")

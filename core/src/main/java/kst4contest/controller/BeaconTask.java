@@ -22,6 +22,7 @@ public class BeaconTask extends TimerTask {
 	private final ChatController chatController;
 	private final ThreadStatusCallback callbackToController;
 	private final BeaconStatus beaconStatus;
+	private final BeaconSessionState beaconSessionState;
 
 	/**
 	 * Creates one execution of the shared beacon timer.
@@ -36,6 +37,7 @@ public class BeaconTask extends TimerTask {
 		this.chatController = chatController;
 		this.callbackToController = callbackToController;
 		this.beaconStatus = chatController.beaconStatusState();
+		this.beaconSessionState = chatController.beaconSessionState();
 	}
 
 	@Override
@@ -45,23 +47,34 @@ public class BeaconTask extends TimerTask {
 		Attempt second = sendSecondCategoryBeacon();
 		String activity = "Main category: " + main.description
 				+ "; second category: " + second.description;
-		beaconStatus.recordRun(
-				main == Attempt.INVALID,
-				second == Attempt.INVALID,
-				activity
-		);
+		recordSendResult(BeaconSessionState.Channel.MAIN, main);
+		recordSendResult(BeaconSessionState.Channel.SECOND, second);
+		beaconStatus.recordRun(activity);
 		callbackToController.onThreadStatus(
 				BeaconStatus.SOURCE_NAME,
-				beaconStatus.message(chatController.getChatPreferences())
+				beaconStatus.message(
+						chatController.getChatPreferences(),
+						beaconSessionState
+				)
 		);
+	}
+
+	private void recordSendResult(
+			BeaconSessionState.Channel channel,
+			Attempt attempt
+	) {
+		if (attempt == Attempt.INVALID) {
+			beaconSessionState.recordSendFailure(channel, true);
+		} else if (attempt == Attempt.SENT) {
+			beaconSessionState.recordSendFailure(channel, false);
+		}
 	}
 
 	/**
 	 * Sends the main-category beacon if it is currently enabled.
 	 */
 	private Attempt sendMainCategoryBeacon() {
-		if (!chatController.getChatPreferences()
-				.isBcn_beaconsEnabledMainCat()) {
+		if (!beaconSessionState.isEnabled(BeaconSessionState.Channel.MAIN)) {
 			return Attempt.OFF;
 		}
 
@@ -95,7 +108,7 @@ public class BeaconTask extends TimerTask {
 		if (!chatController.getChatPreferences().isLoginToSecondChatEnabled()) {
 			return Attempt.UNAVAILABLE;
 		}
-		if (!chatController.getChatPreferences().isBcn_beaconsEnabledSecondCat()) {
+		if (!beaconSessionState.isEnabled(BeaconSessionState.Channel.SECOND)) {
 			return Attempt.OFF;
 		}
 
