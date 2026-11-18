@@ -272,4 +272,21 @@ class SetupWizardContentScreenTest {
 
         assertEquals(WizardPage.ENTRY, state.page, "which profile is not said yet")
     }
+
+    @Test
+    fun theSummaryShowsTheFallbackBandForSpots() = runComposeUiTest {
+        val prefs = configuredProfile().apply {
+            setStn_bandActive144(false)
+            setStn_bandActive432(true)
+            setNotify_optionalFrequencyPrefix("144")
+        }
+        val state = SetupWizardState(prefs)
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.next()
+        show(state)
+
+        onNodeWithText("144 MHz").assertExists()
+    }
 }

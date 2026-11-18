@@ -31,6 +31,8 @@ enum class WizardSwitch {
     CLUSTER_SERVER,
     ROTATOR,
     AIRSCOUT,
+    SO2R,
+    ROTATOR_2,
 }
 
 /**

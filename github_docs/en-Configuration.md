@@ -32,7 +32,7 @@ If a configured profile already exists, or the profile itself already has a stat
 
 - **enter new** – always possible; the steps appear, a new station starts empty;
 - **take from another profile** – only if another profile with a login of its own exists; the values come from the chosen profile;
-- **leave unchanged** – the profile keeps what it has. For the login this is offered only if the profile already has one of its own; for the station always, except on the first installation.
+- **leave unchanged** – the profile keeps what it has. For the login this is offered only if the profile already has one of its own; for the station always, as long as the profile no longer carries the bundled template login, that is, not on a fresh installation.
 
 Login and station are chosen independently and may come from different profiles.
 
@@ -46,7 +46,7 @@ This settles the usual cases with a few clicks:
 
 For **station**, the whole station is taken: locator, bands, the fallback band for spots, chat categories, antenna and path-analysis values, default QTF and maximum distance, all log sources, frequency takeover including SO2R, the local DX cluster server, rotators and AirScout – including details the assistant never asks about. Language, display name, window layout, colours, shortcuts and beacons belong to the operator and are never taken, nor is the spotter callsign of the DX cluster server. If taking over switches off something that was enabled in the own profile, the summary lists it under "Will be switched off".
 
-Taken values can be adjusted in the summary through **Change**, for example a `/P` on the callsign. One exception: if the taken station has several log sources enabled at once, all of them arrive, but the "Log program" page then cannot be opened, because it knows one source only; such changes are made in the settings window. The other profile is only read and never changed. Only profiles that have a login of their own are offered.
+Taken values can be adjusted in the summary through **Change**, for example a `/P` on the callsign. What can be changed there is what the assistant asks about; taken details such as rotator 2, SO2R or the Win-Test fine settings are changed in the settings window. If taking over switches off SO2R or rotator 2, that is listed under "Will be switched off" too. The summary also shows the fallback band for spots that comes with the station. One exception: if the taken station has several log sources enabled at once, all of them arrive, but the "Log program" page then cannot be opened, because it knows one source only; such changes are made in the settings window. The other profile is only read and never changed. Only profiles that have a login of their own are offered.
 
 **Later** closes the assistant without writing anything. It appears again on the next start of the profile as long as the callsign is missing.
 

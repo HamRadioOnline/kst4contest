@@ -165,7 +165,7 @@ anderen.
 
 Serveradresse und -port, Baken, automatische Antworten, Kurzbefehle und Textbausteine,
 Töne, Farben, Filter, SO2R, die Worked-Datenbank, der Fehlermitschnitt, die Fensteranordnung
-und alle Profilaktionen. Der Assistent fasst keinen dieser Werte an.
+und alle Profilaktionen. Der Assistent fasst keinen dieser Werte an. Eine Ausnahme macht das Übernehmen einer Station: dann kommen auch SO2R und Rotor 2 aus dem anderen Profil, und die Zusammenfassung nennt es, wenn sie dabei abgeschaltet werden.
 
 Die automatische Antwort auf Frequenzanfragen (`autoAnswerToQrgRequestEnabled`) steht in der
 Vorlage auf an. Ob der Assistent sie bei einer Station ohne Frequenzquelle abschalten soll,
@@ -237,7 +237,7 @@ verarbeitet. **Kein** eigener Faden mit Riegel — genau diese Bauart hat sich b
 Profilwahl verklemmt, die Begründung steht dort im Quelltext. Aus dem Menü kommt der Aufruf
 vom Ereignisfaden und geht denselben Weg.
 
-Der Assistent liest die Profilliste und höchstens zwei Profildateien, kleine lokale Dateien.
+Der Assistent liest die Profilliste und, wenn er sich öffnet, die Dateien der anderen Profile, kleine lokale Dateien.
 
 Netzprüfungen gibt es in diesem Entwurf nicht. Ein Probe-Login wäre eine zweite echte
 Sitzung am Server, und ein Lauschen auf UDP sagt bei Stille nichts: die Logprogramme senden

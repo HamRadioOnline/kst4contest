@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -202,5 +203,22 @@ class SetupWizardLauncherTest(@param:TempDir private val directory: Path) {
         }
         assertEquals(1, loaded)
         assertEquals(emptyList<WizardDonor>(), seen)
+    }
+
+    @Test
+    fun aLinkedDirectoryToTheActiveProfileIsNotOfferedAsItsOwnDonor() {
+        val dirB = Files.createDirectory(directory.resolve("b"))
+        val fileInB = dirB.resolve("preferences.xml")
+        Files.copy(configuredFile(), fileInB, StandardCopyOption.REPLACE_EXISTING)
+        val linkA = directory.resolve("a")
+        val linked = runCatching { Files.createSymbolicLink(linkA, dirB) }
+        Assumptions.assumeTrue(
+            linked.isSuccess,
+            "file system refused symbolic link: ${linked.exceptionOrNull()?.message}",
+        )
+
+        val candidates = listOf(DonorCandidate("b", "B", fileInB))
+        assertTrue(loadDonors(candidates, activeFile = linkA.resolve("preferences.xml")).isEmpty())
+        assertEquals(listOf("b"), loadDonors(candidates).map { it.profileId })
     }
 }

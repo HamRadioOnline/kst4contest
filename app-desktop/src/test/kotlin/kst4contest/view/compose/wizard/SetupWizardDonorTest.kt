@@ -349,4 +349,98 @@ class SetupWizardDonorTest(@param:TempDir private val directory: Path) {
         assertFalse(restored.isStn_pstRotatorEnabled(), "the operator switched the taken rotator off")
         assertEquals("JN58QA", restored.getStn_loginLocatorMainCat(), "the operator changed the taken locator")
     }
+
+    @Test
+    fun takingAStationNamesSo2rAndRotatorTwoWhenTheDonorDropsThem() {
+        val own = emptyProfile().apply {
+            setTrxSynch_so2rEnabled(true)
+            setStn_pstRotator2Enabled(true)
+        }
+        val donorOff = contestStation()
+        val donorOn = WizardDonor("both-on", "Beide an", prefs {
+            integrationsOff()
+            setStn_loginCallSign("DL0BOTH")
+            setStn_loginPassword("secret")
+            setStn_loginLocatorMainCat("JO50AA")
+            setStn_bandActive144(true)
+            setLoginChatCategoryMain(ChatCategory(2))
+            setLoginToSecondChatEnabled(false)
+            setTrxSynch_so2rEnabled(true)
+            setStn_pstRotator2Enabled(true)
+        })
+
+        val takeDrops = SetupWizardState(own, listOf(donorOff)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.TAKE)
+            next()
+        }
+        assertEquals(
+            listOf(WizardSwitch.SO2R, WizardSwitch.ROTATOR_2),
+            takeDrops.switchedOff.takeLast(2),
+        )
+
+        val keep = SetupWizardState(own, listOf(donorOff)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.KEEP)
+            next()
+        }
+        assertFalse(WizardSwitch.SO2R in keep.switchedOff)
+        assertFalse(WizardSwitch.ROTATOR_2 in keep.switchedOff)
+
+        val takeKeeps = SetupWizardState(own, listOf(donorOn)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.TAKE)
+            next()
+        }
+        assertFalse(WizardSwitch.SO2R in takeKeeps.switchedOff)
+        assertFalse(WizardSwitch.ROTATOR_2 in takeKeeps.switchedOff)
+
+        val ownRotator2WithoutSo2r = emptyProfile().apply {
+            setTrxSynch_so2rEnabled(false)
+            setStn_pstRotator2Enabled(true)
+        }
+        val noSo2r = SetupWizardState(ownRotator2WithoutSo2r, listOf(donorOff)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.TAKE)
+            next()
+        }
+        assertFalse(WizardSwitch.ROTATOR_2 in noSo2r.switchedOff)
+        assertFalse(WizardSwitch.SO2R in noSo2r.switchedOff)
+    }
+
+    @Test
+    fun theSummaryFallbackBandFollowsTheStationSource() {
+        val own = emptyProfile().apply { setNotify_optionalFrequencyPrefix("144") }
+        val donor = WizardDonor("uhf", "UHF", prefs {
+            integrationsOff()
+            setStn_loginCallSign("DL0UHF")
+            setStn_loginPassword("secret")
+            setStn_loginLocatorMainCat("JO50AA")
+            setStn_bandActive432(true)
+            setLoginChatCategoryMain(ChatCategory(2))
+            setLoginToSecondChatEnabled(false)
+            setNotify_optionalFrequencyPrefix("432")
+        })
+
+        val take = SetupWizardState(own, listOf(donor)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.TAKE)
+            next()
+        }
+        assertEquals("432", take.summaryFallbackBand)
+
+        val keep = SetupWizardState(own, listOf(donor)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.KEEP)
+            next()
+        }
+        assertEquals("144", keep.summaryFallbackBand)
+
+        val fresh = SetupWizardState(own, listOf(donor)).apply {
+            chooseLoginSource(WizardSource.NEW)
+            chooseStationSource(WizardSource.NEW)
+            next()
+        }
+        assertEquals("144", fresh.summaryFallbackBand)
+    }
 }

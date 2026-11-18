@@ -135,4 +135,17 @@ class WizardAntennaTest {
         assertEquals("612", antenna.heightAslText)
         assertTrue(antenna.complete)
     }
+
+    @Test
+    fun aNegativeStoredAntennaHeightIsClampedToZero() {
+        val prefs = stored()
+        val field = ChatPreferences::class.java.getDeclaredField("stn_pathAnalysisOwnAntennaHeightMeters")
+        field.isAccessible = true
+        field.setDouble(prefs, -2.0)
+
+        val antenna = WizardAntenna(prefs)
+
+        assertEquals(0.0, antenna.heightMeters)
+        assertTrue(antenna.complete)
+    }
 }

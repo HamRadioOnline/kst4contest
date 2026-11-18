@@ -133,16 +133,25 @@ internal class DonorCandidate(val profileId: String, val displayName: String, va
 
 /**
  * Reads the candidates that can serve as donors: the file exists, can be read, and holds a
- * login an operator entered.
+ * login an operator entered. A candidate whose file is the same file as [activeFile] (for
+ * example through a symbolic link) is skipped so a profile never becomes its own donor.
  *
  * A candidate's file is opened through `ChatPreferences(Path)` and never through the
  * constructor that takes a name below the application directory: that one seeds a missing
  * file from the bundled template, and looking for a donor must not create a profile's file.
  * Nothing here writes.
  */
-internal fun loadDonors(candidates: List<DonorCandidate>): List<WizardDonor> =
+internal fun loadDonors(
+    candidates: List<DonorCandidate>,
+    activeFile: Path? = null,
+): List<WizardDonor> =
     candidates.mapNotNull { candidate ->
         if (!Files.isRegularFile(candidate.file)) return@mapNotNull null
+        if (activeFile != null && Files.exists(activeFile) &&
+            runCatching { Files.isSameFile(candidate.file, activeFile) }.getOrDefault(false)
+        ) {
+            return@mapNotNull null
+        }
 
         val prefs = ChatPreferences(candidate.file)
         // A throwing read counts as failed, as for the profile being set up.
@@ -168,7 +177,17 @@ object SetupWizardLauncher {
         run(
             ChatPreferences(preferencesRelativeFileName),
             forced,
-            { loadDonors(otherProfiles(preferencesRelativeFileName)) },
+            {
+                loadDonors(
+                    otherProfiles(preferencesRelativeFileName),
+                    activeFile = Path.of(
+                        ApplicationFileUtils.getFilePath(
+                            ApplicationConstants.APPLICATION_NAME,
+                            preferencesRelativeFileName,
+                        )
+                    ),
+                )
+            },
             SetupWizardWindow::show,
         )
 

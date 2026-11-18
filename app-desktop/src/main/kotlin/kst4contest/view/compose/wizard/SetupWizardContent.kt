@@ -303,6 +303,8 @@ private fun switchName(switch: WizardSwitch, strings: Strings): String = when (s
     WizardSwitch.CLUSTER_SERVER -> strings.wizardSwitchClusterServer
     WizardSwitch.ROTATOR -> strings.wizardSwitchRotator
     WizardSwitch.AIRSCOUT -> strings.wizardSwitchAirScout
+    WizardSwitch.SO2R -> strings.wizardSwitchSo2r
+    WizardSwitch.ROTATOR_2 -> strings.wizardSwitchRotator2
 }
 
 @Composable
@@ -441,6 +443,10 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
             strings.wizardSummaryBands,
             WizardBand.entries.filter { it in state.bands }.joinToString(", ") { it.label }
                 .ifEmpty { strings.wizardSummaryNone },
+        )
+        SummaryRow(
+            strings.wizardSummaryFallbackBand,
+            if (state.summaryFallbackBand.isBlank()) strings.wizardSummaryNone else "${state.summaryFallbackBand} MHz",
         )
         SummaryRow(
             strings.stationMainCategory,

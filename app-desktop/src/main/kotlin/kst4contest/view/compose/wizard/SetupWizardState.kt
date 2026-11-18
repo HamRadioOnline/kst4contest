@@ -427,21 +427,44 @@ class SetupWizardState(prefs: ChatPreferences, val donors: List<WizardDonor> = e
         get() = if (logShown) integrations.networked && integrations.clusterServer else integrations.storedClusterServer
 
     /**
+     * The fallback band prefix the profile has after Save, for the summary: taken with the
+     * donor's station when chosen, otherwise left as the own profile holds it.
+     */
+    val summaryFallbackBand: String
+        get() {
+            val sourcePrefs = stationDonor?.takeIf { stationSource == WizardSource.TAKE }?.prefs ?: ownPrefs
+            return sourcePrefs.getNotify_optionalFrequencyPrefix()?.get().orEmpty()
+        }
+
+    /** Rotator 2 only counts while SO2R uses it, as on the Station tab. */
+    private fun so2rSwitches(prefs: ChatPreferences): Set<WizardSwitch> = buildSet {
+        if (prefs.isTrxSynch_so2rEnabled()) {
+            add(WizardSwitch.SO2R)
+            if (prefs.isStn_pstRotator2Enabled()) add(WizardSwitch.ROTATOR_2)
+        }
+    }
+
+    /**
      * What is on in the own profile and will be off after Save, for the summary. Always
      * against the own profile: with a station taken from another one, that is what the
      * operator loses, whatever the other profile had.
      *
      * A page that is not part of the run contributes what its profile holds -- the own one
-     * for a station left unchanged, the donor's for a station taken over.
+     * for a station left unchanged, the donor's for a station taken over. The wizard never
+     * writes SO2R or rotator 2 itself, so after Save they come from the donor when taking
+     * over a station, otherwise from the own profile.
      */
     val switchedOff: List<WizardSwitch>
         get() {
+            val neverAskedPrefs = stationDonor?.takeIf { stationSource == WizardSource.TAKE }?.prefs ?: ownPrefs
             val after = buildSet {
                 if (secondChat) add(WizardSwitch.SECOND_CHAT)
                 addAll(if (logShown) integrations.answeredLogSwitches() else integrations.storedLogSwitches())
                 addAll(if (gearShown) integrations.answeredGearSwitches() else integrations.storedGearSwitches())
+                addAll(so2rSwitches(neverAskedPrefs))
             }
-            val before = ownSwitches + if (ownStation.secondChat) setOf(WizardSwitch.SECOND_CHAT) else emptySet()
+            val before = ownSwitches + so2rSwitches(ownPrefs) +
+                if (ownStation.secondChat) setOf(WizardSwitch.SECOND_CHAT) else emptySet()
             return WizardSwitch.entries.filter { it in before && it !in after }
         }
 

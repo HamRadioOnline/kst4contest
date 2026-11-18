@@ -23,7 +23,8 @@ class WizardAntenna(prefs: ChatPreferences) {
 
     private val storedBeamWidthDeg = prefs.getStn_antennaBeamWidthDeg()
     private val storedGainDbi = prefs.getStn_pathAnalysisOwnAntennaGainDbi()
-    private val storedHeightMeters = prefs.getStn_pathAnalysisOwnAntennaHeightMeters()
+    // The XML reader assigns the field directly without clamping, whereas the setter and path analysis treat < 0 as 0.
+    private val storedHeightMeters = prefs.getStn_pathAnalysisOwnAntennaHeightMeters().coerceAtLeast(0.0)
     private val storedTxPowerWatts = prefs.getStn_pathAnalysisOwnTxPowerWatts()
     private val storedHeightAslText = elevationText(prefs.getStn_pathAnalysisOwnHeightAslMeters())
 
