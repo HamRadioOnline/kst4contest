@@ -55,6 +55,7 @@ class MainMenuRowScreenTest {
         override fun setQrgAsNameInChat() { calls += "setQrgAsNameInChat" }
         override fun toggleAwayState() { calls += "toggleAwayState" }
         override fun toggleSettingsWindow() { calls += "toggleSettingsWindow" }
+        override fun openSetupWizard() { calls += "openSetupWizard" }
         override fun toggleMonitorWindow() { calls += "toggleMonitorWindow" }
         override fun toggleStationMap() { calls += "toggleStationMap" }
         override fun useDarkDesign() { calls += "useDarkDesign" }
@@ -116,6 +117,7 @@ class MainMenuRowScreenTest {
             Triple("Options", "Set QRG as name in Chat (main category)", "setQrgAsNameInChat"),
             Triple("Options", "Show me as AWAY FROM chat!", "toggleAwayState"),
             Triple("Options", "Show options", "toggleSettingsWindow"),
+            Triple("Options", "Setup assistant...", "openSetupWizard"),
             Triple("Windows", "Show cluster / stranger QSOs", "toggleMonitorWindow"),
             Triple("Windows", "Show / hide station map", "toggleStationMap"),
             Triple("Windows", "Use dark mode design", "useDarkDesign"),

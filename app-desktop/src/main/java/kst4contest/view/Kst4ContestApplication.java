@@ -4046,6 +4046,27 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 		}
 	}
 
+	/**
+	 * Options -> setup assistant. Rebuilds the runtime of the active profile with the wizard
+	 * in front of it, which costs the running session; hence the question, and hence the
+	 * settings edits are settled first, as before a profile switch.
+	 */
+	void menuActionOpenSetupWizard() {
+		SettingsWindow.settleThen(() -> {
+			boolean confirmed = ComposeAlert.confirm(
+					kst4contest.view.i18n.CurrentStrings.get().getAlertSetupWizardTitle(),
+					kst4contest.view.i18n.CurrentStrings.get().getAlertSetupWizardQuestion(),
+					kst4contest.view.i18n.CurrentStrings.get().getAlertSetupWizardBody(),
+					kst4contest.view.i18n.CurrentStrings.get().getDialogStartSetupWizard(),
+					kst4contest.view.i18n.CurrentStrings.get().getDialogCancel(),
+					chatcontroller.getChatPreferences().isGUI_darkModeActive());
+
+			if (confirmed) {
+				ApplicationRuntimeLauncher.rerunSetupWizard();
+			}
+		});
+	}
+
 	/** Windows -> open or close the cluster / stranger-QSO monitor window. */
 	void menuActionToggleMonitorWindow() {
 		if (MonitorWindow.isOpen()) {

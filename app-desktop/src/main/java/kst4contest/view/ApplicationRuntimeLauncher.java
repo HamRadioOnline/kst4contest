@@ -4,6 +4,7 @@ import kst4contest.controller.ActiveOperatorProfile;
 import kst4contest.controller.OperatorProfilePaths;
 import kst4contest.controller.OperatorProfileStore;
 import kst4contest.model.OperatorProfile;
+import kst4contest.model.OperatorProfileSelection;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -80,6 +81,26 @@ public final class ApplicationRuntimeLauncher {
      */
     static boolean consumeSetupWizardRequest() {
         return SETUP_WIZARD_REQUESTED.getAndSet(false);
+    }
+
+    /**
+     * Rebuilds the runtime of the active profile with the setup wizard in front of it.
+     *
+     * <p>The running runtime is torn down first and the wizard shown afterwards, not the
+     * other way round: a runtime shutting down flushes its pending layout write, and that
+     * must not land on the file the wizard has just written.</p>
+     *
+     * @return true if the new runtime was built
+     */
+    public static boolean rerunSetupWizard() {
+        OperatorProfileSelection active = ActiveOperatorProfile.get();
+
+        if (active == null) {
+            return false;
+        }
+
+        requestSetupWizard();
+        return switchProfile(active.getProfile());
     }
 
     /**
