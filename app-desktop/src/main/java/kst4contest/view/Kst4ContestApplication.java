@@ -42,6 +42,8 @@ import kst4contest.view.compose.SettingsWindow;
 import kst4contest.controller.ScoreService;
 import kst4contest.view.compose.SettingsWindow;
 import kst4contest.controller.On4KstConnectionState;
+import kst4contest.view.compose.wizard.SetupWizardLauncher;
+import kst4contest.view.compose.wizard.SetupWizardOutcome;
 
 import java.io.File;
 import java.io.IOException;
@@ -2177,6 +2179,17 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 			return;
 		}
 
+		/*
+		 * The setup wizard, before anything of this profile's runtime exists. It writes
+		 * preferences.xml and the ChatController built below reads it like any stored
+		 * setting, so there is no running session to bring up to date and no reload.
+		 * Blocks until the wizard is closed; see SetupWizardWindow for why that is safe on
+		 * either thread this method is called from.
+		 */
+		SetupWizardOutcome setupWizardOutcome = SetupWizardLauncher.runIfNeeded(
+				ActiveOperatorProfile.get().getPreferencesRelativeFileName(),
+				ApplicationRuntimeLauncher.consumeSetupWizardRequest());
+
 		ApplicationRuntimeLauncher.setCurrent(this);
 
 		ApplicationFileUtils.copyResourceIfRequired(ApplicationConstants.APPLICATION_NAME, STYLE_DEFAULTCSSDAY_RESOURCE, STYLE_DEFAULTCSSDAY_FILE);
@@ -2296,6 +2309,15 @@ public class Kst4ContestApplication implements StatusUpdateListener, SettingsHos
 
 		//initialize the timeline
 		uiDispatcher.runOnUi(this::updateTimelineVisuals);
+
+		/*
+		 * "Save and connect" in the setup wizard. Here and not earlier: connecting needs the
+		 * runtime this method has just finished building. The same path as File -> Connect,
+		 * so a refused or failed connection is reported the way it is there.
+		 */
+		if (setupWizardOutcome == SetupWizardOutcome.SAVED_AND_CONNECT) {
+			uiDispatcher.runOnUi(this::menuActionConnect);
+		}
 
 		/*
 		 * Replaces Application.stop(), which only JavaFX ever called. This covers a SIGTERM

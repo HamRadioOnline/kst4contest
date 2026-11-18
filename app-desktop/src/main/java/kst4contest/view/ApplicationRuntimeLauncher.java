@@ -24,6 +24,13 @@ public final class ApplicationRuntimeLauncher {
 
     private static Kst4ContestApplication currentRuntime;
 
+    /**
+     * Whether the next runtime start shows the setup wizard although the profile is set up.
+     * Set by the menu entry and cleared by the start that honours it.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean SETUP_WIZARD_REQUESTED =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     private ApplicationRuntimeLauncher() {
         // Utility class.
     }
@@ -59,6 +66,20 @@ public final class ApplicationRuntimeLauncher {
         }
 
         System.exit(0);
+    }
+
+    /** Asks the next runtime start to show the setup wizard. */
+    static void requestSetupWizard() {
+        SETUP_WIZARD_REQUESTED.set(true);
+    }
+
+    /**
+     * Tells a starting runtime whether the wizard was asked for, and forgets the request.
+     *
+     * @return true exactly once per request
+     */
+    static boolean consumeSetupWizardRequest() {
+        return SETUP_WIZARD_REQUESTED.getAndSet(false);
     }
 
     /**
