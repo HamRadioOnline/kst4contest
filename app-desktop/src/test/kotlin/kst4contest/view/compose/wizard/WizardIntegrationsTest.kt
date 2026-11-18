@@ -297,4 +297,55 @@ class WizardIntegrationsTest {
         answers.rotatorPort = 0
         assertFalse(answers.gearComplete)
     }
+
+    @Test
+    fun loadingAgainPutsTheDetailsBackToTheStoredOnes() {
+        val answers = WizardIntegrations(winTestStation())
+        answers.udpPort = 1
+        answers.wintestPort = 2
+        answers.wintestStationName = "typed"
+        answers.filePath = "/typed"
+        answers.rotatorHost = "typed"
+        answers.rotatorPort = 3
+        answers.airScoutPort = 4
+        answers.airScoutServerName = "typed"
+        answers.airScoutClientName = "typed"
+
+        answers.loadFresh()
+
+        assertEquals(12060, answers.udpPort)
+        assertEquals(9999, answers.wintestPort)
+        assertEquals("KST", answers.wintestStationName)
+        assertEquals("127.0.0.1", answers.rotatorHost)
+        assertEquals(12000, answers.rotatorPort)
+        assertEquals(9872, answers.airScoutPort)
+        assertEquals("AS", answers.airScoutServerName)
+        assertEquals("KST", answers.airScoutClientName)
+
+        answers.filePath = "/typed"
+        answers.rotatorPort = 3
+        answers.loadStored()
+
+        assertFalse(answers.filePath == "/typed", "the stored file name is back")
+        assertEquals(12000, answers.rotatorPort)
+    }
+
+    @Test
+    fun theStoredSwitchesAreKnownWhateverTheLogProgram() {
+        // The settings window lets the DX cluster server and a frequency source run without
+        // a log source; the page's own answers cannot express that.
+        val answers = WizardIntegrations(allOff {
+            setNotify_dxClusterServerEnabled(true)
+            setTrxSynch_ucxLogUDPListenerEnabled(true)
+        })
+
+        assertEquals(WizardLogProgram.NONE, answers.logProgram)
+        assertFalse(answers.clusterServer, "the page shows none of it")
+        assertTrue(answers.storedClusterServer)
+        assertTrue(answers.storedQrgFollow)
+
+        val off = WizardIntegrations(allOff())
+        assertFalse(off.storedClusterServer)
+        assertFalse(off.storedQrgFollow)
+    }
 }

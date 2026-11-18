@@ -418,8 +418,8 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
     Form.section(strings.wizardSummaryLog) {
         if (state.logPageEditable) {
             SummaryRow(strings.wizardSummaryLog, logProgramName(integrations.logProgram, strings))
-            SummaryRow(strings.wizardSummaryQrgFollow, yesNo(integrations.qrgFollow))
-            SummaryRow(strings.wizardSummaryClusterServer, yesNo(integrations.networked && integrations.clusterServer))
+            SummaryRow(strings.wizardSummaryQrgFollow, yesNo(state.summaryQrgFollow))
+            SummaryRow(strings.wizardSummaryClusterServer, yesNo(state.summaryClusterServer))
             Form.button(strings.wizardChange) { state.edit(WizardPage.LOG) }
         } else {
             /* Several sources are on; the page cannot show that and must not be opened. */

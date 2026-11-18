@@ -71,10 +71,30 @@ class WizardIntegrations(prefs: ChatPreferences) {
     var logProgram: WizardLogProgram by mutableStateOf(WizardLogProgram.NONE)
         private set
 
-    var udpPort: Int by mutableStateOf(prefs.getLogsynch_ucxUDPWkdCallListenerPort())
-    var wintestPort: Int by mutableStateOf(prefs.getLogsynch_wintestNetworkPort())
-    var wintestStationName: String by mutableStateOf(prefs.getLogsynch_wintestNetworkStationNameOfKST().orEmpty())
-    var filePath: String by mutableStateOf(prefs.getLogsynch_fileBasedWkdCallInterpreterFileNameReadOnly().orEmpty())
+    private val storedUdpPort = prefs.getLogsynch_ucxUDPWkdCallListenerPort()
+    private val storedWintestPort = prefs.getLogsynch_wintestNetworkPort()
+    private val storedWintestStationName = prefs.getLogsynch_wintestNetworkStationNameOfKST().orEmpty()
+    private val storedFilePath = prefs.getLogsynch_fileBasedWkdCallInterpreterFileNameReadOnly().orEmpty()
+    private val storedRotatorHost = prefs.getStn_pstRotatorHost().orEmpty()
+    private val storedRotatorPort = prefs.getStn_pstRotatorPort()
+    private val storedAirScoutPort = prefs.getAirScout_asCommunicationPort()
+    private val storedAirScoutServerName = prefs.getAirScout_asServerNameString().orEmpty()
+    private val storedAirScoutClientName = prefs.getAirScout_asClientNameString().orEmpty()
+
+    /**
+     * Whether the profile takes its own frequency from a log program, whichever one. Known
+     * apart from [qrgFollow] because the settings window allows a frequency source without
+     * the matching log source, which the page's single choice cannot show.
+     */
+    val storedQrgFollow: Boolean = storedUdpQrg || storedWintestQrg
+
+    /** Whether the profile runs the local DX cluster server, with or without a log source. */
+    val storedClusterServer: Boolean = storedCluster
+
+    var udpPort: Int by mutableStateOf(storedUdpPort)
+    var wintestPort: Int by mutableStateOf(storedWintestPort)
+    var wintestStationName: String by mutableStateOf(storedWintestStationName)
+    var filePath: String by mutableStateOf(storedFilePath)
 
     /** Take the own frequency from the chosen network program. */
     var qrgFollow: Boolean by mutableStateOf(false)
@@ -83,13 +103,13 @@ class WizardIntegrations(prefs: ChatPreferences) {
     var clusterServer: Boolean by mutableStateOf(false)
 
     var rotator: Boolean by mutableStateOf(false)
-    var rotatorHost: String by mutableStateOf(prefs.getStn_pstRotatorHost().orEmpty())
-    var rotatorPort: Int by mutableStateOf(prefs.getStn_pstRotatorPort())
+    var rotatorHost: String by mutableStateOf(storedRotatorHost)
+    var rotatorPort: Int by mutableStateOf(storedRotatorPort)
 
     var airScout: Boolean by mutableStateOf(false)
-    var airScoutPort: Int by mutableStateOf(prefs.getAirScout_asCommunicationPort())
-    var airScoutServerName: String by mutableStateOf(prefs.getAirScout_asServerNameString().orEmpty())
-    var airScoutClientName: String by mutableStateOf(prefs.getAirScout_asClientNameString().orEmpty())
+    var airScoutPort: Int by mutableStateOf(storedAirScoutPort)
+    var airScoutServerName: String by mutableStateOf(storedAirScoutServerName)
+    var airScoutClientName: String by mutableStateOf(storedAirScoutClientName)
 
     init {
         loadStored()
@@ -111,6 +131,7 @@ class WizardIntegrations(prefs: ChatPreferences) {
         clusterServer = networked && storedCluster
         rotator = storedRotator
         airScout = storedAirScout
+        loadStoredDetails()
     }
 
     /** A station set up anew: every switch off, every number left as a proposal. */
@@ -120,6 +141,24 @@ class WizardIntegrations(prefs: ChatPreferences) {
         clusterServer = false
         rotator = false
         airScout = false
+        loadStoredDetails()
+    }
+
+    /**
+     * Ports, names, host and identifiers back to what the profile holds. Both loads do this:
+     * they run when the operator changes his mind about where the station comes from, and a
+     * number typed under one choice must not turn up under the other.
+     */
+    private fun loadStoredDetails() {
+        udpPort = storedUdpPort
+        wintestPort = storedWintestPort
+        wintestStationName = storedWintestStationName
+        filePath = storedFilePath
+        rotatorHost = storedRotatorHost
+        rotatorPort = storedRotatorPort
+        airScoutPort = storedAirScoutPort
+        airScoutServerName = storedAirScoutServerName
+        airScoutClientName = storedAirScoutClientName
     }
 
     /** Only a network program can deliver a frequency or take spots. */

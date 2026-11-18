@@ -328,6 +328,19 @@ class SetupWizardState(prefs: ChatPreferences) {
     }
 
     /**
+     * Whether the frequency is taken from a log program after Save, for the summary: the
+     * page's answer once the log page is part of the run, and what the profile holds before.
+     * The two differ where a frequency source is on without its log source, which the
+     * settings window allows and the page cannot show.
+     */
+    val summaryQrgFollow: Boolean
+        get() = if (logShown) integrations.qrgFollow else integrations.storedQrgFollow
+
+    /** Whether the DX cluster server runs after Save; see [summaryQrgFollow]. */
+    val summaryClusterServer: Boolean
+        get() = if (logShown) integrations.networked && integrations.clusterServer else integrations.storedClusterServer
+
+    /**
      * What was on in the profile and will be off after Save, for the summary. Pages that are
      * not part of this run change nothing and contribute nothing.
      */

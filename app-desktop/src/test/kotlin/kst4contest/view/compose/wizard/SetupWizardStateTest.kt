@@ -595,4 +595,34 @@ class SetupWizardStateTest {
             "the summary must not show a value that Save will not write",
         )
     }
+
+    @Test
+    fun theSummaryOfAKeptStationShowsWhatSaveLeavesOn() {
+        // No log source, but the DX cluster server and a frequency source are on.
+        val state = SetupWizardState(duplicatedWinTestStation().apply {
+            setLogsynch_wintestNetworkListenerEnabled(false)
+            setLogsynch_wintestQrgSyncEnabled(true)
+            setNotify_dxClusterServerEnabled(true)
+        })
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+        assertEquals(WizardPage.SUMMARY, state.page)
+
+        assertTrue(state.summaryClusterServer, "Save leaves it on, so the summary must not say no")
+        assertTrue(state.summaryQrgFollow)
+        assertFalse(state.switchedOff.contains(WizardSwitch.CLUSTER_SERVER))
+
+        // Once the log page is part of the run its answers count, and what they drop is named.
+        state.edit(WizardPage.LOG)
+        state.next()
+
+        assertFalse(state.summaryClusterServer)
+        assertFalse(state.summaryQrgFollow)
+        assertTrue(state.switchedOff.containsAll(listOf(WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER)))
+    }
 }
