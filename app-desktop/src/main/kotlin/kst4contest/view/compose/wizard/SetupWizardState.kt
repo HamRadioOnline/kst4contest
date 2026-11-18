@@ -280,6 +280,45 @@ class SetupWizardState(prefs: ChatPreferences) {
     val leavesIntegrationsUntouched: Boolean
         get() = stationSource == WizardSource.NEW
 
+    /**
+     * Puts the answers into [prefs] and writes its file.
+     *
+     * Everything the wizard did not ask about stays as [prefs] read it, because the whole
+     * file is read and written back. The callsign and the locator are stored as typed, the
+     * way the Station tab stores them; only surrounding blanks go.
+     *
+     * The second chat's name follows the first unless the operator had set it apart, and the
+     * second category is left alone while the second chat is off.
+     *
+     * @return false when a mandatory answer is missing -- nothing is touched then -- or when
+     *         the file could not be written
+     */
+    fun writeTo(prefs: ChatPreferences): Boolean {
+        if (!mandatoryComplete) return false
+
+        val newName = name.trim()
+
+        prefs.setGuiOptions_language(language)
+        prefs.setStn_loginNameMainCat(newName)
+        if (storedSecondName.isBlank() || storedSecondName == storedName) {
+            prefs.setStn_loginNameSecondCat(newName)
+        }
+
+        prefs.setStn_loginCallSign(callsign.trim())
+        prefs.setStn_loginPassword(password)
+
+        prefs.setStn_loginLocatorMainCat(locator.trim())
+        WizardBand.entries.forEach { it.setActive(prefs, it in bands) }
+        prefs.setLoginChatCategoryMain(ChatCategory(requireNotNull(category)))
+        prefs.setLoginToSecondChatEnabled(secondChat)
+        if (secondChat) {
+            prefs.setLoginChatCategorySecond(ChatCategory(requireNotNull(secondCategory)))
+        }
+
+        // A write that throws is a write that failed; the wizard must stay open either way.
+        return runCatching { prefs.writePreferencesToXmlFile() }.getOrDefault(false)
+    }
+
     companion object {
 
         /** The categories the pickers offer, the way the Station tab builds them. */
