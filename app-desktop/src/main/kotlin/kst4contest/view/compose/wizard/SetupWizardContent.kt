@@ -168,6 +168,7 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
                 RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceLoginNew
+                        WizardSource.TAKE -> state.loginDonor?.displayName.orEmpty()
                         WizardSource.KEEP -> strings.wizardSourceLoginKeep(state.storedCallsign)
                     },
                     selected = state.loginSource == source,
@@ -183,6 +184,7 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
                 RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceStationNew
+                        WizardSource.TAKE -> state.stationDonor?.displayName.orEmpty()
                         WizardSource.KEEP -> strings.wizardSourceStationKeep(state.storedLocator)
                     },
                     selected = state.stationSource == source,

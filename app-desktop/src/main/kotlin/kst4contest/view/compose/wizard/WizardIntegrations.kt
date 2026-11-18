@@ -243,19 +243,37 @@ class WizardIntegrations(prefs: ChatPreferences) {
         }
     }
 
-    /** What the log page's answers switch off that the profile had on, in a fixed order. */
-    fun switchedOffByLog(): List<WizardSwitch> = buildList {
-        if (storedWintest && logProgram != WizardLogProgram.WINTEST) add(WizardSwitch.LOG_WINTEST)
-        if (storedUdp && logProgram != WizardLogProgram.UDP) add(WizardSwitch.LOG_UDP)
-        if (storedFile && logProgram != WizardLogProgram.FILE) add(WizardSwitch.LOG_FILE)
-        if ((storedUdpQrg || storedWintestQrg) && !qrgFollow) add(WizardSwitch.QRG_FOLLOW)
-        if (storedCluster && !(networked && clusterServer)) add(WizardSwitch.CLUSTER_SERVER)
+    /** The log-page switches the profile these answers were built from has on. */
+    fun storedLogSwitches(): Set<WizardSwitch> = buildSet {
+        if (storedWintest) add(WizardSwitch.LOG_WINTEST)
+        if (storedUdp) add(WizardSwitch.LOG_UDP)
+        if (storedFile) add(WizardSwitch.LOG_FILE)
+        if (storedQrgFollow) add(WizardSwitch.QRG_FOLLOW)
+        if (storedCluster) add(WizardSwitch.CLUSTER_SERVER)
     }
 
-    /** What the equipment page's answers switch off that the profile had on. */
-    fun switchedOffByGear(): List<WizardSwitch> = buildList {
-        if (storedRotator && !rotator) add(WizardSwitch.ROTATOR)
-        if (storedAirScout && !airScout) add(WizardSwitch.AIRSCOUT)
+    /** The equipment switches the profile these answers were built from has on. */
+    fun storedGearSwitches(): Set<WizardSwitch> = buildSet {
+        if (storedRotator) add(WizardSwitch.ROTATOR)
+        if (storedAirScout) add(WizardSwitch.AIRSCOUT)
+    }
+
+    /** The log-page switches that are on once [writeLogTo] has run. */
+    fun answeredLogSwitches(): Set<WizardSwitch> = buildSet {
+        when (logProgram) {
+            WizardLogProgram.WINTEST -> add(WizardSwitch.LOG_WINTEST)
+            WizardLogProgram.UDP -> add(WizardSwitch.LOG_UDP)
+            WizardLogProgram.FILE -> add(WizardSwitch.LOG_FILE)
+            WizardLogProgram.NONE -> Unit
+        }
+        if (networked && qrgFollow) add(WizardSwitch.QRG_FOLLOW)
+        if (networked && clusterServer) add(WizardSwitch.CLUSTER_SERVER)
+    }
+
+    /** The equipment switches that are on once [writeGearTo] has run. */
+    fun answeredGearSwitches(): Set<WizardSwitch> = buildSet {
+        if (rotator) add(WizardSwitch.ROTATOR)
+        if (airScout) add(WizardSwitch.AIRSCOUT)
     }
 
     private companion object {

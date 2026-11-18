@@ -252,30 +252,40 @@ class WizardIntegrationsTest {
     }
 
     @Test
-    fun theSwitchedOffListNamesWhatWasOnAndWillBeOff() {
-        val answers = WizardIntegrations(likeTheTemplate())
-        answers.loadFresh()
+    fun theStoredSwitchesAreWhatTheProfileHasOn() {
+        val template = WizardIntegrations(likeTheTemplate())
 
         assertEquals(
-            listOf(WizardSwitch.LOG_UDP, WizardSwitch.LOG_FILE, WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER),
-            answers.switchedOffByLog(),
+            setOf(WizardSwitch.LOG_UDP, WizardSwitch.LOG_FILE, WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER),
+            template.storedLogSwitches(),
         )
-        assertEquals(listOf(WizardSwitch.AIRSCOUT), answers.switchedOffByGear())
+        assertEquals(setOf(WizardSwitch.AIRSCOUT), template.storedGearSwitches())
 
-        answers.chooseLogProgram(WizardLogProgram.UDP)
-        answers.qrgFollow = true
-        answers.airScout = true
-        assertEquals(listOf(WizardSwitch.LOG_FILE, WizardSwitch.CLUSTER_SERVER), answers.switchedOffByLog())
-        assertEquals(emptyList<WizardSwitch>(), answers.switchedOffByGear())
+        val nothing = WizardIntegrations(allOff())
+        assertEquals(emptySet<WizardSwitch>(), nothing.storedLogSwitches())
+        assertEquals(emptySet<WizardSwitch>(), nothing.storedGearSwitches())
     }
 
     @Test
-    fun nothingIsSwitchedOffOnAStationThatHadNothingOn() {
-        val answers = WizardIntegrations(allOff())
+    fun theAnsweredSwitchesFollowThePages() {
+        val answers = WizardIntegrations(likeTheTemplate())
         answers.loadFresh()
 
-        assertEquals(emptyList<WizardSwitch>(), answers.switchedOffByLog())
-        assertEquals(emptyList<WizardSwitch>(), answers.switchedOffByGear())
+        assertEquals(emptySet<WizardSwitch>(), answers.answeredLogSwitches())
+        assertEquals(emptySet<WizardSwitch>(), answers.answeredGearSwitches())
+
+        answers.chooseLogProgram(WizardLogProgram.WINTEST)
+        answers.qrgFollow = true
+        answers.clusterServer = true
+        answers.rotator = true
+
+        assertEquals(
+            setOf(WizardSwitch.LOG_WINTEST, WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER),
+            answers.answeredLogSwitches(),
+        )
+        assertEquals(setOf(WizardSwitch.ROTATOR), answers.answeredGearSwitches())
+        // The stored side does not move with the answers.
+        assertEquals(setOf(WizardSwitch.AIRSCOUT), answers.storedGearSwitches())
     }
 
     @Test

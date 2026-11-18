@@ -12,8 +12,28 @@ enum class WizardSource {
     /** Entered in the wizard, starting from the wizard's own empty values. */
     NEW,
 
+    /** Taken from another, configured profile. */
+    TAKE,
+
     /** What the profile already holds. */
     KEEP,
+}
+
+/**
+ * Another profile the login or the station can be taken from.
+ *
+ * Its preferences are read from its file and never written: taking over fills the wizard's
+ * answers, and Save writes only into the active profile.
+ *
+ * @param prefs the other profile's preferences, already read from its file
+ */
+class WizardDonor(val profileId: String, val displayName: String, val prefs: ChatPreferences) {
+
+    /** For the entry page's label. */
+    val callsign: String = prefs.getStn_loginCallSign().orEmpty()
+
+    /** For the entry page's label. */
+    val locator: String = prefs.getStn_loginLocatorMainCat().orEmpty()
 }
 
 /** The pages, in the order they can appear. */
@@ -52,8 +72,27 @@ enum class WizardBand(
  * depends on Compose.
  *
  * @param prefs the profile's preferences, already read from its file
+ * @param donors other configured profiles the login or the station can be taken from
  */
-class SetupWizardState(prefs: ChatPreferences) {
+class SetupWizardState(prefs: ChatPreferences, val donors: List<WizardDonor> = emptyList()) {
+
+    /** What the pages of the station group show of one profile's preferences. */
+    private class StationSnapshot(prefs: ChatPreferences) {
+        val locator: String = prefs.getStn_loginLocatorMainCat().orEmpty()
+        val bands: Set<WizardBand> = WizardBand.entries.filter { it.isActive(prefs) }.toSet()
+        val category: Int? = prefs.getLoginChatCategoryMain()?.categoryNumber
+        val secondChat: Boolean = prefs.isLoginToSecondChatEnabled()
+        val secondCategory: Int? = prefs.getLoginChatCategorySecond()?.categoryNumber
+    }
+
+    /** Kept to rebuild the answers of the station group when its source changes. */
+    private val ownPrefs: ChatPreferences = prefs
+    private val ownStation = StationSnapshot(prefs)
+
+    /** What the own profile has on, whatever the answers are built from. */
+    private val ownSwitches: Set<WizardSwitch> = WizardIntegrations(prefs).let {
+        it.storedLogSwitches() + it.storedGearSwitches()
+    }
 
     private val loginConfigured = !LoginConfiguration.isUnconfigured(prefs)
     private val templateCredentials = LoginConfiguration.carriesTemplateCredentials(prefs)
@@ -65,15 +104,12 @@ class SetupWizardState(prefs: ChatPreferences) {
     private val storedSecondName: String = prefs.getStn_loginNameSecondCat().orEmpty()
 
     /** The locator the profile holds, for the label of "leave unchanged". */
-    val storedLocator: String = prefs.getStn_loginLocatorMainCat().orEmpty()
-    private val storedBands: Set<WizardBand> = WizardBand.entries.filter { it.isActive(prefs) }.toSet()
-    private val storedCategory: Int? = prefs.getLoginChatCategoryMain()?.categoryNumber
-    private val storedSecondChat: Boolean = prefs.isLoginToSecondChatEnabled()
-    private val storedSecondCategory: Int? = prefs.getLoginChatCategorySecond()?.categoryNumber
+    val storedLocator: String = ownStation.locator
 
-    /** A login can only be kept where an operator entered one. */
+    /** A login can be taken where another profile has one, and kept where an operator entered one. */
     val loginSources: List<WizardSource> = buildList {
         add(WizardSource.NEW)
+        if (donors.isNotEmpty()) add(WizardSource.TAKE)
         if (loginConfigured) add(WizardSource.KEEP)
     }
 
@@ -83,6 +119,7 @@ class SetupWizardState(prefs: ChatPreferences) {
      */
     val stationSources: List<WizardSource> = buildList {
         add(WizardSource.NEW)
+        if (donors.isNotEmpty()) add(WizardSource.TAKE)
         if (!templateCredentials) add(WizardSource.KEEP)
     }
 
@@ -95,8 +132,17 @@ class SetupWizardState(prefs: ChatPreferences) {
     var stationSource: WizardSource? by mutableStateOf(stationSources.singleOrNull())
         private set
 
-    private var appliedLoginSource: WizardSource? = null
-    private var appliedStationSource: WizardSource? = null
+    /** The profile the login is taken from; decided with the source when there is only one. */
+    var loginDonor: WizardDonor? by mutableStateOf(null)
+        private set
+
+    /** The profile the station is taken from; decided with the source when there is only one. */
+    var stationDonor: WizardDonor? by mutableStateOf(null)
+        private set
+
+    /* A group is reloaded when its source or its donor changes, and only then. */
+    private var appliedLogin: Pair<WizardSource?, WizardDonor?> = null to null
+    private var appliedStation: Pair<WizardSource?, WizardDonor?> = null to null
 
     /** The stored form of the language: a code, or empty for the system language. */
     var language: String by mutableStateOf(prefs.getGuiOptions_language().orEmpty())
@@ -121,11 +167,16 @@ class SetupWizardState(prefs: ChatPreferences) {
 
     var secondCategory: Int? by mutableStateOf(null)
 
-    /** Antenna and power; always proposals from what is stored. */
-    val antenna = WizardAntenna(prefs)
+    /**
+     * Antenna and power; always proposals from the profile the station comes from. Replaced
+     * when the station's source changes, so nothing typed under one choice shows under another.
+     */
+    var antenna: WizardAntenna by mutableStateOf(WizardAntenna(prefs))
+        private set
 
-    /** Log program, rotator and AirScout. */
-    val integrations = WizardIntegrations(prefs)
+    /** Log program, rotator and AirScout; replaced like [antenna]. */
+    var integrations: WizardIntegrations by mutableStateOf(WizardIntegrations(prefs))
+        private set
 
     private var loginShown by mutableStateOf(false)
 
@@ -148,44 +199,79 @@ class SetupWizardState(prefs: ChatPreferences) {
     }
 
     fun chooseLoginSource(source: WizardSource) {
-        if (source in loginSources) loginSource = source
+        if (source !in loginSources) return
+        loginSource = source
+        if (source == WizardSource.TAKE && loginDonor == null) loginDonor = donors.singleOrNull()
     }
 
     fun chooseStationSource(source: WizardSource) {
-        if (source in stationSources) stationSource = source
+        if (source !in stationSources) return
+        stationSource = source
+        if (source == WizardSource.TAKE && stationDonor == null) stationDonor = donors.singleOrNull()
     }
 
+    fun chooseLoginDonor(donor: WizardDonor) {
+        if (donor in donors) loginDonor = donor
+    }
+
+    fun chooseStationDonor(donor: WizardDonor) {
+        if (donor in donors) stationDonor = donor
+    }
+
+    /** A source is decided once it is chosen and, when it takes over, says from whom. */
+    private fun decided(source: WizardSource?, donor: WizardDonor?): Boolean =
+        source != null && (source != WizardSource.TAKE || donor != null)
+
     /**
-     * Loads the answers of a group whose source changed. A group whose source is the one
-     * already applied is left alone, so going back to the entry page costs nothing typed.
+     * Loads the answers of a group whose source or donor changed. A group whose choice is the
+     * one already applied is left alone, so going back to the entry page costs nothing typed.
      */
     private fun applySources() {
-        if (loginSource != appliedLoginSource) {
-            val keep = loginSource == WizardSource.KEEP
-            callsign = if (keep) storedCallsign else ""
-            password = if (keep) storedPassword else ""
-            loginShown = !keep || !loginComplete
-            appliedLoginSource = loginSource
+        val login = loginSource to loginDonor.takeIf { loginSource == WizardSource.TAKE }
+        if (login != appliedLogin) {
+            when (loginSource) {
+                WizardSource.KEEP -> {
+                    callsign = storedCallsign
+                    password = storedPassword
+                }
+                WizardSource.TAKE -> {
+                    callsign = loginDonor?.prefs?.getStn_loginCallSign().orEmpty()
+                    password = loginDonor?.prefs?.getStn_loginPassword().orEmpty()
+                }
+                else -> {
+                    callsign = ""
+                    password = ""
+                }
+            }
+            // Shown when entered anew, and when what was kept or taken cannot be saved as it is.
+            loginShown = loginSource == WizardSource.NEW || !loginComplete
+            appliedLogin = login
         }
 
-        if (stationSource != appliedStationSource) {
-            val keep = stationSource == WizardSource.KEEP
-            locator = if (keep) storedLocator else ""
-            bands = if (keep) storedBands else emptySet()
-            category = if (keep) storedCategory else null
-            secondChat = keep && storedSecondChat
-            secondCategory = if (keep) storedSecondCategory else null
-            // A kept category is the operator's; the suggestion must not replace it.
-            categoryChosenByOperator = keep
-            siteShown = !keep || !stationComplete
-            antennaShown = !keep
-            logShown = !keep
-            gearShown = !keep
-            // A new station gets only what the operator says yes to.
-            if (keep) integrations.loadStored() else integrations.loadFresh()
-            // Proposals from the profile either way; what was typed under the other choice goes.
-            antenna.loadStored()
-            appliedStationSource = stationSource
+        val station = stationSource to stationDonor.takeIf { stationSource == WizardSource.TAKE }
+        if (station != appliedStation) {
+            val fresh = stationSource == WizardSource.NEW
+            val base = if (stationSource == WizardSource.TAKE) stationDonor?.prefs ?: ownPrefs else ownPrefs
+            val snapshot = if (base === ownPrefs) ownStation else StationSnapshot(base)
+
+            locator = if (fresh) "" else snapshot.locator
+            bands = if (fresh) emptySet() else snapshot.bands
+            category = if (fresh) null else snapshot.category
+            secondChat = !fresh && snapshot.secondChat
+            secondCategory = if (fresh) null else snapshot.secondCategory
+            // A kept or taken category is an operator's; the suggestion must not replace it.
+            categoryChosenByOperator = !fresh
+
+            siteShown = fresh || !stationComplete
+            antennaShown = fresh
+            logShown = fresh
+            gearShown = fresh
+
+            // Built anew from the profile the station comes from; a new station gets only
+            // what the operator says yes to.
+            antenna = WizardAntenna(base)
+            integrations = WizardIntegrations(base).also { if (fresh) it.loadFresh() }
+            appliedStation = station
         }
     }
 
@@ -271,7 +357,7 @@ class SetupWizardState(prefs: ChatPreferences) {
 
     val canGoNext: Boolean
         get() = when (page) {
-            WizardPage.ENTRY -> loginSource != null && stationSource != null
+            WizardPage.ENTRY -> decided(loginSource, loginDonor) && decided(stationSource, stationDonor)
             WizardPage.PERSONAL -> personalComplete
             WizardPage.LOGIN -> loginComplete
             WizardPage.SITE -> stationComplete
@@ -341,14 +427,22 @@ class SetupWizardState(prefs: ChatPreferences) {
         get() = if (logShown) integrations.networked && integrations.clusterServer else integrations.storedClusterServer
 
     /**
-     * What was on in the profile and will be off after Save, for the summary. Pages that are
-     * not part of this run change nothing and contribute nothing.
+     * What is on in the own profile and will be off after Save, for the summary. Always
+     * against the own profile: with a station taken from another one, that is what the
+     * operator loses, whatever the other profile had.
+     *
+     * A page that is not part of the run contributes what its profile holds -- the own one
+     * for a station left unchanged, the donor's for a station taken over.
      */
     val switchedOff: List<WizardSwitch>
-        get() = buildList {
-            if (storedSecondChat && !secondChat) add(WizardSwitch.SECOND_CHAT)
-            if (logShown) addAll(integrations.switchedOffByLog())
-            if (gearShown) addAll(integrations.switchedOffByGear())
+        get() {
+            val after = buildSet {
+                if (secondChat) add(WizardSwitch.SECOND_CHAT)
+                addAll(if (logShown) integrations.answeredLogSwitches() else integrations.storedLogSwitches())
+                addAll(if (gearShown) integrations.answeredGearSwitches() else integrations.storedGearSwitches())
+            }
+            val before = ownSwitches + if (ownStation.secondChat) setOf(WizardSwitch.SECOND_CHAT) else emptySet()
+            return WizardSwitch.entries.filter { it in before && it !in after }
         }
 
     /**
@@ -363,6 +457,8 @@ class SetupWizardState(prefs: ChatPreferences) {
      *
      * Antenna, log program and equipment are written only for the pages that were part of
      * this run.
+     *
+     * A station taken from another profile is copied whole before the answers are written.
      *
      * @return false when a mandatory answer is missing -- nothing is touched then -- or when
      *         the file could not be written
@@ -380,6 +476,12 @@ class SetupWizardState(prefs: ChatPreferences) {
 
         prefs.setStn_loginCallSign(callsign.trim())
         prefs.setStn_loginPassword(password)
+
+        // The whole station of the other profile first, also what no page asks about; the
+        // answers below then lie on top, so a taken value the operator changed wins.
+        if (stationSource == WizardSource.TAKE) {
+            stationDonor?.let { copyStation(it.prefs, prefs) }
+        }
 
         prefs.setStn_loginLocatorMainCat(locator.trim())
         WizardBand.entries.forEach { it.setActive(prefs, it in bands) }
