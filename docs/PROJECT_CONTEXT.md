@@ -407,9 +407,14 @@ section records only the durable architecture and operational boundaries.
   date. From the menu the runtime is torn down first and the same profile restarted
   (`ApplicationRuntimeLauncher.rerunSetupWizard`), which costs the session and asks first. A
   profile counts as unconfigured when its callsign is empty or it still carries the bundled
-  template's credentials (`LoginConfiguration`); there is no flag for it in the file. Stage 1
-  asks for name, login, locator, bands and chat category; the reasons and the later stages
-  are in `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
+  template's credentials (`LoginConfiguration`); there is no flag for it in the file. It
+  asks for name, login, locator, bands and chat category, and optionally for antenna and
+  power, log program, rotator and AirScout. A station set up anew gets only what the
+  operator said yes to: the bundled template has several integrations on, and the wizard
+  switches them off and says so in its summary. A page that was not shown in a run is not
+  written, which is what lets "leave the station unchanged" keep a profile with several log
+  sources as it is. The reasons and the open stage 3 are in
+  `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
 
 ## Planned Technical Direction
 

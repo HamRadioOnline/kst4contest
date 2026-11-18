@@ -19,7 +19,14 @@ Der Assistent fragt:
 1. **Persönliches** – Sprache und Anzeigename im Chat.
 2. **Anmeldung** – Rufzeichen und Passwort des ON4KST-Kontos.
 3. **Standort und Bänder** – Locator, aktive Bänder und Chatkategorie. Die Kategorie wird aus den Bändern vorgeschlagen und lässt sich ändern. Ein zweiter Chat ist freiwillig.
-4. **Zusammenfassung** – erst **Speichern** schreibt die Einstellungen. **Speichern und verbinden** meldet danach gleich am Chat an.
+4. **Antenne und Leistung** – freiwillig: Öffnungswinkel, Antennengewinn, Antennenhöhe, Sendeleistung und Standorthöhe. Die Werte speisen die Pfadanalyse; für den Chat braucht sie niemand.
+5. **Logprogramm** – keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST oder eine Logdatei. Port, Stationsname oder Datei erscheinen erst nach der Wahl. Mit einem Netzwerk-Logprogramm lässt sich außerdem die eigene Frequenz übernehmen und der lokale DX-Cluster-Server einschalten.
+6. **Rotor und AirScout** – je ein Schalter; Host, Port und Kennungen erscheinen erst, wenn er gesetzt ist.
+7. **Zusammenfassung** – erst **Speichern** schreibt die Einstellungen. **Speichern und verbinden** meldet danach gleich am Chat an.
+
+Sobald Anmeldung, Locator, mindestens ein Band und die Chatkategorie stehen, führt **Fertig** direkt zur Zusammenfassung. Die Schritte 4 bis 6 lassen sich also überspringen.
+
+Eine **neu eingerichtete** Station bekommt nur eingeschaltet, was im Assistenten bejaht wurde. Die mitgelieferte Vorlage hat Logabgleich, Frequenzübernahme, DX-Cluster-Server und AirScout an; der Assistent schaltet ab, was nicht gewählt wurde, und nennt es in der Zusammenfassung unter „Wird abgeschaltet".
 
 Hat das Profil schon eine Station (etwa nach dem Duplizieren), fragt die erste Seite, ob sie **unverändert** bleiben oder **neu eingerichtet** werden soll. So braucht ein weiterer Operator an derselben Station nur Namen und Anmeldung einzutragen.
 
@@ -27,7 +34,7 @@ Hat das Profil schon eine Station (etwa nach dem Duplizieren), fragt die erste S
 
 Über **Options → Einrichtungsassistent...** lässt er sich jederzeit erneut aufrufen. Dabei wird die laufende Sitzung nach einer Rückfrage beendet und das Profil neu gestartet. Für einzelne Änderungen im Betrieb ist das Einstellungsfenster gedacht.
 
-Logprogramm, Rotor, AirScout und DX-Cluster-Server fragt der Assistent noch nicht ab; sie behalten ihre Werte und werden wie bisher im Einstellungsfenster eingestellt.
+Bleibt die Station **unverändert**, fasst der Assistent Antenne, Logprogramm, Rotor und AirScout nicht an, solange die zugehörige Seite nicht über **Ändern** geöffnet wird. Sind im Profil mehrere Logquellen zugleich eingeschaltet, lässt sich die Seite „Logprogramm" nicht öffnen: sie kennt nur eine Quelle. Solche Stationen stellt man weiter im Einstellungsfenster ein.
 
 ---
 

@@ -19,7 +19,14 @@ The assistant asks for:
 1. **Personal** – language and the name shown in the chat.
 2. **Login** – callsign and password of the ON4KST account.
 3. **Location and bands** – locator, active bands and chat category. The category is suggested from the bands and can be changed. A second chat is optional.
-4. **Summary** – nothing is written until you click **Save**. **Save and connect** logs into the chat right afterwards.
+4. **Antenna and power** – optional: beam width, antenna gain, antenna height, transmit power and site elevation. These values feed the path analysis; the chat does not need them.
+5. **Log program** – none, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, or a log file. Port, station name or file appear only after the choice. With a network log program you can also take your own frequency from it and enable the local DX cluster server.
+6. **Rotator and AirScout** – one switch each; host, port and identifiers appear only once it is set.
+7. **Summary** – nothing is written until you click **Save**. **Save and connect** logs into the chat right afterwards.
+
+As soon as login, locator, at least one band and the chat category are there, **Finish** leads straight to the summary. Steps 4 to 6 can be skipped.
+
+A station that is **set up anew** gets only what was confirmed in the assistant. The bundled template has log synchronisation, frequency takeover, DX cluster server and AirScout enabled; the assistant switches off what was not chosen and names it in the summary under "Will be switched off".
 
 If the profile already has a station (after duplicating one, for example), the first page asks whether to leave it **unchanged** or to **set it up anew**. A further operator at the same station then only enters a name and a login.
 
@@ -27,7 +34,7 @@ If the profile already has a station (after duplicating one, for example), the f
 
 **Options → Setup assistant...** opens it again at any time. This ends the running session after a confirmation and restarts the profile. Use the settings window for single changes during operation.
 
-The assistant does not ask about log program, rotator, AirScout and DX cluster server yet; they keep their values and are configured in the settings window as before.
+If the station is left **unchanged**, the assistant does not touch antenna, log program, rotator and AirScout unless the corresponding page is opened through **Change**. If several log sources are enabled in the profile at once, the "Log program" page cannot be opened: it knows one source only. Such stations are still configured in the settings window.
 
 ---
 

@@ -105,6 +105,15 @@ Die Wahl bestimmt, **womit die Schritte vorbelegt sind**, und ob sie im Ablauf e
 In allen drei Fällen zeigt die Zusammenfassung die Werte, und von dort lässt sich jeder
 Schritt öffnen und ändern. Ein übernommenes Rufzeichen bekommt so sein `/P`.
 
+Eine Ausnahme hat das Logprogramm. Das Einstellungsfenster erlaubt mehrere Logquellen
+zugleich, die Frage des Assistenten nur eine. Hat ein unverändert gelassenes Profil mehr als
+eine Quelle eingeschaltet, zeigt die Zusammenfassung das an und lässt die Seite zu: sie
+würde beim Öffnen alle Quellen bis auf eine abschalten.
+
+**Geschrieben wird nur, was gezeigt wurde.** Bleibt die Station unverändert und öffnet der
+Nutzer weder Antenne noch Logprogramm noch Rotor und AirScout, fasst der Assistent diese
+Einstellungen nicht an.
+
 Die **Startwerte des Assistenten** für eine neue Station sind bewusst nicht die der Vorlage:
 kein Band gewählt, Locator leer, kein Zweitchat, kein Logprogramm, kein lokaler
 DX-Cluster-Server, kein Rotor, kein AirScout. Wer „neu einrichten" wählt, bekommt nur
@@ -229,8 +238,7 @@ tatsächlichen Anmeldestatus.
    Startwerten, die Integrationen abschalten.
 3. „Von Profil X übernehmen".
 
-Stufe 1 ist für sich benutzbar; bis Stufe 2 lässt „neu einrichten" die Integrationen auf
-ihren gespeicherten Werten und sagt das in der Zusammenfassung.
+Stufe 1 und 2 sind umgesetzt. Offen ist Stufe 3.
 
 ## Unverändert
 
