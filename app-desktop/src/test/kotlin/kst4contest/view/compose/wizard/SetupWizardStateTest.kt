@@ -65,7 +65,10 @@ class SetupWizardStateTest {
         assertFalse(state.hasEntryPage)
         assertEquals(WizardPage.PERSONAL, state.page)
         assertEquals(
-            listOf(WizardPage.PERSONAL, WizardPage.LOGIN, WizardPage.SITE, WizardPage.SUMMARY),
+            listOf(
+                WizardPage.PERSONAL, WizardPage.LOGIN, WizardPage.SITE,
+                WizardPage.ANTENNA, WizardPage.LOG, WizardPage.GEAR, WizardPage.SUMMARY,
+            ),
             state.pages,
         )
         assertEquals("", state.name, "the template's name is nobody's name")
@@ -281,19 +284,6 @@ class SetupWizardStateTest {
     }
 
     @Test
-    fun theSummarySaysWhatIsSwitchedOffAndWhatIsLeftAlone() {
-        val fresh = SetupWizardState(freshInstallation())
-        assertTrue(fresh.turnsOffSecondChat, "the template has the second chat on, a new station has it off")
-        assertTrue(fresh.leavesIntegrationsUntouched)
-
-        val kept = SetupWizardState(duplicatedProfile())
-        kept.chooseStationSource(WizardSource.KEEP)
-        kept.next()
-        assertFalse(kept.turnsOffSecondChat)
-        assertFalse(kept.leavesIntegrationsUntouched)
-    }
-
-    @Test
     fun keepingAStationWithMissingLocatorKeepsTheSitePageInTheCourse() {
         val state = SetupWizardState(duplicatedProfile().apply { setStn_loginLocatorMainCat("") })
         state.chooseStationSource(WizardSource.KEEP)
@@ -413,5 +403,166 @@ class SetupWizardStateTest {
         assertEquals(WizardPage.PERSONAL, state.page)
         state.next()
         assertEquals(WizardPage.SUMMARY, state.page)
+    }
+
+    /** A first installation whose stored integrations are those of the bundled template. */
+    private fun freshInstallationLikeTheTemplate() = freshInstallation().apply {
+        setLogsynch_wintestNetworkListenerEnabled(false)
+        setLogsynch_ucxUDPWkdCallListenerEnabled(true)
+        setLogsynch_fileBasedWkdCallInterpreterEnabled(true)
+        setTrxSynch_ucxLogUDPListenerEnabled(true)
+        setLogsynch_wintestQrgSyncEnabled(false)
+        setNotify_dxClusterServerEnabled(true)
+        setStn_pstRotatorEnabled(false)
+        setAirScout_asUDPListenerEnabled(true)
+        setLogsynch_ucxUDPWkdCallListenerPort(12060)
+    }
+
+    /** A duplicated profile at a Win-Test station with a rotator. */
+    private fun duplicatedWinTestStation() = duplicatedProfile().apply {
+        setLogsynch_wintestNetworkListenerEnabled(true)
+        setLogsynch_wintestNetworkPort(9871)
+        setLogsynch_wintestNetworkStationNameOfKST("KST")
+        setLogsynch_ucxUDPWkdCallListenerEnabled(false)
+        setLogsynch_fileBasedWkdCallInterpreterEnabled(false)
+        setLogsynch_wintestQrgSyncEnabled(true)
+        setTrxSynch_ucxLogUDPListenerEnabled(false)
+        setNotify_dxClusterServerEnabled(false)
+        setStn_pstRotatorEnabled(true)
+        setStn_pstRotatorHost("127.0.0.1")
+        setStn_pstRotatorPort(12000)
+        setAirScout_asUDPListenerEnabled(false)
+        setTrxSynch_so2rEnabled(false)
+    }
+
+    @Test
+    fun aNewStationStartsWithEveryIntegrationOff() {
+        val state = SetupWizardState(freshInstallationLikeTheTemplate())
+
+        assertEquals(WizardLogProgram.NONE, state.integrations.logProgram)
+        assertFalse(state.integrations.qrgFollow)
+        assertFalse(state.integrations.clusterServer)
+        assertFalse(state.integrations.rotator)
+        assertFalse(state.integrations.airScout)
+        assertEquals(
+            listOf(
+                WizardSwitch.SECOND_CHAT, WizardSwitch.LOG_UDP, WizardSwitch.LOG_FILE,
+                WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER, WizardSwitch.AIRSCOUT,
+            ),
+            state.switchedOff,
+            "the summary names everything the template had on",
+        )
+    }
+
+    @Test
+    fun theNewPagesComeAfterTheLocationAndCanBeWalkedThrough() {
+        val state = SetupWizardState(freshInstallationLikeTheTemplate())
+        state.fillFirstInstallation()
+
+        state.next()
+        assertEquals(WizardPage.ANTENNA, state.page)
+        assertTrue(state.canGoNext, "the antenna values are proposals and valid as they stand")
+        state.next()
+        assertEquals(WizardPage.LOG, state.page)
+        state.next()
+        assertEquals(WizardPage.GEAR, state.page)
+        state.next()
+        assertEquals(WizardPage.SUMMARY, state.page)
+
+        state.back()
+        assertEquals(WizardPage.GEAR, state.page)
+    }
+
+    @Test
+    fun finishingEarlyStillSwitchesANewStationsIntegrationsOff() {
+        val state = SetupWizardState(freshInstallationLikeTheTemplate())
+        state.fillFirstInstallation()
+        assertTrue(state.canFinish)
+
+        state.finish()
+
+        assertEquals(WizardPage.SUMMARY, state.page)
+        assertTrue(state.switchedOff.contains(WizardSwitch.LOG_UDP), "a skipped page of a new station still applies")
+        assertTrue(state.switchedOff.contains(WizardSwitch.AIRSCOUT))
+    }
+
+    @Test
+    fun aKeptStationSkipsTheNewPagesAndSwitchesNothingOff() {
+        val state = SetupWizardState(duplicatedWinTestStation())
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertEquals(
+            listOf(WizardPage.ENTRY, WizardPage.PERSONAL, WizardPage.LOGIN, WizardPage.SUMMARY),
+            state.pages,
+        )
+        assertEquals(WizardLogProgram.WINTEST, state.integrations.logProgram, "the summary shows what is stored")
+        assertTrue(state.integrations.rotator)
+        assertEquals(emptyList<WizardSwitch>(), state.switchedOff)
+        assertTrue(state.logPageEditable)
+    }
+
+    @Test
+    fun changeFromTheSummaryOpensANewPageOfAKeptStation() {
+        val state = SetupWizardState(duplicatedWinTestStation())
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+        assertEquals(WizardPage.SUMMARY, state.page)
+
+        state.edit(WizardPage.GEAR)
+        assertEquals(WizardPage.GEAR, state.page)
+        state.integrations.rotator = false
+        state.next()
+
+        assertEquals(WizardPage.SUMMARY, state.page)
+        assertEquals(listOf(WizardSwitch.ROTATOR), state.switchedOff)
+    }
+
+    @Test
+    fun aKeptStationWithSeveralLogSourcesCannotOpenTheLogPage() {
+        val state = SetupWizardState(duplicatedProfile().apply {
+            setLogsynch_wintestNetworkListenerEnabled(false)
+            setLogsynch_ucxUDPWkdCallListenerEnabled(true)
+            setLogsynch_fileBasedWkdCallInterpreterEnabled(true)
+        })
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+
+        assertFalse(state.logPageEditable, "the page knows one source and would switch the other off")
+        state.edit(WizardPage.LOG)
+        assertEquals(WizardPage.SUMMARY, state.page, "the log page must stay shut")
+
+        state.edit(WizardPage.GEAR)
+        assertEquals(WizardPage.GEAR, state.page, "the other pages are not affected")
+    }
+
+    @Test
+    fun anInvalidOptionalPageBlocksSaving() {
+        val state = SetupWizardState(freshInstallationLikeTheTemplate())
+        state.fillFirstInstallation()
+        state.next()
+        state.next()
+        assertEquals(WizardPage.LOG, state.page)
+
+        state.integrations.chooseLogProgram(WizardLogProgram.UDP)
+        state.integrations.udpPort = 0
+
+        assertFalse(state.canGoNext)
+        assertFalse(state.canFinish, "a summary that cannot be saved helps nobody")
+        assertFalse(state.mandatoryComplete)
+
+        state.integrations.udpPort = 12060
+        assertTrue(state.canGoNext)
+        assertTrue(state.mandatoryComplete)
     }
 }

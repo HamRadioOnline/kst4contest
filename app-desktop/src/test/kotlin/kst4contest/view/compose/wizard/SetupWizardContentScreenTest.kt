@@ -124,4 +124,57 @@ class SetupWizardContentScreenTest {
 
         onNodeWithText("DE").assertExists()
     }
+
+    /** A first installation: the template's credentials, so the wizard starts from scratch. */
+    private fun firstInstallation() =
+        ChatPreferences(Path.of("setup-wizard-screen-test-unused.xml")).apply {
+            setStn_loginCallSign("DO5AMF")
+            setStn_loginPassword("changeMe")
+            setLogsynch_wintestNetworkListenerEnabled(false)
+            setLogsynch_ucxUDPWkdCallListenerEnabled(true)
+            setLogsynch_fileBasedWkdCallInterpreterEnabled(false)
+            // Every other switch stated too, so the summary's wording does not hang on a
+            // compiled-in default.
+            setTrxSynch_ucxLogUDPListenerEnabled(false)
+            setLogsynch_wintestQrgSyncEnabled(false)
+            setNotify_dxClusterServerEnabled(false)
+            setStn_pstRotatorEnabled(false)
+            setAirScout_asUDPListenerEnabled(true)
+            setLoginToSecondChatEnabled(false)
+        }
+
+    private fun SetupWizardState.walkToTheLogPage() {
+        name = "Philipp"
+        next()
+        callsign = "DL0TEST"
+        password = "secret"
+        next()
+        locator = "JO50AA"
+        setBand(WizardBand.B144, true)
+        next()
+        next()
+    }
+
+    @Test
+    fun choosingALogProgramOnTheDrawnPageReachesTheState() = runComposeUiTest {
+        val state = SetupWizardState(firstInstallation())
+        state.walkToTheLogPage()
+        assertEquals(WizardPage.LOG, state.page)
+        show(state)
+
+        onNodeWithText("Win-Test").performClick()
+
+        assertEquals(WizardLogProgram.WINTEST, state.integrations.logProgram)
+        onNodeWithText("Take my own frequency from the log program").assertExists()
+    }
+
+    @Test
+    fun theSummaryNamesWhatANewStationSwitchesOff() = runComposeUiTest {
+        val state = SetupWizardState(firstInstallation())
+        state.walkToTheLogPage()
+        state.finish()
+        show(state)
+
+        onNodeWithText("Will be switched off: network log synchronisation, AirScout.").assertExists()
+    }
 }

@@ -100,9 +100,6 @@ class SetupWizardWriteTest(@param:TempDir private val directory: Path) {
         val prefs = read(file)
         val server = prefs.getStn_on4kstServersDns()
         val rotatorPort = prefs.getStn_pstRotatorPort()
-        val udpListener = prefs.isLogsynch_ucxUDPWkdCallListenerEnabled()
-        val clusterServer = prefs.isNotify_dxClusterServerEnabled()
-        val airScout = prefs.isAirScout_asUDPListenerEnabled()
         val beamWidth = prefs.getStn_antennaBeamWidthDeg()
 
         val state = SetupWizardState(prefs)
@@ -112,9 +109,6 @@ class SetupWizardWriteTest(@param:TempDir private val directory: Path) {
         val restored = read(file)
         assertEquals(server, restored.getStn_on4kstServersDns())
         assertEquals(rotatorPort, restored.getStn_pstRotatorPort())
-        assertEquals(udpListener, restored.isLogsynch_ucxUDPWkdCallListenerEnabled())
-        assertEquals(clusterServer, restored.isNotify_dxClusterServerEnabled())
-        assertEquals(airScout, restored.isAirScout_asUDPListenerEnabled())
         assertEquals(beamWidth, restored.getStn_antennaBeamWidthDeg())
     }
 
@@ -223,5 +217,123 @@ class SetupWizardWriteTest(@param:TempDir private val directory: Path) {
         state.answerFirstInstallation()
 
         assertFalse(state.writeTo(unwritable), "a write that failed must not read as saved")
+    }
+
+    @Test
+    fun aNewStationWithoutALogProgramHasEverySynchronisationOff() {
+        val file = templateFile()
+        val prefs = read(file)
+        val state = SetupWizardState(prefs)
+        state.answerFirstInstallation()
+
+        assertTrue(state.writeTo(prefs))
+
+        val restored = read(file)
+        assertFalse(restored.isLogsynch_wintestNetworkListenerEnabled())
+        assertFalse(restored.isLogsynch_ucxUDPWkdCallListenerEnabled())
+        assertFalse(restored.isLogsynch_fileBasedWkdCallInterpreterEnabled())
+        assertFalse(restored.isTrxSynch_ucxLogUDPListenerEnabled())
+        assertFalse(restored.isLogsynch_wintestQrgSyncEnabled())
+        assertFalse(restored.isNotify_dxClusterServerEnabled())
+        assertFalse(restored.isStn_pstRotatorEnabled())
+        assertFalse(restored.isAirScout_asUDPListenerEnabled())
+    }
+
+    @Test
+    fun theAnswersOfTheNewPagesAreWritten() {
+        val file = templateFile()
+        val prefs = read(file)
+        val state = SetupWizardState(prefs)
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+        state.locator = "JO50AA"
+        state.setBand(WizardBand.B144, true)
+        state.next()
+        state.antenna.beamWidthDeg = 28.0
+        state.antenna.heightAslText = "612"
+        state.next()
+        state.integrations.chooseLogProgram(WizardLogProgram.WINTEST)
+        state.integrations.wintestPort = 9871
+        // Stated, not taken from the template: without a name the page could not be left.
+        state.integrations.wintestStationName = "KST"
+        state.integrations.qrgFollow = true
+        state.next()
+        assertEquals(WizardPage.GEAR, state.page)
+        state.integrations.rotator = true
+        state.integrations.rotatorHost = "127.0.0.1"
+        state.integrations.rotatorPort = 12000
+
+        assertTrue(state.writeTo(prefs))
+
+        val restored = read(file)
+        assertEquals(28.0, restored.getStn_antennaBeamWidthDeg())
+        assertEquals(612.0, restored.getStn_pathAnalysisOwnHeightAslMeters())
+        assertTrue(restored.isLogsynch_wintestNetworkListenerEnabled())
+        assertEquals(9871, restored.getLogsynch_wintestNetworkPort())
+        assertTrue(restored.isLogsynch_wintestQrgSyncEnabled())
+        assertFalse(restored.isLogsynch_ucxUDPWkdCallListenerEnabled())
+        assertTrue(restored.isStn_pstRotatorEnabled())
+        assertFalse(restored.isAirScout_asUDPListenerEnabled())
+    }
+
+    @Test
+    fun aKeptStationKeepsEveryIntegrationAsItWas() {
+        // The template's integrations, several log sources among them, under a real login.
+        val file = configuredFile()
+        val before = read(file)
+        val prefs = read(file)
+        val state = SetupWizardState(prefs)
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.next()
+
+        assertTrue(state.writeTo(prefs))
+
+        val restored = read(file)
+        assertEquals(before.isLogsynch_ucxUDPWkdCallListenerEnabled(), restored.isLogsynch_ucxUDPWkdCallListenerEnabled())
+        assertEquals(
+            before.isLogsynch_fileBasedWkdCallInterpreterEnabled(),
+            restored.isLogsynch_fileBasedWkdCallInterpreterEnabled(),
+        )
+        assertEquals(before.isTrxSynch_ucxLogUDPListenerEnabled(), restored.isTrxSynch_ucxLogUDPListenerEnabled())
+        assertEquals(before.isNotify_dxClusterServerEnabled(), restored.isNotify_dxClusterServerEnabled())
+        assertEquals(before.isAirScout_asUDPListenerEnabled(), restored.isAirScout_asUDPListenerEnabled())
+        assertEquals(before.getStn_antennaBeamWidthDeg(), restored.getStn_antennaBeamWidthDeg())
+        assertTrue(
+            restored.isLogsynch_ucxUDPWkdCallListenerEnabled() && restored.isLogsynch_fileBasedWkdCallInterpreterEnabled(),
+            "the template has two log sources on; if this fails the template changed and the test needs another example",
+        )
+    }
+
+    @Test
+    fun openingOneNewPageOfAKeptStationWritesOnlyThatPage() {
+        val file = configuredFile()
+        val before = read(file)
+        val prefs = read(file)
+        val state = SetupWizardState(prefs)
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.next()
+        state.edit(WizardPage.GEAR)
+        state.integrations.rotator = true
+        state.integrations.rotatorHost = "127.0.0.1"
+        state.integrations.rotatorPort = 12000
+        state.next()
+
+        assertTrue(state.writeTo(prefs))
+
+        val restored = read(file)
+        assertTrue(restored.isStn_pstRotatorEnabled())
+        assertEquals(
+            before.isLogsynch_fileBasedWkdCallInterpreterEnabled(),
+            restored.isLogsynch_fileBasedWkdCallInterpreterEnabled(),
+            "the log page was not opened, so the log sources stay",
+        )
+        assertEquals(before.isNotify_dxClusterServerEnabled(), restored.isNotify_dxClusterServerEnabled())
     }
 }

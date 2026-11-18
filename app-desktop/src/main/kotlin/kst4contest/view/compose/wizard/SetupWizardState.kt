@@ -17,7 +17,7 @@ enum class WizardSource {
 }
 
 /** The pages, in the order they can appear. */
-enum class WizardPage { ENTRY, PERSONAL, LOGIN, SITE, SUMMARY }
+enum class WizardPage { ENTRY, PERSONAL, LOGIN, SITE, ANTENNA, LOG, GEAR, SUMMARY }
 
 /**
  * A band the station can be active on.
@@ -121,8 +121,24 @@ class SetupWizardState(prefs: ChatPreferences) {
 
     var secondCategory: Int? by mutableStateOf(null)
 
+    /** Antenna and power; always proposals from what is stored. */
+    val antenna = WizardAntenna(prefs)
+
+    /** Log program, rotator and AirScout. */
+    val integrations = WizardIntegrations(prefs)
+
     private var loginShown by mutableStateOf(false)
-    private var stationShown by mutableStateOf(false)
+
+    /*
+     * One flag per page of the station group. A page that was shown in this run is written;
+     * a page that never was leaves its settings exactly as the profile has them. That is
+     * what keeps "leave the station unchanged" from touching integrations the wizard's
+     * simpler questions could not express.
+     */
+    private var siteShown by mutableStateOf(false)
+    private var antennaShown by mutableStateOf(false)
+    private var logShown by mutableStateOf(false)
+    private var gearShown by mutableStateOf(false)
 
     var page: WizardPage by mutableStateOf(if (hasEntryPage) WizardPage.ENTRY else WizardPage.PERSONAL)
         private set
@@ -161,7 +177,12 @@ class SetupWizardState(prefs: ChatPreferences) {
             secondCategory = if (keep) storedSecondCategory else null
             // A kept category is the operator's; the suggestion must not replace it.
             categoryChosenByOperator = keep
-            stationShown = !keep || !stationComplete
+            siteShown = !keep || !stationComplete
+            antennaShown = !keep
+            logShown = !keep
+            gearShown = !keep
+            // A new station gets only what the operator says yes to.
+            if (keep) integrations.loadStored() else integrations.loadFresh()
             appliedStationSource = stationSource
         }
     }
@@ -199,7 +220,10 @@ class SetupWizardState(prefs: ChatPreferences) {
             if (hasEntryPage) add(WizardPage.ENTRY)
             add(WizardPage.PERSONAL)
             if (loginShown) add(WizardPage.LOGIN)
-            if (stationShown) add(WizardPage.SITE)
+            if (siteShown) add(WizardPage.SITE)
+            if (antennaShown) add(WizardPage.ANTENNA)
+            if (logShown) add(WizardPage.LOG)
+            if (gearShown) add(WizardPage.GEAR)
             add(WizardPage.SUMMARY)
         }
 
@@ -213,9 +237,19 @@ class SetupWizardState(prefs: ChatPreferences) {
         get() = isLocator(locator) && bands.isNotEmpty() && category in CATEGORY_NUMBERS &&
             (!secondChat || secondCategory in secondCategoryOptions)
 
-    /** Whether everything the profile needs to log in is there. */
+    /** The optional pages that are part of this run hold nothing that cannot be stored. */
+    private val shownOptionalPagesComplete: Boolean
+        get() = (!antennaShown || antenna.complete) &&
+            (!logShown || integrations.logComplete) &&
+            (!gearShown || integrations.gearComplete)
+
+    /**
+     * Whether the answers can be saved: everything the profile needs to log in is there, and
+     * no page of this run holds a value that cannot be stored. The optional pages need no
+     * answer, but an out-of-range port on one of them still blocks.
+     */
     val mandatoryComplete: Boolean
-        get() = personalComplete && loginComplete && stationComplete
+        get() = personalComplete && loginComplete && stationComplete && shownOptionalPagesComplete
 
     /** A chat name that was typed and cannot be sent. An empty or blank field is not an error yet. */
     val nameRefused: Boolean
@@ -239,6 +273,9 @@ class SetupWizardState(prefs: ChatPreferences) {
             WizardPage.PERSONAL -> personalComplete
             WizardPage.LOGIN -> loginComplete
             WizardPage.SITE -> stationComplete
+            WizardPage.ANTENNA -> antenna.complete
+            WizardPage.LOG -> integrations.logComplete
+            WizardPage.GEAR -> integrations.gearComplete
             WizardPage.SUMMARY -> false
         }
 
@@ -266,27 +303,38 @@ class SetupWizardState(prefs: ChatPreferences) {
         if (canFinish) page = WizardPage.SUMMARY
     }
 
+    /**
+     * Whether the log page may be opened: always once it is part of the run, and otherwise
+     * only if the profile has at most one log source on. The page knows one source; opened
+     * over several it would switch the others off.
+     */
+    val logPageEditable: Boolean
+        get() = logShown || !integrations.severalStoredLogSources
+
     /** Opens a step from the summary, also one this run skipped. */
     fun edit(target: WizardPage) {
         when (target) {
             WizardPage.LOGIN -> loginShown = true
-            WizardPage.SITE -> stationShown = true
+            WizardPage.SITE -> siteShown = true
+            WizardPage.ANTENNA -> antennaShown = true
+            WizardPage.LOG -> if (logPageEditable) logShown = true else return
+            WizardPage.GEAR -> gearShown = true
             WizardPage.PERSONAL -> Unit
             WizardPage.ENTRY, WizardPage.SUMMARY -> return
         }
         page = target
     }
 
-    /** The profile had a second chat and will have none. */
-    val turnsOffSecondChat: Boolean
-        get() = storedSecondChat && !secondChat
-
     /**
-     * A new station is set up, and this stage does not ask about log program, rotator,
-     * AirScout and DX cluster server: they keep their stored values, and the summary says so.
+     * What was on in the profile and will be off after Save, for the summary. Pages that are
+     * not part of this run change nothing and contribute nothing.
      */
-    val leavesIntegrationsUntouched: Boolean
-        get() = stationSource == WizardSource.NEW
+    val switchedOff: List<WizardSwitch>
+        get() = buildList {
+            if (storedSecondChat && !secondChat) add(WizardSwitch.SECOND_CHAT)
+            if (logShown) addAll(integrations.switchedOffByLog())
+            if (gearShown) addAll(integrations.switchedOffByGear())
+        }
 
     /**
      * Puts the answers into [prefs] and writes its file.
@@ -297,6 +345,9 @@ class SetupWizardState(prefs: ChatPreferences) {
      *
      * The second chat's name follows the first unless the operator had set it apart, and the
      * second category is left alone while the second chat is off.
+     *
+     * Antenna, log program and equipment are written only for the pages that were part of
+     * this run.
      *
      * @return false when a mandatory answer is missing -- nothing is touched then -- or when
      *         the file could not be written
@@ -322,6 +373,10 @@ class SetupWizardState(prefs: ChatPreferences) {
         if (secondChat) {
             prefs.setLoginChatCategorySecond(ChatCategory(requireNotNull(secondCategory)))
         }
+
+        if (antennaShown) antenna.writeTo(prefs)
+        if (logShown) integrations.writeLogTo(prefs)
+        if (gearShown) integrations.writeGearTo(prefs)
 
         // A write that throws is a write that failed; the wizard must stay open either way.
         return runCatching { prefs.writePreferencesToXmlFile() }.getOrDefault(false)

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import kst4contest.model.ChatCategory
 import kst4contest.view.compose.Density
 import kst4contest.view.compose.Form
+import kst4contest.view.compose.tabs.FilePathRow
 import kst4contest.view.i18n.LanguageStore
 import kst4contest.view.i18n.LocalStrings
 import kst4contest.view.i18n.SYSTEM_LANGUAGE
@@ -72,6 +73,9 @@ fun SetupWizardContent(
                         WizardPage.PERSONAL -> PersonalPage(state, strings, languageStore)
                         WizardPage.LOGIN -> LoginPage(state, strings)
                         WizardPage.SITE -> SitePage(state, strings)
+                        WizardPage.ANTENNA -> AntennaPage(state.antenna, strings)
+                        WizardPage.LOG -> LogPage(state.integrations, strings)
+                        WizardPage.GEAR -> GearPage(state.integrations, strings)
                         WizardPage.SUMMARY -> SummaryPage(state, strings, saveFailed)
                     }
                 }
@@ -121,7 +125,7 @@ private fun Refusal(text: String) {
 }
 
 @Composable
-private fun SourceOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+private fun RadioOption(label: String, selected: Boolean, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -142,7 +146,7 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
     if (state.loginSources.size > 1) {
         Form.section(strings.wizardEntryLogin) {
             state.loginSources.forEach { source ->
-                SourceOption(
+                RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceLoginNew
                         WizardSource.KEEP -> strings.wizardSourceLoginKeep(state.storedCallsign)
@@ -157,7 +161,7 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
     if (state.stationSources.size > 1) {
         Form.section(strings.wizardEntryStation) {
             state.stationSources.forEach { source ->
-                SourceOption(
+                RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceStationNew
                         WizardSource.KEEP -> strings.wizardSourceStationKeep(state.storedLocator)
@@ -236,6 +240,116 @@ private fun SitePage(state: SetupWizardState, strings: Strings) {
     }
 }
 
+/** The name a log program carries on its page and in the summary. */
+private fun logProgramName(program: WizardLogProgram, strings: Strings): String = when (program) {
+    WizardLogProgram.NONE -> strings.wizardLogNone
+    WizardLogProgram.WINTEST -> strings.wizardLogWintest
+    WizardLogProgram.UDP -> strings.wizardLogUdp
+    WizardLogProgram.FILE -> strings.wizardLogFile
+}
+
+/** The name of something that will be switched off, for the summary's notice. */
+private fun switchName(switch: WizardSwitch, strings: Strings): String = when (switch) {
+    WizardSwitch.SECOND_CHAT -> strings.wizardSwitchSecondChat
+    WizardSwitch.LOG_WINTEST -> strings.wizardSwitchLogWintest
+    WizardSwitch.LOG_UDP -> strings.wizardSwitchLogUdp
+    WizardSwitch.LOG_FILE -> strings.wizardSwitchLogFile
+    WizardSwitch.QRG_FOLLOW -> strings.wizardSwitchQrgFollow
+    WizardSwitch.CLUSTER_SERVER -> strings.wizardSwitchClusterServer
+    WizardSwitch.ROTATOR -> strings.wizardSwitchRotator
+    WizardSwitch.AIRSCOUT -> strings.wizardSwitchAirScout
+}
+
+@Composable
+private fun AntennaPage(antenna: WizardAntenna, strings: Strings) {
+    Heading(strings.wizardAntennaTitle, strings.wizardAntennaLead)
+
+    Form.decimal(strings.stationBeamWidth, antenna.beamWidthDeg, isValid = { it.isFinite() }) {
+        antenna.beamWidthDeg = it
+    }
+    Form.decimal(strings.stationOwnAntennaGain, antenna.gainDbi, isValid = { it.isFinite() }) {
+        antenna.gainDbi = it
+    }
+    Form.decimal(strings.stationOwnAntennaHeight, antenna.heightMeters, isValid = { it.isFinite() }) {
+        antenna.heightMeters = it
+    }
+    Form.decimal(strings.stationOwnTxPower, antenna.txPowerWatts, isValid = { it.isFinite() }) {
+        antenna.txPowerWatts = it
+    }
+
+    Form.text(strings.stationOwnHeightAsl, antenna.heightAslText) { antenna.heightAslText = it }
+    if (antenna.heightAslRefused) {
+        Refusal(strings.stationInvalidOwnHeightAsl(antenna.heightAslText.trim()))
+    }
+    Text(strings.wizardAntennaAslHint, style = MaterialTheme.typography.bodySmall)
+}
+
+@Composable
+private fun LogPage(integrations: WizardIntegrations, strings: Strings) {
+    Heading(strings.wizardLogTitle, strings.wizardLogLead)
+
+    WizardLogProgram.entries.forEach { program ->
+        RadioOption(
+            label = logProgramName(program, strings),
+            selected = integrations.logProgram == program,
+            onSelect = { integrations.chooseLogProgram(program) },
+        )
+    }
+
+    /* The details of a program appear only once it is chosen. */
+    when (integrations.logProgram) {
+        WizardLogProgram.WINTEST -> {
+            Form.int(strings.logSynchWinTestPort, integrations.wintestPort) { integrations.wintestPort = it }
+            Form.text(strings.logSynchWinTestStationName, integrations.wintestStationName) {
+                integrations.wintestStationName = it
+            }
+        }
+        WizardLogProgram.UDP ->
+            Form.int(strings.logSynchSharedPort, integrations.udpPort) { integrations.udpPort = it }
+        WizardLogProgram.FILE ->
+            FilePathRow(
+                label = strings.logSynchFileLabel,
+                value = integrations.filePath,
+                chooserTitle = strings.logSynchFileChooserTitle,
+            ) { integrations.filePath = it }
+        WizardLogProgram.NONE -> Unit
+    }
+    if (!integrations.logComplete) Refusal(strings.wizardLogIncomplete)
+
+    if (integrations.networked) {
+        Form.check(strings.wizardLogQrgFollow, integrations.qrgFollow) { integrations.qrgFollow = it }
+        Form.check(strings.wizardLogClusterServer, integrations.clusterServer) { integrations.clusterServer = it }
+        // The settings tab's own words: an enabled source does not produce a frequency by itself.
+        Text(strings.trxSynchHint, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun GearPage(integrations: WizardIntegrations, strings: Strings) {
+    Heading(strings.wizardGearTitle, strings.wizardGearLead)
+
+    Form.check(strings.wizardGearRotator, integrations.rotator) { integrations.rotator = it }
+    if (integrations.rotator) {
+        Form.text(strings.stationRotatorHost, integrations.rotatorHost) { integrations.rotatorHost = it }
+        Form.int(strings.stationRotatorPort, integrations.rotatorPort) { integrations.rotatorPort = it }
+        if (integrations.rotatorPortClashes) {
+            Refusal(strings.stationRotator2PortClash(integrations.rotatorPort.toString()))
+        }
+    }
+
+    Form.check(strings.wizardGearAirScout, integrations.airScout) { integrations.airScout = it }
+    if (integrations.airScout) {
+        Form.int(strings.airscoutUdpPort, integrations.airScoutPort) { integrations.airScoutPort = it }
+        Form.text(strings.airscoutServerIdentifier, integrations.airScoutServerName) {
+            integrations.airScoutServerName = it
+        }
+        Form.text(strings.airscoutClientIdentifier, integrations.airScoutClientName) {
+            integrations.airScoutClientName = it
+        }
+    }
+    if (!integrations.gearComplete) Refusal(strings.wizardGearIncomplete)
+}
+
 @Composable
 private fun SummaryRow(label: String, value: String) {
     Form.labelledRow(label) { Text(value) }
@@ -247,8 +361,9 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
 
     if (saveFailed) Refusal(strings.wizardSaveFailed)
     if (!state.mandatoryComplete) Refusal(strings.wizardMissing)
-    if (state.turnsOffSecondChat) Text(strings.wizardSummaryTurnedOff)
-    if (state.leavesIntegrationsUntouched) Text(strings.wizardSummaryIntegrationsUnchanged)
+    if (state.switchedOff.isNotEmpty()) {
+        Text(strings.wizardSummarySwitchedOff(state.switchedOff.joinToString(", ") { switchName(it, strings) }))
+    }
 
     Form.section(strings.wizardSummaryPersonal) {
         SummaryRow(
@@ -285,5 +400,36 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
             state.secondCategory?.takeIf { state.secondChat }?.let(::categoryName) ?: strings.wizardSummaryNone,
         )
         Form.button(strings.wizardChange) { state.edit(WizardPage.SITE) }
+    }
+
+    val antenna = state.antenna
+    Form.section(strings.wizardSummaryAntenna) {
+        SummaryRow(strings.stationBeamWidth, antenna.beamWidthDeg.toString())
+        SummaryRow(strings.stationOwnAntennaGain, antenna.gainDbi.toString())
+        SummaryRow(strings.stationOwnAntennaHeight, antenna.heightMeters.toString())
+        SummaryRow(strings.stationOwnTxPower, antenna.txPowerWatts.toString())
+        SummaryRow(strings.stationOwnHeightAsl, antenna.heightAslText.trim().ifEmpty { strings.wizardSummaryNone })
+        Form.button(strings.wizardChange) { state.edit(WizardPage.ANTENNA) }
+    }
+
+    val integrations = state.integrations
+    val yesNo = { on: Boolean -> if (on) strings.wizardSummaryYes else strings.wizardSummaryNo }
+
+    Form.section(strings.wizardSummaryLog) {
+        if (state.logPageEditable) {
+            SummaryRow(strings.wizardSummaryLog, logProgramName(integrations.logProgram, strings))
+            SummaryRow(strings.wizardSummaryQrgFollow, yesNo(integrations.qrgFollow))
+            SummaryRow(strings.wizardSummaryClusterServer, yesNo(integrations.networked && integrations.clusterServer))
+            Form.button(strings.wizardChange) { state.edit(WizardPage.LOG) }
+        } else {
+            /* Several sources are on; the page cannot show that and must not be opened. */
+            Text(strings.wizardSummaryLogSeveral)
+        }
+    }
+
+    Form.section(strings.wizardSummaryGear) {
+        SummaryRow(strings.wizardSwitchRotator, yesNo(integrations.rotator))
+        SummaryRow(strings.wizardSwitchAirScout, yesNo(integrations.airScout))
+        Form.button(strings.wizardChange) { state.edit(WizardPage.GEAR) }
     }
 }
