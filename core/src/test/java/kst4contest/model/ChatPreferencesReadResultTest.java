@@ -46,6 +46,18 @@ class ChatPreferencesReadResultTest {
     }
 
     @Test
+    void aWellFormedXmlWithForeignRootIsReportedAsUnreadable() throws IOException {
+        Path file = temporaryDirectory.resolve("foreign.xml");
+        byte[] original = "<somethingElse><station><LoginCallSign>DL0TEST</LoginCallSign></station></somethingElse>"
+                .getBytes(StandardCharsets.UTF_8);
+        Files.write(file, original);
+
+        ChatPreferences preferences = new ChatPreferences(file);
+        assertFalse(preferences.readPreferencesFromXmlFile(), "a foreign XML root must be reported as unreadable");
+        assertArrayEquals(original, Files.readAllBytes(file), "the foreign XML file must be left untouched");
+    }
+
+    @Test
     void theBundledTemplateIsReadable() throws IOException {
         Path templateCopy = temporaryDirectory.resolve("template.xml");
         try (InputStream template = ChatPreferences.class

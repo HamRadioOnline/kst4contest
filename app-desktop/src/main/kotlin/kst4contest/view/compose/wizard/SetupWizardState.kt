@@ -204,10 +204,10 @@ class SetupWizardState(prefs: ChatPreferences) {
         }
 
     private val personalComplete: Boolean
-        get() = name.isNotBlank()
+        get() = isStorableName(name)
 
     private val loginComplete: Boolean
-        get() = isPlausibleCallsign(callsign) && password.isNotEmpty()
+        get() = isPlausibleCallsign(callsign) && isStorablePassword(password)
 
     private val stationComplete: Boolean
         get() = isLocator(locator) && bands.isNotEmpty() && category in CATEGORY_NUMBERS &&
@@ -217,9 +217,17 @@ class SetupWizardState(prefs: ChatPreferences) {
     val mandatoryComplete: Boolean
         get() = personalComplete && loginComplete && stationComplete
 
+    /** A chat name that was typed and cannot be sent. An empty or blank field is not an error yet. */
+    val nameRefused: Boolean
+        get() = name.isNotBlank() && !isStorableName(name)
+
     /** A callsign that was typed and does not look like one. An empty field is not an error yet. */
     val callsignRefused: Boolean
         get() = callsign.isNotBlank() && !isPlausibleCallsign(callsign)
+
+    /** A password that was typed and cannot be stored or sent. An empty field is not an error yet. */
+    val passwordRefused: Boolean
+        get() = password.isNotEmpty() && !isStorablePassword(password)
 
     /** A locator that was typed and is not one. An empty field is not an error yet. */
     val locatorRefused: Boolean
@@ -341,6 +349,21 @@ class SetupWizardState(prefs: ChatPreferences) {
 
         /** Whether a text is a six-character Maidenhead locator, in either case. */
         fun isLocator(text: String): Boolean = LOCATOR.matches(text.trim())
+
+        /**
+         * Whether a password can be stored in preferences.xml and sent in an ON4KST login frame:
+         * not blank, free of surrounding whitespace (which the XML reader trims), and free of
+         * frame delimiters.
+         */
+        fun isStorablePassword(text: String): Boolean =
+            text.isNotBlank() && text == text.trim() && '|' !in text && '\r' !in text && '\n' !in text
+
+        /**
+         * Whether a chat display name can be sent in an ON4KST frame: not blank and free of
+         * frame delimiters.
+         */
+        fun isStorableName(text: String): Boolean =
+            text.isNotBlank() && '|' !in text && '\r' !in text && '\n' !in text
 
         /**
          * The chat category the lowest band belongs to: 1 for 50/70 MHz, 2 for 144/432 MHz,

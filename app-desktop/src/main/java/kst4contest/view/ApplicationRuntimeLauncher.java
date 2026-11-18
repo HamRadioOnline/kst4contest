@@ -32,6 +32,13 @@ public final class ApplicationRuntimeLauncher {
     private static final java.util.concurrent.atomic.AtomicBoolean SETUP_WIZARD_REQUESTED =
             new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    /**
+     * Guards {@link #switchProfile(OperatorProfile)} against re-entry while window teardown
+     * inside {@link Kst4ContestApplication#shutdownRuntime()} is still pumping events.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean SWITCH_IN_PROGRESS =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     private ApplicationRuntimeLauncher() {
         // Utility class.
     }
@@ -84,6 +91,20 @@ public final class ApplicationRuntimeLauncher {
     }
 
     /**
+     * Marks a profile switch as in progress if none is currently running.
+     *
+     * @return true if this call obtained the mark
+     */
+    static boolean beginSwitch() {
+        return SWITCH_IN_PROGRESS.compareAndSet(false, true);
+    }
+
+    /** Clears the in-progress mark of a profile switch. */
+    static void endSwitch() {
+        SWITCH_IN_PROGRESS.set(false);
+    }
+
+    /**
      * Rebuilds the runtime of the active profile with the setup wizard in front of it.
      *
      * <p>The running runtime is torn down first and the wizard shown afterwards, not the
@@ -100,7 +121,16 @@ public final class ApplicationRuntimeLauncher {
         }
 
         requestSetupWizard();
-        return switchProfile(active.getProfile());
+        try {
+            boolean switched = switchProfile(active.getProfile());
+            if (!switched) {
+                consumeSetupWizardRequest();
+            }
+            return switched;
+        } catch (RuntimeException e) {
+            consumeSetupWizardRequest();
+            throw e;
+        }
     }
 
     /**
@@ -111,33 +141,41 @@ public final class ApplicationRuntimeLauncher {
      */
     public static boolean switchProfile(final OperatorProfile targetProfile) {
 
-        if (targetProfile == null) {
+        if (!beginSwitch()) {
             return false;
         }
-
-        new OperatorProfileStore().recordLastUsed(targetProfile.getProfileId());
-
-        if (currentRuntime != null) {
-            currentRuntime.shutdownRuntime();
-        }
-
-        ActiveOperatorProfile.set(OperatorProfilePaths.resolve(targetProfile));
-
-        Kst4ContestApplication nextRuntime = new Kst4ContestApplication();
 
         try {
-            nextRuntime.startRuntime();
-        } catch (Exception e) {
-            // The previous runtime is already gone, so there is nothing left to return to.
-            LOGGER.log(Level.SEVERE, "Could not start the selected operator profile", e);
-            Kst4ContestApplication.alertWindowEvent(
-                    "The operator profile could not be started: " + e.getMessage()
-                            + "\n\nKST4Contest has to be closed.");
-            System.exit(1);
-            return false;
-        }
+            if (targetProfile == null) {
+                return false;
+            }
 
-        setCurrent(nextRuntime);
-        return true;
+            new OperatorProfileStore().recordLastUsed(targetProfile.getProfileId());
+
+            if (currentRuntime != null) {
+                currentRuntime.shutdownRuntime();
+            }
+
+            ActiveOperatorProfile.set(OperatorProfilePaths.resolve(targetProfile));
+
+            Kst4ContestApplication nextRuntime = new Kst4ContestApplication();
+
+            try {
+                nextRuntime.startRuntime();
+            } catch (Exception e) {
+                // The previous runtime is already gone, so there is nothing left to return to.
+                LOGGER.log(Level.SEVERE, "Could not start the selected operator profile", e);
+                Kst4ContestApplication.alertWindowEvent(
+                        "The operator profile could not be started: " + e.getMessage()
+                                + "\n\nKST4Contest has to be closed.");
+                System.exit(1);
+                return false;
+            }
+
+            setCurrent(nextRuntime);
+            return true;
+        } finally {
+            endSwitch();
+        }
     }
 }

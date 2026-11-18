@@ -145,9 +145,11 @@ object SetupWizardLauncher {
         /*
          * A file that cannot be read is not a profile to set up: the wizard would start from
          * compiled-in defaults and Save would write them over whatever the file holds. The
-         * runtime deals with such a file as it always did.
+         * runtime deals with such a file as it always did. A throwing read counts as failed too.
          */
-        if (!prefs.readPreferencesFromXmlFile()) return SetupWizardOutcome.NOT_SHOWN
+        if (!runCatching { prefs.readPreferencesFromXmlFile() }.getOrDefault(false)) {
+            return SetupWizardOutcome.NOT_SHOWN
+        }
 
         if (!forced && !LoginConfiguration.isUnconfigured(prefs)) return SetupWizardOutcome.NOT_SHOWN
 

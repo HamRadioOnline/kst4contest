@@ -44,7 +44,7 @@ private fun categoryName(number: Int): String = ChatCategory(number).getChatCate
  * The wizard's pages and its button row.
  *
  * All decisions are in [state]; this draws them. The texts are read from [languageStore] in
- * the composition, so the language picker on the first page switches the wizard itself.
+ * the composition, so the language picker on the personal page switches the wizard itself.
  *
  * @param saveFailed whether the last Save could not write the file
  * @param onLater the operator does not want to set up now; nothing is written
@@ -183,6 +183,7 @@ private fun PersonalPage(state: SetupWizardState, strings: Strings, languageStor
         onSelect = { languageStore.use(it) },
     )
     Form.text(strings.wizardPersonalName, state.name) { state.name = it }
+    if (state.nameRefused) Refusal(strings.wizardPersonalNameInvalid)
 }
 
 @Composable
@@ -192,6 +193,7 @@ private fun LoginPage(state: SetupWizardState, strings: Strings) {
     Form.text(strings.stationCallsign, state.callsign) { state.callsign = it }
     if (state.callsignRefused) Refusal(strings.wizardLoginCallsignInvalid)
     Form.password(strings.stationPassword, state.password) { state.password = it }
+    if (state.passwordRefused) Refusal(strings.wizardLoginPasswordInvalid)
 }
 
 @Composable
@@ -249,6 +251,10 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
     if (state.leavesIntegrationsUntouched) Text(strings.wizardSummaryIntegrationsUnchanged)
 
     Form.section(strings.wizardSummaryPersonal) {
+        SummaryRow(
+            strings.guiLanguage,
+            if (state.language == SYSTEM_LANGUAGE) strings.guiLanguageSystem else state.language.uppercase(),
+        )
         SummaryRow(strings.wizardPersonalName, state.name.ifBlank { strings.wizardSummaryNone })
         Form.button(strings.wizardChange) { state.edit(WizardPage.PERSONAL) }
     }

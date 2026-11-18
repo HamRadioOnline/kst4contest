@@ -16,7 +16,7 @@ import java.nio.file.StandardCopyOption
  * What the wizard does to a real preferences file: nothing until Save, exactly the answers
  * afterwards, and every setting it never asked about left as it was.
  */
-class SetupWizardWriteTest(@TempDir private val directory: Path) {
+class SetupWizardWriteTest(@param:TempDir private val directory: Path) {
 
     /** A copy of the bundled template, read the way the runtime reads a profile. */
     private fun templateFile(): Path {

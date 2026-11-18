@@ -2619,6 +2619,10 @@ public class ChatPreferences {
 
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			Document doc = db.parse(xmlConfigFile);
+			Element rootElement = doc.getDocumentElement();
+			if (rootElement == null || !"praktiKST".equals(rootElement.getTagName())) {
+				readable = false;
+			}
 			NodeList list;
 
 			// --- Schema version (optional) ---

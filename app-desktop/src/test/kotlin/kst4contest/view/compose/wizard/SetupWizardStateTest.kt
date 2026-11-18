@@ -351,4 +351,67 @@ class SetupWizardStateTest {
         assertTrue(state.mandatoryComplete)
         assertFalse(state.pages.contains(WizardPage.SITE))
     }
+
+    @Test
+    fun storablePasswordsAndNamesRejectDelimitersAndOuterWhitespace() {
+        listOf("secret", "se cret").forEach {
+            assertTrue(SetupWizardState.isStorablePassword(it), "'$it' must be accepted")
+        }
+        listOf("", "   ", " secret", "secret ", "se|cret", "se\ncret", "se\rcret").forEach {
+            assertFalse(SetupWizardState.isStorablePassword(it), "'$it' must be refused")
+        }
+
+        listOf("Philipp", "Philipp W").forEach {
+            assertTrue(SetupWizardState.isStorableName(it), "'$it' must be accepted")
+        }
+        listOf("", "   ", "Phil|ipp", "Phil\nipp", "Phil\ripp").forEach {
+            assertFalse(SetupWizardState.isStorableName(it), "'$it' must be refused")
+        }
+    }
+
+    @Test
+    fun aRefusedPasswordOrNameIsReportedAndBlocksCompletion() {
+        val state = SetupWizardState(freshInstallation())
+        assertFalse(state.nameRefused)
+        state.name = "   "
+        assertFalse(state.nameRefused)
+        assertFalse(state.canGoNext)
+        state.name = "Phil|ipp"
+        assertTrue(state.nameRefused)
+        assertFalse(state.canGoNext)
+
+        state.fillFirstInstallation()
+        state.back()
+        assertEquals(WizardPage.LOGIN, state.page)
+        assertFalse(state.passwordRefused)
+
+        listOf(" secret", "secret ", "   ", "se|cret", "se\ncret").forEach { refused ->
+            state.password = refused
+            assertTrue(state.passwordRefused, "'$refused' must set passwordRefused")
+            assertFalse(state.canGoNext, "'$refused' must block Next on login")
+            assertFalse(state.mandatoryComplete, "'$refused' must block mandatoryComplete")
+        }
+
+        state.password = ""
+        assertFalse(state.passwordRefused)
+        assertFalse(state.canGoNext)
+
+        state.password = "se cret"
+        assertFalse(state.passwordRefused)
+        assertTrue(state.canGoNext)
+        assertTrue(state.mandatoryComplete)
+    }
+
+    @Test
+    fun keepingALoginWithAStorablePasswordSkipsTheLoginPage() {
+        val state = SetupWizardState(configuredProfile())
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertFalse(state.pages.contains(WizardPage.LOGIN))
+        assertEquals(WizardPage.PERSONAL, state.page)
+        state.next()
+        assertEquals(WizardPage.SUMMARY, state.page)
+    }
 }

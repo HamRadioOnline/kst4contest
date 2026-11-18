@@ -12,7 +12,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
 /** When the wizard opens at all, decided without a window. */
-class SetupWizardLauncherTest(@TempDir private val directory: Path) {
+class SetupWizardLauncherTest(@param:TempDir private val directory: Path) {
 
     private fun templateFile(): Path {
         val file = directory.resolve("preferences.xml")
@@ -79,6 +79,21 @@ class SetupWizardLauncherTest(@TempDir private val directory: Path) {
             SetupWizardLauncher.run(ChatPreferences(garbage), forced = true, neverShown),
         )
         assertArrayEquals(before, Files.readAllBytes(garbage), "the unreadable file was touched")
+    }
+
+    @Test
+    fun aFileTheReaderThrowsOnNeverOpensTheWizard() {
+        val file = templateFile()
+        val original = Files.readString(file)
+        assertTrue(original.contains("<ChatCategory>2</ChatCategory>"))
+        Files.writeString(file, original.replace("<ChatCategory>2</ChatCategory>", "<ChatCategory>2.0</ChatCategory>"))
+        val before = Files.readAllBytes(file)
+
+        assertEquals(
+            SetupWizardOutcome.NOT_SHOWN,
+            SetupWizardLauncher.run(ChatPreferences(file), forced = true, neverShown),
+        )
+        assertArrayEquals(before, Files.readAllBytes(file), "the unreadable file was touched")
     }
 
     @Test

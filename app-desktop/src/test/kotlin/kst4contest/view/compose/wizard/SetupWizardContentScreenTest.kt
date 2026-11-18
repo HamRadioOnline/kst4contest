@@ -112,4 +112,16 @@ class SetupWizardContentScreenTest {
 
         onNodeWithText("The settings could not be written. Nothing was changed.").assertExists()
     }
+
+    @Test
+    fun theSummaryShowsTheChosenLanguage() = runComposeUiTest {
+        val state = SetupWizardState(configuredProfile().apply { setGuiOptions_language("de") })
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+        state.next()
+        show(state)
+
+        onNodeWithText("DE").assertExists()
+    }
 }
