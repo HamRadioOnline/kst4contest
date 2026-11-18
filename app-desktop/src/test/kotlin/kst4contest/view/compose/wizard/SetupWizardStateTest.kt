@@ -292,4 +292,63 @@ class SetupWizardStateTest {
         assertFalse(kept.turnsOffSecondChat)
         assertFalse(kept.leavesIntegrationsUntouched)
     }
+
+    @Test
+    fun keepingAStationWithMissingLocatorKeepsTheSitePageInTheCourse() {
+        val state = SetupWizardState(duplicatedProfile().apply { setStn_loginLocatorMainCat("") })
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertTrue(state.pages.contains(WizardPage.SITE))
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+
+        assertEquals(WizardPage.SITE, state.page)
+        assertEquals(setOf(WizardBand.B144, WizardBand.B432), state.bands)
+        assertEquals(2, state.category)
+    }
+
+    @Test
+    fun keepingALoginWithMissingPasswordKeepsTheLoginPageInTheCourse() {
+        val state = SetupWizardState(configuredProfile().apply { setStn_loginPassword("") })
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertTrue(state.pages.contains(WizardPage.LOGIN))
+        assertEquals("DL0TEST", state.callsign)
+        assertEquals("", state.password)
+        assertFalse(state.mandatoryComplete)
+    }
+
+    @Test
+    fun keepingAnUnknownCategoryIsIncompleteAndKeepsTheSitePage() {
+        val state = SetupWizardState(configuredProfile().apply { setLoginChatCategoryMain(ChatCategory(13)) })
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertFalse(state.mandatoryComplete)
+        assertTrue(state.pages.contains(WizardPage.SITE))
+    }
+
+    @Test
+    fun keepingValidCategoriesOutsideTheBandSuggestionsCompletesAndSkipsSite() {
+        val state = SetupWizardState(
+            configuredProfile().apply {
+                setLoginChatCategoryMain(ChatCategory(7))
+                setLoginToSecondChatEnabled(true)
+                setLoginChatCategorySecond(ChatCategory(9))
+            },
+        )
+        state.chooseLoginSource(WizardSource.KEEP)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertTrue(state.mandatoryComplete)
+        assertFalse(state.pages.contains(WizardPage.SITE))
+    }
 }

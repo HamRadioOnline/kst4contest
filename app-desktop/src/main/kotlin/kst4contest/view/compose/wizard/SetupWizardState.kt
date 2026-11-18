@@ -148,7 +148,7 @@ class SetupWizardState(prefs: ChatPreferences) {
             val keep = loginSource == WizardSource.KEEP
             callsign = if (keep) storedCallsign else ""
             password = if (keep) storedPassword else ""
-            loginShown = !keep
+            loginShown = !keep || !loginComplete
             appliedLoginSource = loginSource
         }
 
@@ -161,7 +161,7 @@ class SetupWizardState(prefs: ChatPreferences) {
             secondCategory = if (keep) storedSecondCategory else null
             // A kept category is the operator's; the suggestion must not replace it.
             categoryChosenByOperator = keep
-            stationShown = !keep
+            stationShown = !keep || !stationComplete
             appliedStationSource = stationSource
         }
     }
@@ -210,8 +210,8 @@ class SetupWizardState(prefs: ChatPreferences) {
         get() = isPlausibleCallsign(callsign) && password.isNotEmpty()
 
     private val stationComplete: Boolean
-        get() = isLocator(locator) && bands.isNotEmpty() && category != null &&
-            (!secondChat || (secondCategory != null && secondCategory != category))
+        get() = isLocator(locator) && bands.isNotEmpty() && category in CATEGORY_NUMBERS &&
+            (!secondChat || secondCategory in secondCategoryOptions)
 
     /** Whether everything the profile needs to log in is there. */
     val mandatoryComplete: Boolean
