@@ -2601,6 +2601,8 @@ public class ChatPreferences {
 	 */
 	public boolean readPreferencesFromXmlFile() {
 
+		boolean readable = true;
+
 		System.out.println("[ChatPreferences, Info]: restoring prefs from file " + storeAndRestorePreferencesFileName);
 
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -3457,13 +3459,14 @@ public class ChatPreferences {
 
 
 		} catch (ParserConfigurationException | SAXException | IOException e) {
+			readable = false;
 			e.printStackTrace();
 			System.out.println(e.getCause());
 			System.out.println(e.getMessage());
 		}
 
 		initializeActualQtfFromDefaultIfRequired();
-		return true;
+		return readable;
 
 	}
 
