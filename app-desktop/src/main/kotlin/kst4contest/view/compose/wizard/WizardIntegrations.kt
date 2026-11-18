@@ -151,7 +151,7 @@ class WizardIntegrations(prefs: ChatPreferences) {
     val gearComplete: Boolean
         get() {
             val rotatorComplete = !rotator ||
-                (rotatorHost.isNotBlank() && AirscoutTabState.isValidPort(rotatorPort) && !rotatorPortClashes)
+                (rotatorHost.isNotBlank() && rotatorPort in ROTATOR_PORTS && !rotatorPortClashes)
             val airScoutComplete = !airScout ||
                 (AirscoutTabState.isValidPort(airScoutPort) &&
                     AirscoutTabState.isValidIdentifier(airScoutServerName) &&
@@ -217,5 +217,14 @@ class WizardIntegrations(prefs: ChatPreferences) {
     fun switchedOffByGear(): List<WizardSwitch> = buildList {
         if (storedRotator && !rotator) add(WizardSwitch.ROTATOR)
         if (storedAirScout && !airScout) add(WizardSwitch.AIRSCOUT)
+    }
+
+    private companion object {
+        /**
+         * The ports setStn_pstRotatorPort stores. One short of the full range, because
+         * PSTRotator answers on port + 1; the setter replaces anything else by its factory
+         * default, which would be the wizard inventing a number.
+         */
+        val ROTATOR_PORTS = 1..65534
     }
 }

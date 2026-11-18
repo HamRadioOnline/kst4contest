@@ -183,6 +183,8 @@ class SetupWizardState(prefs: ChatPreferences) {
             gearShown = !keep
             // A new station gets only what the operator says yes to.
             if (keep) integrations.loadStored() else integrations.loadFresh()
+            // Proposals from the profile either way; what was typed under the other choice goes.
+            antenna.loadStored()
             appliedStationSource = stationSource
         }
     }

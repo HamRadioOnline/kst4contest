@@ -277,4 +277,24 @@ class WizardIntegrationsTest {
         assertEquals(emptyList<WizardSwitch>(), answers.switchedOffByLog())
         assertEquals(emptyList<WizardSwitch>(), answers.switchedOffByGear())
     }
+
+    @Test
+    fun theHighestPortIsNoRotatorPort() {
+        // PSTRotator answers on port + 1, so the setter stores 1..65534 only and would
+        // replace 65535 by its factory default without a word.
+        val target = allOff()
+        val answers = WizardIntegrations(target)
+        answers.rotator = true
+
+        answers.rotatorPort = 65535
+        assertFalse(answers.gearComplete, "65535 would be stored as 12000")
+
+        answers.rotatorPort = 65534
+        assertTrue(answers.gearComplete)
+        answers.writeGearTo(target)
+        assertEquals(65534, target.getStn_pstRotatorPort(), "an accepted port is stored as entered")
+
+        answers.rotatorPort = 0
+        assertFalse(answers.gearComplete)
+    }
 }

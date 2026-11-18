@@ -21,13 +21,32 @@ import kst4contest.view.compose.tabs.StationTabState
  */
 class WizardAntenna(prefs: ChatPreferences) {
 
-    var beamWidthDeg: Double by mutableStateOf(prefs.getStn_antennaBeamWidthDeg())
-    var gainDbi: Double by mutableStateOf(prefs.getStn_pathAnalysisOwnAntennaGainDbi())
-    var heightMeters: Double by mutableStateOf(prefs.getStn_pathAnalysisOwnAntennaHeightMeters())
-    var txPowerWatts: Double by mutableStateOf(prefs.getStn_pathAnalysisOwnTxPowerWatts())
+    private val storedBeamWidthDeg = prefs.getStn_antennaBeamWidthDeg()
+    private val storedGainDbi = prefs.getStn_pathAnalysisOwnAntennaGainDbi()
+    private val storedHeightMeters = prefs.getStn_pathAnalysisOwnAntennaHeightMeters()
+    private val storedTxPowerWatts = prefs.getStn_pathAnalysisOwnTxPowerWatts()
+    private val storedHeightAslText = elevationText(prefs.getStn_pathAnalysisOwnHeightAslMeters())
+
+    var beamWidthDeg: Double by mutableStateOf(storedBeamWidthDeg)
+    var gainDbi: Double by mutableStateOf(storedGainDbi)
+    var heightMeters: Double by mutableStateOf(storedHeightMeters)
+    var txPowerWatts: Double by mutableStateOf(storedTxPowerWatts)
 
     /** The site elevation above sea level as the operator types it; empty for the model. */
-    var heightAslText: String by mutableStateOf(elevationText(prefs.getStn_pathAnalysisOwnHeightAslMeters()))
+    var heightAslText: String by mutableStateOf(storedHeightAslText)
+
+    /**
+     * Puts every answer back to what the profile holds. For the moment the operator changes
+     * his mind about where the station comes from: what he typed for one choice must not
+     * show in the summary of the other, where it would not be written.
+     */
+    fun loadStored() {
+        beamWidthDeg = storedBeamWidthDeg
+        gainDbi = storedGainDbi
+        heightMeters = storedHeightMeters
+        txPowerWatts = storedTxPowerWatts
+        heightAslText = storedHeightAslText
+    }
 
     /** A site elevation that is neither empty nor a number in the accepted range. */
     val heightAslRefused: Boolean

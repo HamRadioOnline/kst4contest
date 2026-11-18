@@ -565,4 +565,34 @@ class SetupWizardStateTest {
         assertTrue(state.canGoNext)
         assertTrue(state.mandatoryComplete)
     }
+
+    @Test
+    fun antennaValuesTypedForANewStationAreGoneWhenTheStationIsKeptAfterAll() {
+        val profile = duplicatedWinTestStation().apply { setStn_antennaBeamWidthDeg(28.0) }
+        val state = SetupWizardState(profile)
+        state.chooseStationSource(WizardSource.NEW)
+        state.next()
+        state.name = "Philipp"
+        state.next()
+        state.callsign = "DL0TEST"
+        state.password = "secret"
+        state.next()
+        state.locator = "JO50AA"
+        state.setBand(WizardBand.B144, true)
+        state.next()
+        assertEquals(WizardPage.ANTENNA, state.page)
+        state.antenna.beamWidthDeg = 99.0
+
+        repeat(4) { state.back() }
+        assertEquals(WizardPage.ENTRY, state.page)
+        state.chooseStationSource(WizardSource.KEEP)
+        state.next()
+
+        assertFalse(state.pages.contains(WizardPage.ANTENNA), "a kept station does not write the antenna page")
+        assertEquals(
+            28.0,
+            state.antenna.beamWidthDeg,
+            "the summary must not show a value that Save will not write",
+        )
+    }
 }

@@ -105,4 +105,23 @@ class WizardAntennaTest {
 
         assertTrue(target.getStn_pathAnalysisOwnHeightAslMeters().isNaN(), "empty hands the elevation back to the model")
     }
+
+    @Test
+    fun loadingTheStoredValuesAgainDropsWhatWasTyped() {
+        val antenna = WizardAntenna(stored())
+        antenna.beamWidthDeg = 99.0
+        antenna.gainDbi = 1.0
+        antenna.heightMeters = 2.0
+        antenna.txPowerWatts = 3.0
+        antenna.heightAslText = "abc"
+
+        antenna.loadStored()
+
+        assertEquals(28.0, antenna.beamWidthDeg)
+        assertEquals(16.5, antenna.gainDbi)
+        assertEquals(18.0, antenna.heightMeters)
+        assertEquals(400.0, antenna.txPowerWatts)
+        assertEquals("612", antenna.heightAslText)
+        assertTrue(antenna.complete)
+    }
 }
