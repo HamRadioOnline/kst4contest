@@ -220,4 +220,56 @@ class SetupWizardContentScreenTest {
 
         onNodeWithText("Will be switched off: network log synchronisation, AirScout.").assertExists()
     }
+
+    private fun donor(id: String, name: String, callsign: String, locator: String) =
+        WizardDonor(id, name, ChatPreferences(Path.of("setup-wizard-screen-donor-unused.xml")).apply {
+            setStn_loginCallSign(callsign)
+            setStn_loginPassword("secret")
+            setStn_loginLocatorMainCat(locator)
+            setStn_bandActive144(true)
+            setLoginChatCategoryMain(ChatCategory(2))
+            setLoginToSecondChatEnabled(false)
+        })
+
+    private fun emptyProfile() =
+        ChatPreferences(Path.of("setup-wizard-screen-test-unused.xml")).apply {
+            setStn_loginCallSign("")
+            setStn_loginPassword("")
+            setStn_loginLocatorMainCat("JO54ME")
+            setStn_bandActive144(true)
+            setLoginChatCategoryMain(ChatCategory(2))
+            setLoginToSecondChatEnabled(false)
+        }
+
+    @Test
+    fun aSingleDonorIsNamedInTheOptionAndTakenWithOneClick() = runComposeUiTest {
+        val state = SetupWizardState(emptyProfile(), listOf(donor("a", "Conteststation", "DL0TEST", "JO50AA")))
+        show(state)
+
+        onNodeWithText("Take the login from profile \"Conteststation\" (DL0TEST)").performClick()
+        onNodeWithText("Take the station from profile \"Conteststation\" (locator JO50AA)").performClick()
+
+        assertEquals(WizardSource.TAKE, state.loginSource)
+        assertEquals("a", state.loginDonor?.profileId)
+        assertEquals(WizardSource.TAKE, state.stationSource)
+
+        onNodeWithText("Next").performClick()
+        assertEquals(WizardPage.PERSONAL, state.page)
+        assertEquals("DL0TEST", state.callsign)
+    }
+
+    @Test
+    fun withSeveralDonorsNextWaitsForAProfile() = runComposeUiTest {
+        val state = SetupWizardState(
+            emptyProfile(),
+            listOf(donor("a", "Conteststation", "DL0TEST", "JO50AA"), donor("b", "Portabel", "DL0TEST/P", "JN58QA")),
+        )
+        show(state)
+
+        onNodeWithText("Take the login from another profile").performClick()
+        onNodeWithText("Set up a new station").performClick()
+        onNodeWithText("Next").performClick()
+
+        assertEquals(WizardPage.ENTRY, state.page, "which profile is not said yet")
+    }
 }

@@ -3,6 +3,7 @@ package kst4contest.view.compose.wizard
 import kst4contest.model.ChatPreferences
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -129,5 +130,77 @@ class SetupWizardLauncherTest(@param:TempDir private val directory: Path) {
 
         assertEquals(SetupWizardOutcome.SAVED, saveFromWizard(state, prefs, connect = false))
         assertEquals(SetupWizardOutcome.SAVED_AND_CONNECT, saveFromWizard(state, prefs, connect = true))
+    }
+
+    private fun profileFile(name: String, callsign: String, password: String): Path {
+        val file = directory.resolve(name)
+        ChatPreferences::class.java.getResourceAsStream(ChatPreferences.PREFERENCE_RESOURCE).use { template ->
+            Files.copy(requireNotNull(template), file, StandardCopyOption.REPLACE_EXISTING)
+        }
+        ChatPreferences(file).apply {
+            assertTrue(readPreferencesFromXmlFile())
+            setStn_loginCallSign(callsign)
+            setStn_loginPassword(password)
+            assertTrue(writePreferencesToXmlFile())
+        }
+        return file
+    }
+
+    @Test
+    fun onlyConfiguredReadableProfilesBecomeDonors() {
+        val configured = profileFile("configured.xml", "DL0TEST", "secret")
+        val emptyLogin = profileFile("empty.xml", "", "")
+        val template = profileFile("template.xml", "DO5AMF", "changeMe")
+        val garbage = directory.resolve("garbage.xml").also { Files.writeString(it, "this is not xml <<<") }
+
+        val donors = loadDonors(
+            listOf(
+                DonorCandidate("a", "Conteststation", configured),
+                DonorCandidate("b", "Leer", emptyLogin),
+                DonorCandidate("c", "Vorlage", template),
+                DonorCandidate("d", "Kaputt", garbage),
+                DonorCandidate("e", "Fehlt", directory.resolve("missing.xml")),
+            )
+        )
+
+        assertEquals(listOf("a"), donors.map { it.profileId })
+        assertEquals("Conteststation", donors.single().displayName)
+        assertEquals("DL0TEST", donors.single().callsign)
+    }
+
+    @Test
+    fun aMissingDonorFileIsNotCreated() {
+        val missing = directory.resolve("missing.xml")
+
+        loadDonors(listOf(DonorCandidate("e", "Fehlt", missing)))
+
+        assertFalse(Files.exists(missing), "looking for a donor must not create its file")
+    }
+
+    @Test
+    fun readingADonorLeavesItsFileAlone() {
+        val configured = profileFile("configured.xml", "DL0TEST", "secret")
+        val before = Files.readAllBytes(configured)
+
+        loadDonors(listOf(DonorCandidate("a", "Conteststation", configured)))
+
+        assertArrayEquals(before, Files.readAllBytes(configured))
+    }
+
+    @Test
+    fun donorsAreOnlyLoadedWhenTheWizardOpens() {
+        var loaded = 0
+        val donors = { loaded++; emptyList<WizardDonor>() }
+
+        SetupWizardLauncher.run(ChatPreferences(configuredFile()), forced = false, donors, neverShown)
+        assertEquals(0, loaded, "a configured profile starts without reading other profiles")
+
+        var seen: List<WizardDonor>? = null
+        SetupWizardLauncher.run(ChatPreferences(templateFile()), forced = false, donors) { state, _ ->
+            seen = state.donors
+            SetupWizardOutcome.LATER
+        }
+        assertEquals(1, loaded)
+        assertEquals(emptyList<WizardDonor>(), seen)
     }
 }

@@ -160,6 +160,7 @@ private fun RadioOption(label: String, selected: Boolean, onSelect: () -> Unit) 
 @Composable
 private fun EntryPage(state: SetupWizardState, strings: Strings) {
     Heading(strings.wizardEntryTitle, strings.wizardEntryLead)
+    val oneDonor = state.donors.singleOrNull()
 
     /* An axis with a single option is decided already and is not asked about. */
     if (state.loginSources.size > 1) {
@@ -168,11 +169,23 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
                 RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceLoginNew
-                        WizardSource.TAKE -> state.loginDonor?.displayName.orEmpty()
+                        // One other profile is named in the option; several get a picker below.
+                        WizardSource.TAKE ->
+                            if (oneDonor != null) strings.wizardSourceLoginTake(oneDonor.displayName, oneDonor.callsign)
+                            else strings.wizardSourceLoginTakeFrom
                         WizardSource.KEEP -> strings.wizardSourceLoginKeep(state.storedCallsign)
                     },
                     selected = state.loginSource == source,
                     onSelect = { state.chooseLoginSource(source) },
+                )
+            }
+            if (state.loginSource == WizardSource.TAKE && oneDonor == null) {
+                Form.choice(
+                    label = strings.wizardEntryDonor,
+                    items = state.donors,
+                    selected = state.loginDonor,
+                    describe = { "${it.displayName} (${it.callsign})" },
+                    onSelect = state::chooseLoginDonor,
                 )
             }
         }
@@ -184,11 +197,22 @@ private fun EntryPage(state: SetupWizardState, strings: Strings) {
                 RadioOption(
                     label = when (source) {
                         WizardSource.NEW -> strings.wizardSourceStationNew
-                        WizardSource.TAKE -> state.stationDonor?.displayName.orEmpty()
+                        WizardSource.TAKE ->
+                            if (oneDonor != null) strings.wizardSourceStationTake(oneDonor.displayName, oneDonor.locator)
+                            else strings.wizardSourceStationTakeFrom
                         WizardSource.KEEP -> strings.wizardSourceStationKeep(state.storedLocator)
                     },
                     selected = state.stationSource == source,
                     onSelect = { state.chooseStationSource(source) },
+                )
+            }
+            if (state.stationSource == WizardSource.TAKE && oneDonor == null) {
+                Form.choice(
+                    label = strings.wizardEntryDonor,
+                    items = state.donors,
+                    selected = state.stationDonor,
+                    describe = { "${it.displayName} (${it.locator})" },
+                    onSelect = state::chooseStationDonor,
                 )
             }
         }
@@ -396,6 +420,9 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
     }
 
     Form.section(strings.wizardSummaryLogin) {
+        if (state.loginSource == WizardSource.TAKE) {
+            state.loginDonor?.let { Text(strings.wizardSummaryTakenFrom(it.displayName)) }
+        }
         SummaryRow(strings.stationCallsign, state.callsign.ifBlank { strings.wizardSummaryNone })
         // Never the password itself: the summary may be read over a shoulder.
         SummaryRow(
@@ -406,6 +433,9 @@ private fun SummaryPage(state: SetupWizardState, strings: Strings, saveFailed: B
     }
 
     Form.section(strings.wizardSummaryStation) {
+        if (state.stationSource == WizardSource.TAKE) {
+            state.stationDonor?.let { Text(strings.wizardSummaryTakenFrom(it.displayName)) }
+        }
         SummaryRow(strings.stationLocator, state.locator.ifBlank { strings.wizardSummaryNone })
         SummaryRow(
             strings.wizardSummaryBands,
