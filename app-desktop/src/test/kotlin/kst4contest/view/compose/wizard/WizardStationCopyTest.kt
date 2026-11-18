@@ -168,4 +168,15 @@ class WizardStationCopyTest {
 
         assertEquals(2, donor.getLoginChatCategoryMain().categoryNumber, "the two profiles must not share a category object")
     }
+
+    @Test
+    fun theFallbackBandComesWithTheStation() {
+        // It completes frequencies given without a band, so it has to fit the station's bands.
+        val donor = prefs { setNotify_optionalFrequencyPrefix("432") }
+        val target = prefs { setNotify_optionalFrequencyPrefix("144") }
+
+        copyStation(donor, target)
+
+        assertEquals("432", target.getNotify_optionalFrequencyPrefix().get())
+    }
 }

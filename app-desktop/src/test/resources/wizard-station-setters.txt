@@ -25,6 +25,7 @@ setLogsynch_wintestSkedMode
 setLogsynch_wintestUsePassQrg
 setNotify_dxClusterServerEnabled
 setNotify_dxclusterServerPort
+setNotify_optionalFrequencyPrefix
 setStn_antennaBeamWidthDeg
 setStn_bandActive10G
 setStn_bandActive1240

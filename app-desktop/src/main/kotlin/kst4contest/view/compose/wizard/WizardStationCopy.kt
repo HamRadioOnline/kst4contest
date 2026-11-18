@@ -87,6 +87,8 @@ internal fun copyStation(from: ChatPreferences, to: ChatPreferences) {
     to.setTrxSynch_so2rEnabled(from.isTrxSynch_so2rEnabled())
     to.setNotify_dxClusterServerEnabled(from.isNotify_dxClusterServerEnabled())
     to.setNotify_dxclusterServerPort(from.getNotify_dxclusterServerPort())
+    // The band a frequency given without one is completed with; it has to fit the bands above.
+    to.setNotify_optionalFrequencyPrefix(from.getNotify_optionalFrequencyPrefix().get())
 
     // Rotators.
     to.setStn_pstRotatorEnabled(from.isStn_pstRotatorEnabled())
