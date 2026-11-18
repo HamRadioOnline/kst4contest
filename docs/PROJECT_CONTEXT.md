@@ -400,6 +400,16 @@ section records only the durable architecture and operational boundaries.
 - The station map is a Compose canvas that fetches its own tiles. The JavaFX WebView, the bundled Leaflet resources, the CSS-3D-transform workaround and the `TileProxyServer` were removed with JavaFX; offline DEM, terrain packages and the profile cache are unaffected and must stay that way.
 - Deliberate test data, comments and Easter eggs are preserved unless explicitly changed.
 - Chat frames (issue #105, second slice): CH (live) and CR (history) go through one `MessageBusManagementThread.processChatFrame(fields, live)`. `classifyRoute` and `decideChatFrameEffects` are pure; history frames never play sounds, answer or spot, and keep their frequency extraction after publishing. Known oddities kept on purpose: TO_ME is case-sensitive, FROM_ME case-insensitive; the CR SERVER sender has no AirScout info.
+- **The setup wizard writes `preferences.xml` and does not touch a running session.** It runs
+  in `startRuntime` after the profile is resolved and before the `ChatController` exists, on
+  a `ChatPreferences` of its own, so what it stores is read like any stored setting. That is
+  why it needs neither `SettingsDraft` nor the tab states: there is no session to bring up to
+  date. From the menu the runtime is torn down first and the same profile restarted
+  (`ApplicationRuntimeLauncher.rerunSetupWizard`), which costs the session and asks first. A
+  profile counts as unconfigured when its callsign is empty or it still carries the bundled
+  template's credentials (`LoginConfiguration`); there is no flag for it in the file. Stage 1
+  asks for name, login, locator, bands and chat category; the reasons and the later stages
+  are in `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
 
 ## Planned Technical Direction
 

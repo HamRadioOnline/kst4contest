@@ -2,11 +2,32 @@
 
 > 🇬🇧 [English version](en-Configuration) | 🇩🇪 Du liest gerade die deutsche Version
 
-Nach dem ersten Start öffnet sich das **Einstellungsfenster** – dieses ist der zentrale Ausgangspunkt für alle Konfigurationen. Es empfiehlt sich, das Einstellungsfenster während des Betriebs geöffnet zu lassen (z. B. um den Beacon schnell ein- und auszuschalten).
+Beim ersten Start fragt der **Einrichtungsassistent** das Nötigste ab (siehe unten). Danach öffnet sich das **Einstellungsfenster** – dieses ist der zentrale Ausgangspunkt für alle Konfigurationen. Es empfiehlt sich, das Einstellungsfenster während des Betriebs geöffnet zu lassen (z. B. um den Beacon schnell ein- und auszuschalten).
 
 > **Wichtig**: Änderungen im Einstellungsfenster wirken, sobald **Apply/Close prefs** oder **Save Settings** gedrückt wird; **Connect** übernimmt sie ebenfalls vorher. Wer mit offenen Änderungen das Fenster schließt, das Profil wechselt oder das Programm beendet, wird zuerst gefragt, ob sie übernommen oder verworfen werden sollen, oder kann zurück. Farben, Sprache, die Anmeldedaten im Reiter **Station** und die beiden Beacon-Aktivierungsschalter wirken sofort.
 >
 > Fachliche Einstellungen mit **„Save Settings"** sichern, wenn sie beim nächsten Start wieder gelten sollen. Layoutänderungen wie Fenstergrößen, Divider-Positionen und Tabellenbreiten speichert KST4Contest automatisch. Die gemeinsame Datei liegt unter Linux und macOS in `~/.praktiKST/preferences.xml` und unter Windows in `%USERPROFILE%\.praktiKST\preferences.xml` (bzw. `C:\Users\<Benutzername>\.praktiKST\preferences.xml`).
+
+---
+
+## Einrichtungsassistent (ab v1.50)
+
+Solange ein Profil kein eigenes Rufzeichen hat, startet es mit dem Einrichtungsassistenten. Das gilt für die erste Installation und für jedes neu angelegte oder duplizierte Operator-Profil.
+
+Der Assistent fragt:
+
+1. **Persönliches** – Sprache und Anzeigename im Chat.
+2. **Anmeldung** – Rufzeichen und Passwort des ON4KST-Kontos.
+3. **Standort und Bänder** – Locator, aktive Bänder und Chatkategorie. Die Kategorie wird aus den Bändern vorgeschlagen und lässt sich ändern. Ein zweiter Chat ist freiwillig.
+4. **Zusammenfassung** – erst **Speichern** schreibt die Einstellungen. **Speichern und verbinden** meldet danach gleich am Chat an.
+
+Hat das Profil schon eine Station (etwa nach dem Duplizieren), fragt die erste Seite, ob sie **unverändert** bleiben oder **neu eingerichtet** werden soll. So braucht ein weiterer Operator an derselben Station nur Namen und Anmeldung einzutragen.
+
+**Später** schließt den Assistenten, ohne etwas zu schreiben. Er erscheint beim nächsten Start des Profils wieder, solange das Rufzeichen fehlt.
+
+Über **Options → Einrichtungsassistent...** lässt er sich jederzeit erneut aufrufen. Dabei wird die laufende Sitzung nach einer Rückfrage beendet und das Profil neu gestartet. Für einzelne Änderungen im Betrieb ist das Einstellungsfenster gedacht.
+
+Logprogramm, Rotor, AirScout und DX-Cluster-Server fragt der Assistent noch nicht ab; sie behalten ihre Werte und werden wie bisher im Einstellungsfenster eingestellt.
 
 ---
 

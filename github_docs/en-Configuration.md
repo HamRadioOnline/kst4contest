@@ -2,11 +2,32 @@
 
 > 🇬🇧 You are reading the English version | 🇩🇪 [Deutsche Version](de-Konfiguration)
 
-After the first start, the **settings window** opens – this is the central starting point for all configuration. It is recommended to keep the settings window open during operation (e.g. to quickly toggle the beacon on and off).
+On the first start, the **setup assistant** asks for the essentials (see below). After that the **settings window** opens – this is the central starting point for all configuration. It is recommended to keep the settings window open during operation (e.g. to quickly toggle the beacon on and off).
 
 > **Important**: Changes in the settings window take effect when you click **Apply/Close prefs** or **Save Settings**; **Connect** applies them first as well. Closing the window, switching the operator profile or exiting with changes pending first asks whether to apply or discard them, or to go back. Colours, the language, the login data on the **Station** tab and both beacon enable settings take effect immediately.
 >
 > Use **Save Settings** for functional settings which should remain in effect after the next start. KST4Contest saves layout changes such as window sizes, divider positions and table-column widths automatically. The shared file is `~/.praktiKST/preferences.xml` on Linux and macOS and `%USERPROFILE%\.praktiKST\preferences.xml` (or `C:\Users\<Username>\.praktiKST\preferences.xml`) on Windows.
+
+---
+
+## Setup Assistant (since v1.50)
+
+As long as a profile has no callsign of its own, it starts with the setup assistant. This applies to the first installation and to every newly created or duplicated operator profile.
+
+The assistant asks for:
+
+1. **Personal** – language and the name shown in the chat.
+2. **Login** – callsign and password of the ON4KST account.
+3. **Location and bands** – locator, active bands and chat category. The category is suggested from the bands and can be changed. A second chat is optional.
+4. **Summary** – nothing is written until you click **Save**. **Save and connect** logs into the chat right afterwards.
+
+If the profile already has a station (after duplicating one, for example), the first page asks whether to leave it **unchanged** or to **set it up anew**. A further operator at the same station then only enters a name and a login.
+
+**Later** closes the assistant without writing anything. It appears again on the next start of the profile as long as the callsign is missing.
+
+**Options → Setup assistant...** opens it again at any time. This ends the running session after a confirmation and restarts the profile. Use the settings window for single changes during operation.
+
+The assistant does not ask about log program, rotator, AirScout and DX cluster server yet; they keep their values and are configured in the settings window as before.
 
 ---
 
