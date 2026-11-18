@@ -1,5 +1,6 @@
 package kst4contest.view.compose.wizard
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,6 +10,7 @@ import kst4contest.model.ChatPreferences
 import kst4contest.view.compose.Kst4ContestTheme
 import kst4contest.view.compose.WindowPlacementOnScreen
 import kst4contest.view.compose.openOnEventThread
+import kst4contest.view.compose.tabs.LocalFileDialogOwner
 import java.awt.Dialog
 import java.awt.Dimension
 import java.util.concurrent.atomic.AtomicReference
@@ -96,21 +98,23 @@ object SetupWizardWindow {
                 darkMode = prefs.isGUI_darkModeActiveByDefault(),
                 baseFontSizeSp = DIALOG_FONT_SIZE_SP,
             ) {
-                SetupWizardContent(
-                    state = state,
-                    languageStore = languageStore,
-                    saveFailed = saveFailed,
-                    onLater = { dialog.dispose() },
-                    onSave = { connect ->
-                        val saved = saveFromWizard(state, prefs, connect)
-                        if (saved == null) {
-                            saveFailed = true
-                        } else {
-                            outcome.set(saved)
-                            dialog.dispose()
-                        }
-                    },
-                )
+                CompositionLocalProvider(LocalFileDialogOwner provides dialog) {
+                    SetupWizardContent(
+                        state = state,
+                        languageStore = languageStore,
+                        saveFailed = saveFailed,
+                        onLater = { dialog.dispose() },
+                        onSave = { connect ->
+                            val saved = saveFromWizard(state, prefs, connect)
+                            if (saved == null) {
+                                saveFailed = true
+                            } else {
+                                outcome.set(saved)
+                                dialog.dispose()
+                            }
+                        },
+                    )
+                }
             }
         }
 

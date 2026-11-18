@@ -55,7 +55,7 @@ class WizardAntenna(prefs: ChatPreferences) {
     /** Whether every answer can be stored as it stands. */
     val complete: Boolean
         get() = beamWidthDeg.isFinite() && gainDbi.isFinite() && heightMeters.isFinite() &&
-            txPowerWatts.isFinite() && !heightAslRefused
+            heightMeters >= 0.0 && txPowerWatts.isFinite() && !heightAslRefused
 
     /** Puts the answers into [prefs]. Call only while [complete]. */
     fun writeTo(prefs: ChatPreferences) {

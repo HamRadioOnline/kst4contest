@@ -80,6 +80,17 @@ class WizardAntennaTest {
     }
 
     @Test
+    fun antennaHeightMustBeNonNegative() {
+        val antenna = WizardAntenna(stored())
+
+        antenna.heightMeters = -5.0
+        assertFalse(antenna.complete)
+
+        antenna.heightMeters = 0.0
+        assertTrue(antenna.complete)
+    }
+
+    @Test
     fun writingPutsTheAnswersIntoThePreferences() {
         val target = prefs()
         val antenna = WizardAntenna(stored())

@@ -16,6 +16,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -23,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import kst4contest.model.ChatCategory
 import kst4contest.view.compose.Density
 import kst4contest.view.compose.Form
+import kst4contest.view.compose.LocalSettingsDraft
+import kst4contest.view.compose.SettingsDraft
 import kst4contest.view.compose.tabs.FilePathRow
 import kst4contest.view.i18n.LanguageStore
 import kst4contest.view.i18n.LocalStrings
@@ -60,8 +66,17 @@ fun SetupWizardContent(
     onSave: (connect: Boolean) -> Unit,
 ) {
     val strings = languageStore.strings
+    // The draft only registers typed entries. Wizard answers are never staged or applied through it.
+    val typedEntries = remember { SettingsDraft() }
+    var typedEntryRefusals by remember { mutableStateOf(emptyList<String>()) }
 
-    CompositionLocalProvider(LocalStrings provides strings) {
+    fun withAcceptedTypedEntries(action: () -> Unit) {
+        val refusals = typedEntries.commitTypedEntries()
+        typedEntryRefusals = refusals
+        if (refusals.isEmpty()) action()
+    }
+
+    CompositionLocalProvider(LocalStrings provides strings, LocalSettingsDraft provides typedEntries) {
         Surface(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(15.dp)) {
                 Column(
@@ -80,6 +95,9 @@ fun SetupWizardContent(
                     }
                 }
 
+                if (typedEntryRefusals.isNotEmpty()) {
+                    Refusal(typedEntryRefusals.joinToString("\n"))
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(Density.BUTTON_GAP),
@@ -90,22 +108,23 @@ fun SetupWizardContent(
                         Form.button(strings.wizardBack, onClick = state::back)
                     }
                     if (state.page == WizardPage.SUMMARY) {
-                        Form.button(strings.wizardSave, enabled = state.mandatoryComplete) { onSave(false) }
+                        Form.button(strings.wizardSave, enabled = state.mandatoryComplete) {
+                            withAcceptedTypedEntries { onSave(false) }
+                        }
                         Form.button(
                             strings.wizardSaveAndConnect,
                             enabled = state.mandatoryComplete,
                             accented = true,
-                        ) { onSave(true) }
+                        ) { withAcceptedTypedEntries { onSave(true) } }
                     } else {
                         if (state.canFinish) {
-                            Form.button(strings.wizardFinish, onClick = state::finish)
+                            Form.button(strings.wizardFinish) { withAcceptedTypedEntries(state::finish) }
                         }
                         Form.button(
                             strings.wizardNext,
                             enabled = state.canGoNext,
                             accented = true,
-                            onClick = state::next,
-                        )
+                        ) { withAcceptedTypedEntries(state::next) }
                     }
                 }
             }
@@ -270,7 +289,7 @@ private fun AntennaPage(antenna: WizardAntenna, strings: Strings) {
     Form.decimal(strings.stationOwnAntennaGain, antenna.gainDbi, isValid = { it.isFinite() }) {
         antenna.gainDbi = it
     }
-    Form.decimal(strings.stationOwnAntennaHeight, antenna.heightMeters, isValid = { it.isFinite() }) {
+    Form.decimal(strings.stationOwnAntennaHeight, antenna.heightMeters, isValid = { it.isFinite() && it >= 0.0 }) {
         antenna.heightMeters = it
     }
     Form.decimal(strings.stationOwnTxPower, antenna.txPowerWatts, isValid = { it.isFinite() }) {

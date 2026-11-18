@@ -2,8 +2,10 @@ package kst4contest.view.compose.wizard
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import kst4contest.model.ChatCategory
 import kst4contest.model.ChatPreferences
@@ -166,6 +168,47 @@ class SetupWizardContentScreenTest {
 
         assertEquals(WizardLogProgram.WINTEST, state.integrations.logProgram)
         onNodeWithText("Take my own frequency from the log program").assertExists()
+    }
+
+    @Test
+    fun nextRefusesAnUnreadableUdpPortAndAcceptsItsCorrection() = runComposeUiTest {
+        val state = SetupWizardState(firstInstallation())
+        state.walkToTheLogPage()
+        state.integrations.chooseLogProgram(WizardLogProgram.UDP)
+        val originalPort = state.integrations.udpPort
+        show(state)
+
+        val portField = onNode(hasSetTextAction())
+        val refusal = onNodeWithText(
+            "Shared UDP port for QSO and TRX messages [default 12060]:: \"abc\" is not a valid entry.",
+        )
+        portField.performTextReplacement("abc")
+        onNodeWithText("Next").performClick()
+
+        assertEquals(originalPort, state.integrations.udpPort)
+        assertEquals(WizardPage.LOG, state.page)
+        refusal.assertExists()
+
+        portField.performTextReplacement("12061")
+        refusal.assertExists()
+        onNodeWithText("Next").performClick()
+
+        assertEquals(WizardPage.GEAR, state.page)
+        assertEquals(12061, state.integrations.udpPort)
+        refusal.assertDoesNotExist()
+    }
+
+    @Test
+    fun finishRefusesAnUnreadableUdpPort() = runComposeUiTest {
+        val state = SetupWizardState(firstInstallation())
+        state.walkToTheLogPage()
+        state.integrations.chooseLogProgram(WizardLogProgram.UDP)
+        show(state)
+
+        onNode(hasSetTextAction()).performTextReplacement("abc")
+        onNodeWithText("Finish").performClick()
+
+        assertEquals(WizardPage.LOG, state.page)
     }
 
     @Test

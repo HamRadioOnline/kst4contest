@@ -301,6 +301,7 @@ class WizardIntegrationsTest {
     @Test
     fun loadingAgainPutsTheDetailsBackToTheStoredOnes() {
         val answers = WizardIntegrations(winTestStation())
+        val storedFilePath = answers.filePath
         answers.udpPort = 1
         answers.wintestPort = 2
         answers.wintestStationName = "typed"
@@ -316,6 +317,7 @@ class WizardIntegrationsTest {
         assertEquals(12060, answers.udpPort)
         assertEquals(9999, answers.wintestPort)
         assertEquals("KST", answers.wintestStationName)
+        assertEquals(storedFilePath, answers.filePath)
         assertEquals("127.0.0.1", answers.rotatorHost)
         assertEquals(12000, answers.rotatorPort)
         assertEquals(9872, answers.airScoutPort)
@@ -326,7 +328,7 @@ class WizardIntegrationsTest {
         answers.rotatorPort = 3
         answers.loadStored()
 
-        assertFalse(answers.filePath == "/typed", "the stored file name is back")
+        assertEquals(storedFilePath, answers.filePath)
         assertEquals(12000, answers.rotatorPort)
     }
 
