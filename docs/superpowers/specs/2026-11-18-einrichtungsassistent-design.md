@@ -55,9 +55,14 @@ eine Angabe hängt, nicht dem Reiter, auf dem sie heute steht.
   Hauptkategorie, Zweitchat und dessen Kategorie, Logprogramm mit seinen Angaben
   (`logsynch_…`, `trxSynch_ucxLogUDPListenerEnabled`, `notify_dxClusterServerEnabled`),
   PSTRotator (`stn_pstRotator…`), AirScout (`AirScout_…`);
-- nie gefragt, aber Teil der Station: Öffnungswinkel, QTF-Vorgabe, größte Entfernung und
-  alle Werte der Pfadanalyse (`stn_antennaBeamWidthDeg`, `stn_qtfDefault`,
-  `stn_maxQRBDefault`, `stn_pathAnalysis…`).
+- gefragt, aber freiwillig: Öffnungswinkel der Antenne (`stn_antennaBeamWidthDeg`) und die
+  eigenen Werte der Pfadanalyse — Antennengewinn, Antennenhöhe, Sendeleistung,
+  Standorthöhe über NN (`stn_pathAnalysisOwnAntennaGainDbi`, `…OwnAntennaHeightMeters`,
+  `…OwnTxPowerWatts`, `…OwnHeightAslMeters`);
+- nie gefragt, aber Teil der Station: QTF-Vorgabe, größte Entfernung, das
+  DEM-Verzeichnis, die Annahmen über die Gegenstation und die Dämpfungs- und
+  Empfindlichkeitswerte der Pfadanalyse (`stn_qtfDefault`, `stn_maxQRBDefault`, übrige
+  `stn_pathAnalysis…`).
 
 Der Locator steht im Einstellungsfenster bei den Anmeldefeldern und bleibt dort. Im
 Assistenten gehört er zur Station: wer mit demselben Rufzeichen an zwei Standorten arbeitet,
@@ -105,6 +110,9 @@ kein Band gewählt, Locator leer, kein Zweitchat, kein Logprogramm, kein lokaler
 DX-Cluster-Server, kein Rotor, kein AirScout. Wer „neu einrichten" wählt, bekommt nur
 eingeschaltet, was er bejaht hat.
 
+Die Zahlen des Schritts „Antenne und Leistung" haben keinen leeren Zustand. Sie bleiben auch
+bei einer neuen Station mit den gespeicherten Werten vorbelegt und sind Vorschläge.
+
 ## Die Schritte
 
 1. **Persönliches** — Sprache, Anzeigename. Immer.
@@ -113,18 +121,26 @@ eingeschaltet, was er bejaht hat.
    Kategorie aus den Bändern vor (1 für 50/70 MHz, 2 für 144/432 MHz, 3 ab 1240 MHz), der
    Nutzer bestätigt sie. Der Zweitchat ist eine Ja/Nein-Frage; bei Ja folgt seine Kategorie.
    Aus der Bandwahl wird **keine Frequenz** abgeleitet.
-4. **Logprogramm** — keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, oder eine Logdatei.
+4. **Antenne und Leistung** — Öffnungswinkel, Antennengewinn, Antennenhöhe über Grund,
+   Sendeleistung, Standorthöhe über NN. Freiwillig: der Schritt lässt sich unverändert
+   durchgehen. Ein leeres Feld für die Standorthöhe heißt, wie im Reiter Station, dass das
+   Höhenmodell entscheidet. Die Werte speisen die Pfadanalyse und die Antennenkeule auf
+   der Karte; für den Chatbetrieb braucht sie niemand.
+5. **Logprogramm** — keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, oder eine Logdatei.
    Erst nach der Wahl erscheinen die zugehörigen Angaben (Port, Stationsnamen, Datei),
    vorbelegt mit den gespeicherten Werten. Mit einem Netzwerk-Logprogramm folgen zwei
    Ja/Nein-Fragen: eigene Frequenz übernehmen, Spots über den lokalen DX-Cluster-Server
    an das Logprogramm geben.
-5. **Rotor und AirScout** — je eine Ja/Nein-Frage; Host, Port und Kennungen erst bei Ja.
-6. **Zusammenfassung** — alle drei Gruppen, das Passwort verdeckt, je Gruppe „Ändern". Was
+6. **Rotor und AirScout** — je eine Ja/Nein-Frage; Host, Port und Kennungen erst bei Ja.
+7. **Zusammenfassung** — alle drei Gruppen, das Passwort verdeckt, je Gruppe „Ändern". Was
    der Assistent **abschaltet**, steht dort ausdrücklich. Darunter „Speichern" und
    „Speichern und verbinden".
 
-„Fertig" führt ab Schritt 2 von jedem Schritt zur Zusammenfassung, sobald die Anmeldung
-gültig ist. Niemand muss durch Logprogramm und Rotor, um in den Chat zu kommen.
+„Fertig" führt von jedem Schritt zur Zusammenfassung, sobald die **Pflichtangaben**
+stehen: Anzeigename, Rufzeichen, Passwort, Locator, mindestens ein Band und die
+Chatkategorie. Vorher wäre die Zusammenfassung nicht speicherbar. Wer eine neue Station
+einrichtet, kann also nach Schritt 3 fertig sein; wer die Station übernimmt, nach der
+Anmeldung. Niemand muss durch Antenne, Logprogramm und Rotor, um in den Chat zu kommen.
 
 „Später" und das Schließen des Fensters schreiben nichts, auch die Sprache nicht: der
 Assistent zeigt sich sofort in der gewählten Sprache, gespeichert wird sie erst mit allem
@@ -209,7 +225,8 @@ tatsächlichen Anmeldestatus.
 
 1. Erkennung, Fenster, Menüeintrag, Einstiegsseite mit „neu" und „unverändert", Schritte
    1 bis 3, Zusammenfassung, Speichern, Speichern und verbinden.
-2. Schritte 4 und 5 mit den Startwerten, die Integrationen abschalten.
+2. Schritte 4 bis 6: Antenne und Leistung, dann Logprogramm, Rotor und AirScout mit den
+   Startwerten, die Integrationen abschalten.
 3. „Von Profil X übernehmen".
 
 Stufe 1 ist für sich benutzbar; bis Stufe 2 lässt „neu einrichten" die Integrationen auf
@@ -229,7 +246,7 @@ automatisches Verbinden, außer der Nutzer wählt „Speichern und verbinden".
   Konstanten gegen die mitgelieferte Vorlage.
 - Einstiegsseite: welche Wahl in welcher Lage angeboten wird, und dass sie auf der frischen
   Installation entfällt.
-- Ablauf: die fünf Fälle der Tabelle, „Fertig" ab gültiger Anmeldung, Zurück erhält die
+- Ablauf: die fünf Fälle der Tabelle, „Fertig" erst mit allen Pflichtangaben, Zurück erhält die
   Eingaben, die Zusammenfassung nennt das Abgeschaltete.
 - Schreiben, gegen eine echte Datei wie in `ChatPreferencesRoundTripTest`: nach „Später"
   ist die Datei Byte für Byte unverändert; nach „Speichern" liest ein frisches
