@@ -5,6 +5,7 @@ import kst4contest.testing.Await.awaitUntil
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.Test
+import java.awt.Dialog
 import java.awt.EventQueue
 import java.awt.GraphicsEnvironment
 import java.awt.Window
@@ -21,15 +22,31 @@ import java.util.concurrent.TimeUnit
  */
 class SetupWizardWindowTest {
 
-    private fun prefs() = ChatPreferences(Path.of("setup-wizard-window-test-unused.xml"))
+    private companion object {
+        fun prefs() = ChatPreferences(Path.of("setup-wizard-window-test-unused.xml"))
+
+        val wizardTitle = wizardLanguageStore(SetupWizardState(prefs())).strings.wizardTitle
+    }
 
     private fun showingDialog(): Window? =
-        Window.getWindows().firstOrNull { it.isShowing && it.javaClass.name.contains("ComposeDialog") }
+        Window.getWindows().firstOrNull {
+            it is Dialog && it.isShowing && it.javaClass.name.contains("ComposeDialog") && it.title == wizardTitle
+        }
 
     /** Removes whatever dialog this test still has showing, without waiting and without failing again. */
     private fun disposeLeftoverDialog() {
         EventQueue.invokeLater {
             showingDialog()?.dispose()
+        }
+    }
+
+    private fun <T> showWithInterruptedCleanup(show: () -> T): T {
+        try {
+            return show()
+        } catch (interrupted: InterruptedException) {
+            // invokeAndWait can post the open event after the test's first cleanup was queued.
+            disposeLeftoverDialog()
+            throw interrupted
         }
     }
 
@@ -55,7 +72,9 @@ class SetupWizardWindowTest {
         try {
             val closing = closeOnceShowing()
             val prefs = prefs()
-            val call = worker.submit<SetupWizardOutcome> { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
+            val call = worker.submit<SetupWizardOutcome> {
+                showWithInterruptedCleanup { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
+            }
 
             // A dialog that never appears must fail the test, not hang it.
             val outcome = call.get(20, TimeUnit.SECONDS)
@@ -79,7 +98,9 @@ class SetupWizardWindowTest {
             val closing = closeOnceShowing()
             val prefs = prefs()
             val call = worker.submit {
-                EventQueue.invokeAndWait { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
+                showWithInterruptedCleanup {
+                    EventQueue.invokeAndWait { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
+                }
             }
 
             // A deadlock here has no timeout of its own: without one this never completes.
