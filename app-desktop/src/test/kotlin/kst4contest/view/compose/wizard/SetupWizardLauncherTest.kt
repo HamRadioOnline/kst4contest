@@ -1,0 +1,118 @@
+package kst4contest.view.compose.wizard
+
+import kst4contest.model.ChatPreferences
+import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+
+/** When the wizard opens at all, decided without a window. */
+class SetupWizardLauncherTest(@TempDir private val directory: Path) {
+
+    private fun templateFile(): Path {
+        val file = directory.resolve("preferences.xml")
+        ChatPreferences::class.java.getResourceAsStream(ChatPreferences.PREFERENCE_RESOURCE).use { template ->
+            Files.copy(requireNotNull(template), file, StandardCopyOption.REPLACE_EXISTING)
+        }
+        return file
+    }
+
+    private fun configuredFile(): Path {
+        val file = templateFile()
+        ChatPreferences(file).apply {
+            assertTrue(readPreferencesFromXmlFile())
+            setStn_loginCallSign("DL0TEST")
+            setStn_loginPassword("secret")
+            assertTrue(writePreferencesToXmlFile())
+        }
+        return file
+    }
+
+    private val neverShown: (SetupWizardState, ChatPreferences) -> SetupWizardOutcome =
+        { _, _ -> throw AssertionError("the wizard must not open here") }
+
+    @Test
+    fun anUnconfiguredProfileOpensTheWizard() {
+        var shown = 0
+
+        val outcome = SetupWizardLauncher.run(ChatPreferences(templateFile()), forced = false) { _, _ ->
+            shown++
+            SetupWizardOutcome.LATER
+        }
+
+        assertEquals(1, shown)
+        assertEquals(SetupWizardOutcome.LATER, outcome)
+    }
+
+    @Test
+    fun aConfiguredProfileStartsWithoutTheWizard() {
+        assertEquals(
+            SetupWizardOutcome.NOT_SHOWN,
+            SetupWizardLauncher.run(ChatPreferences(configuredFile()), forced = false, neverShown),
+        )
+    }
+
+    @Test
+    fun theMenuOpensItOnAConfiguredProfileToo() {
+        val outcome = SetupWizardLauncher.run(ChatPreferences(configuredFile()), forced = true) { state, _ ->
+            assertEquals(listOf(WizardSource.NEW, WizardSource.KEEP), state.loginSources)
+            SetupWizardOutcome.SAVED
+        }
+
+        assertEquals(SetupWizardOutcome.SAVED, outcome)
+    }
+
+    @Test
+    fun anUnreadableFileNeverOpensTheWizard() {
+        val garbage = directory.resolve("broken.xml")
+        Files.writeString(garbage, "this is not xml <<<")
+        val before = Files.readAllBytes(garbage)
+
+        // Forced as well: a wizard over a file it could not read would save over it.
+        assertEquals(
+            SetupWizardOutcome.NOT_SHOWN,
+            SetupWizardLauncher.run(ChatPreferences(garbage), forced = true, neverShown),
+        )
+        assertArrayEquals(before, Files.readAllBytes(garbage), "the unreadable file was touched")
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheWizardOpen() {
+        val source = ChatPreferences(templateFile()).apply { assertTrue(readPreferencesFromXmlFile()) }
+        val state = SetupWizardState(source).apply {
+            name = "Philipp"
+            next()
+            callsign = "DL0TEST"
+            password = "secret"
+            next()
+            locator = "JO50AA"
+            setBand(WizardBand.B144, true)
+        }
+        val unwritable = ChatPreferences(Files.createDirectory(directory.resolve("not-a-file")))
+
+        assertNull(saveFromWizard(state, unwritable, connect = true), "a failed write must not close the wizard")
+    }
+
+    @Test
+    fun aSaveReportsWhetherToConnect() {
+        val file = templateFile()
+        val prefs = ChatPreferences(file).apply { assertTrue(readPreferencesFromXmlFile()) }
+        val state = SetupWizardState(prefs).apply {
+            name = "Philipp"
+            next()
+            callsign = "DL0TEST"
+            password = "secret"
+            next()
+            locator = "JO50AA"
+            setBand(WizardBand.B144, true)
+        }
+
+        assertEquals(SetupWizardOutcome.SAVED, saveFromWizard(state, prefs, connect = false))
+        assertEquals(SetupWizardOutcome.SAVED_AND_CONNECT, saveFromWizard(state, prefs, connect = true))
+    }
+}
