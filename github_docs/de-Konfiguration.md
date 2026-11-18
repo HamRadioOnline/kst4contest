@@ -30,9 +30,11 @@ Eine **neu eingerichtete** Station bekommt nur eingeschaltet, was im Assistenten
 
 Gibt es schon ein eingerichtetes Profil oder hat das Profil selbst schon eine Station, fragt die erste Seite getrennt für **Anmeldung** und **Station**, woher die Angaben kommen:
 
-- **neu eingeben** – die Schritte erscheinen, eine neue Station beginnt leer;
-- **von einem anderen Profil übernehmen** – die Werte kommen aus dem gewählten Profil;
-- **unverändert lassen** – das Profil behält, was es hat.
+- **neu eingeben** – immer möglich; die Schritte erscheinen, eine neue Station beginnt leer;
+- **von einem anderen Profil übernehmen** – nur, wenn es ein anderes Profil mit eigener Anmeldung gibt; die Werte kommen aus dem gewählten Profil;
+- **unverändert lassen** – das Profil behält, was es hat. Für die Anmeldung gibt es das nur, wenn das Profil schon eine eigene hat; für die Station immer, außer bei der ersten Installation.
+
+Anmeldung und Station werden unabhängig gewählt und können aus verschiedenen Profilen kommen.
 
 Damit sind die üblichen Fälle mit wenigen Klicks erledigt:
 
@@ -42,9 +44,9 @@ Damit sind die üblichen Fälle mit wenigen Klicks erledigt:
 | Mehrmannbetrieb, eigenes Rufzeichen | neu | übernehmen |
 | Ein Operator, mehrere Standorte | übernehmen | neu |
 
-Übernommen wird beim Punkt **Station** die ganze Station: Locator, Bänder, das Ausweichband für Spots, Chatkategorien, Antennen- und Pfadanalysewerte, Logprogramm, Rotoren und AirScout, auch Einzelheiten, die der Assistent nie fragt. Sprache, Anzeigename, Fensteranordnung, Farben, Kurzbefehle und Baken gehören zum Operator und werden nie übernommen. Schaltet das Übernehmen etwas ab, das im eigenen Profil eingeschaltet war, steht es in der Zusammenfassung unter „Wird abgeschaltet".
+Übernommen wird beim Punkt **Station** die ganze Station: Locator, Bänder, das Ausweichband für Spots, Chatkategorien, Antennen- und Pfadanalysewerte, QTF-Vorgabe und größte Entfernung, alle Logquellen, die Frequenzübernahme samt SO2R, der lokale DX-Cluster-Server, Rotoren und AirScout – auch Einzelheiten, die der Assistent nie fragt. Sprache, Anzeigename, Fensteranordnung, Farben, Kurzbefehle und Baken gehören zum Operator und werden nie übernommen, ebenso wenig das Spotter-Rufzeichen des DX-Cluster-Servers. Schaltet das Übernehmen etwas ab, das im eigenen Profil eingeschaltet war, steht es in der Zusammenfassung unter „Wird abgeschaltet".
 
-Übernommene Werte lassen sich in der Zusammenfassung über **Ändern** anpassen, etwa ein `/P` am Rufzeichen. Das andere Profil wird dabei nur gelesen und nie verändert. Angeboten werden nur Profile, die selbst eine Anmeldung haben.
+Übernommene Werte lassen sich in der Zusammenfassung über **Ändern** anpassen, etwa ein `/P` am Rufzeichen. Eine Ausnahme: Hat die übernommene Station mehrere Logquellen zugleich eingeschaltet, kommen alle an, die Seite „Logprogramm" lässt sich dann aber nicht öffnen, weil sie nur eine Quelle kennt; solche Änderungen macht man im Einstellungsfenster. Das andere Profil wird nur gelesen und nie verändert. Angeboten werden nur Profile, die selbst eine Anmeldung haben.
 
 **Später** schließt den Assistenten, ohne etwas zu schreiben. Er erscheint beim nächsten Start des Profils wieder, solange das Rufzeichen fehlt.
 

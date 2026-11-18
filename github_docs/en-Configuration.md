@@ -30,9 +30,11 @@ A station that is **set up anew** gets only what was confirmed in the assistant.
 
 If a configured profile already exists, or the profile itself already has a station, the first page asks separately for **login** and **station** where the entries come from:
 
-- **enter new** – the steps appear, a new station starts empty;
-- **take from another profile** – the values come from the chosen profile;
-- **leave unchanged** – the profile keeps what it has.
+- **enter new** – always possible; the steps appear, a new station starts empty;
+- **take from another profile** – only if another profile with a login of its own exists; the values come from the chosen profile;
+- **leave unchanged** – the profile keeps what it has. For the login this is offered only if the profile already has one of its own; for the station always, except on the first installation.
+
+Login and station are chosen independently and may come from different profiles.
 
 This settles the usual cases with a few clicks:
 
@@ -42,9 +44,9 @@ This settles the usual cases with a few clicks:
 | Multi-operator, own callsign | new | take |
 | One operator, several sites | take | new |
 
-For **station**, the whole station is taken: locator, bands, the fallback band for spots, chat categories, antenna and path-analysis values, log program, rotators and AirScout, including details the assistant never asks about. Language, display name, window layout, colours, shortcuts and beacons belong to the operator and are never taken. If taking over switches off something that was enabled in the own profile, the summary lists it under "Will be switched off".
+For **station**, the whole station is taken: locator, bands, the fallback band for spots, chat categories, antenna and path-analysis values, default QTF and maximum distance, all log sources, frequency takeover including SO2R, the local DX cluster server, rotators and AirScout – including details the assistant never asks about. Language, display name, window layout, colours, shortcuts and beacons belong to the operator and are never taken, nor is the spotter callsign of the DX cluster server. If taking over switches off something that was enabled in the own profile, the summary lists it under "Will be switched off".
 
-Taken values can be adjusted in the summary through **Change**, for example a `/P` on the callsign. The other profile is only read and never changed. Only profiles that have a login of their own are offered.
+Taken values can be adjusted in the summary through **Change**, for example a `/P` on the callsign. One exception: if the taken station has several log sources enabled at once, all of them arrive, but the "Log program" page then cannot be opened, because it knows one source only; such changes are made in the settings window. The other profile is only read and never changed. Only profiles that have a login of their own are offered.
 
 **Later** closes the assistant without writing anything. It appears again on the next start of the profile as long as the callsign is missing.
 
