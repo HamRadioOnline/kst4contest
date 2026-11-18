@@ -87,6 +87,11 @@ fun mainMenuModel(
                 enabled = true,
                 actions::toggleSettingsWindow,
             ),
+            /*
+             * Always usable, like the profile switch: it rebuilds the runtime and asks before
+             * it gives the session up.
+             */
+            MenuEntry.Item(strings.menuSetupWizard, state.canSwitchProfile, actions::openSetupWizard),
         ),
     ),
     MenuSpec(

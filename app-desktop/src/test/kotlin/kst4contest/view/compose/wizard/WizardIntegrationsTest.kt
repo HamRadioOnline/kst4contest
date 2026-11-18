@@ -1,0 +1,363 @@
+package kst4contest.view.compose.wizard
+
+import kst4contest.model.ChatPreferences
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import java.nio.file.Path
+
+/**
+ * The answers about log program, rotator and AirScout: what a new station starts with, what
+ * a kept one shows, when a page may be left, and what is written.
+ */
+class WizardIntegrationsTest {
+
+    private fun prefs(configure: ChatPreferences.() -> Unit = {}): ChatPreferences =
+        ChatPreferences(Path.of("wizard-integrations-test-unused.xml")).apply(configure)
+
+    /** Everything off, so each test states what it switches on. */
+    private fun allOff(configure: ChatPreferences.() -> Unit = {}) = prefs {
+        setLogsynch_wintestNetworkListenerEnabled(false)
+        setLogsynch_ucxUDPWkdCallListenerEnabled(false)
+        setLogsynch_fileBasedWkdCallInterpreterEnabled(false)
+        setTrxSynch_ucxLogUDPListenerEnabled(false)
+        setLogsynch_wintestQrgSyncEnabled(false)
+        setNotify_dxClusterServerEnabled(false)
+        setStn_pstRotatorEnabled(false)
+        setAirScout_asUDPListenerEnabled(false)
+        setTrxSynch_so2rEnabled(false)
+        setStn_pstRotator2Enabled(false)
+        setLogsynch_ucxUDPWkdCallListenerPort(12060)
+        setLogsynch_wintestNetworkPort(9871)
+        setLogsynch_wintestNetworkStationNameOfKST("KST")
+        setStn_pstRotatorHost("127.0.0.1")
+        setStn_pstRotatorPort(12000)
+        setStn_pstRotator2Port(12010)
+        setAirScout_asCommunicationPort(9872)
+        setAirScout_asServerNameString("AS")
+        setAirScout_asClientNameString("KST")
+        configure()
+    }
+
+    /** What the bundled template switches on. */
+    private fun likeTheTemplate() = allOff {
+        setLogsynch_ucxUDPWkdCallListenerEnabled(true)
+        setLogsynch_fileBasedWkdCallInterpreterEnabled(true)
+        setTrxSynch_ucxLogUDPListenerEnabled(true)
+        setNotify_dxClusterServerEnabled(true)
+        setAirScout_asUDPListenerEnabled(true)
+    }
+
+    private fun winTestStation() = allOff {
+        setLogsynch_wintestNetworkListenerEnabled(true)
+        setLogsynch_wintestNetworkPort(9999)
+        setLogsynch_wintestQrgSyncEnabled(true)
+        setNotify_dxClusterServerEnabled(true)
+        setStn_pstRotatorEnabled(true)
+    }
+
+    @Test
+    fun aKeptStationShowsWhatIsStored() {
+        val answers = WizardIntegrations(winTestStation())
+
+        assertEquals(WizardLogProgram.WINTEST, answers.logProgram)
+        assertEquals(9999, answers.wintestPort)
+        assertTrue(answers.qrgFollow)
+        assertTrue(answers.clusterServer)
+        assertTrue(answers.rotator)
+        assertFalse(answers.airScout)
+        assertFalse(answers.severalStoredLogSources)
+    }
+
+    @Test
+    fun aNewStationStartsWithEverythingOffButKeepsTheNumbers() {
+        val answers = WizardIntegrations(winTestStation())
+
+        answers.loadFresh()
+
+        assertEquals(WizardLogProgram.NONE, answers.logProgram)
+        assertFalse(answers.qrgFollow)
+        assertFalse(answers.clusterServer)
+        assertFalse(answers.rotator)
+        assertFalse(answers.airScout)
+        assertEquals(9999, answers.wintestPort, "a port the operator once set is a proposal, not lost")
+        assertTrue(answers.logComplete)
+        assertTrue(answers.gearComplete)
+    }
+
+    @Test
+    fun loadingTheStoredValuesAgainUndoesAFreshStart() {
+        val answers = WizardIntegrations(winTestStation())
+        answers.loadFresh()
+
+        answers.loadStored()
+
+        assertEquals(WizardLogProgram.WINTEST, answers.logProgram)
+        assertTrue(answers.rotator)
+    }
+
+    @Test
+    fun severalStoredSourcesMakeTheLogPageUneditable() {
+        val answers = WizardIntegrations(likeTheTemplate())
+
+        assertTrue(answers.severalStoredLogSources, "the template has the network listener and the file on")
+        // Shown as one of them, the network one first; the state decides not to offer the page.
+        assertEquals(WizardLogProgram.UDP, answers.logProgram)
+    }
+
+    @Test
+    fun leavingANetworkProgramDropsWhatOnlyANetworkProgramCanDo() {
+        val answers = WizardIntegrations(allOff())
+        answers.chooseLogProgram(WizardLogProgram.UDP)
+        answers.qrgFollow = true
+        answers.clusterServer = true
+        assertTrue(answers.networked)
+
+        answers.chooseLogProgram(WizardLogProgram.FILE)
+
+        assertFalse(answers.networked)
+        assertFalse(answers.qrgFollow)
+        assertFalse(answers.clusterServer)
+    }
+
+    @Test
+    fun aLogFileNeedsAFile() {
+        val answers = WizardIntegrations(allOff())
+        // The compiled-in default names a file, which is a proposal like every stored value.
+        answers.filePath = ""
+
+        answers.chooseLogProgram(WizardLogProgram.FILE)
+        assertFalse(answers.logComplete)
+
+        answers.filePath = "/home/op/log.txt"
+        assertTrue(answers.logComplete)
+    }
+
+    @Test
+    fun anInvalidPortMakesItsPageIncomplete() {
+        val answers = WizardIntegrations(allOff())
+
+        answers.chooseLogProgram(WizardLogProgram.UDP)
+        answers.udpPort = 0
+        assertFalse(answers.logComplete)
+        answers.udpPort = 70000
+        assertFalse(answers.logComplete)
+        answers.udpPort = 12060
+        assertTrue(answers.logComplete)
+
+        answers.chooseLogProgram(WizardLogProgram.WINTEST)
+        answers.wintestStationName = "  "
+        assertFalse(answers.logComplete, "Win-Test needs a station name to send from")
+        answers.wintestStationName = "KST"
+        answers.wintestPort = -1
+        assertFalse(answers.logComplete)
+
+        // A port of a program that is not chosen is nobody's problem.
+        answers.chooseLogProgram(WizardLogProgram.NONE)
+        assertTrue(answers.logComplete)
+
+        answers.airScout = true
+        answers.airScoutPort = 0
+        assertFalse(answers.gearComplete)
+        answers.airScoutPort = 9872
+        answers.airScoutServerName = "A\"S"
+        assertFalse(answers.gearComplete, "a quotation mark breaks the AirScout message")
+        answers.airScoutServerName = "AS"
+        assertTrue(answers.gearComplete)
+
+        answers.rotator = true
+        answers.rotatorHost = " "
+        assertFalse(answers.gearComplete)
+    }
+
+    @Test
+    fun aRotatorPortNextToRotatorTwoIsRefusedOnlyWithSo2r() {
+        val withSo2r = WizardIntegrations(allOff {
+            setTrxSynch_so2rEnabled(true)
+            setStn_pstRotator2Enabled(true)
+        })
+        withSo2r.rotator = true
+        withSo2r.rotatorPort = 12011
+        assertTrue(withSo2r.rotatorPortClashes, "PSTRotator answers on port + 1")
+        assertFalse(withSo2r.gearComplete)
+        withSo2r.rotatorPort = 12000
+        assertFalse(withSo2r.rotatorPortClashes)
+        assertTrue(withSo2r.gearComplete)
+
+        val withoutSo2r = WizardIntegrations(allOff())
+        withoutSo2r.rotator = true
+        withoutSo2r.rotatorPort = 12011
+        assertFalse(withoutSo2r.rotatorPortClashes, "rotator 2 is not in use without SO2R")
+        assertTrue(withoutSo2r.gearComplete)
+    }
+
+    @Test
+    fun writingTheLogPageSwitchesExactlyTheChosenSourceOn() {
+        val target = likeTheTemplate()
+        val answers = WizardIntegrations(target)
+        answers.loadFresh()
+        answers.chooseLogProgram(WizardLogProgram.WINTEST)
+        answers.wintestPort = 9871
+        answers.wintestStationName = " KST "
+        answers.qrgFollow = true
+
+        answers.writeLogTo(target)
+
+        assertTrue(target.isLogsynch_wintestNetworkListenerEnabled())
+        assertFalse(target.isLogsynch_ucxUDPWkdCallListenerEnabled())
+        assertFalse(target.isLogsynch_fileBasedWkdCallInterpreterEnabled())
+        assertEquals(9871, target.getLogsynch_wintestNetworkPort())
+        assertEquals("KST", target.getLogsynch_wintestNetworkStationNameOfKST(), "trimmed, as the tab stores it")
+        assertTrue(target.isLogsynch_wintestQrgSyncEnabled())
+        assertFalse(target.isTrxSynch_ucxLogUDPListenerEnabled(), "the other program's frequency source goes off")
+        assertFalse(target.isNotify_dxClusterServerEnabled())
+        assertTrue(target.isAirScout_asUDPListenerEnabled(), "the log page does not touch AirScout")
+    }
+
+    @Test
+    fun writingNoLogProgramSwitchesEverySynchronisationOff() {
+        val target = likeTheTemplate()
+        val answers = WizardIntegrations(target)
+        answers.loadFresh()
+
+        answers.writeLogTo(target)
+
+        assertFalse(target.isLogsynch_wintestNetworkListenerEnabled())
+        assertFalse(target.isLogsynch_ucxUDPWkdCallListenerEnabled())
+        assertFalse(target.isLogsynch_fileBasedWkdCallInterpreterEnabled())
+        assertFalse(target.isTrxSynch_ucxLogUDPListenerEnabled())
+        assertFalse(target.isLogsynch_wintestQrgSyncEnabled())
+        assertFalse(target.isNotify_dxClusterServerEnabled())
+        assertEquals(12060, target.getLogsynch_ucxUDPWkdCallListenerPort(), "an unused port is left alone")
+    }
+
+    @Test
+    fun writingTheGearPageSetsRotatorAndAirScoutOnly() {
+        val target = likeTheTemplate()
+        val answers = WizardIntegrations(target)
+        answers.loadFresh()
+        answers.rotator = true
+        answers.rotatorHost = " 192.168.1.20 "
+        answers.rotatorPort = 12040
+
+        answers.writeGearTo(target)
+
+        assertTrue(target.isStn_pstRotatorEnabled())
+        assertEquals("192.168.1.20", target.getStn_pstRotatorHost())
+        assertEquals(12040, target.getStn_pstRotatorPort())
+        assertFalse(target.isAirScout_asUDPListenerEnabled())
+        assertEquals(9872, target.getAirScout_asCommunicationPort(), "an unused port is left alone")
+        assertTrue(target.isLogsynch_ucxUDPWkdCallListenerEnabled(), "the gear page does not touch the log sources")
+    }
+
+    @Test
+    fun theStoredSwitchesAreWhatTheProfileHasOn() {
+        val template = WizardIntegrations(likeTheTemplate())
+
+        assertEquals(
+            setOf(WizardSwitch.LOG_UDP, WizardSwitch.LOG_FILE, WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER),
+            template.storedLogSwitches(),
+        )
+        assertEquals(setOf(WizardSwitch.AIRSCOUT), template.storedGearSwitches())
+
+        val nothing = WizardIntegrations(allOff())
+        assertEquals(emptySet<WizardSwitch>(), nothing.storedLogSwitches())
+        assertEquals(emptySet<WizardSwitch>(), nothing.storedGearSwitches())
+    }
+
+    @Test
+    fun theAnsweredSwitchesFollowThePages() {
+        val answers = WizardIntegrations(likeTheTemplate())
+        answers.loadFresh()
+
+        assertEquals(emptySet<WizardSwitch>(), answers.answeredLogSwitches())
+        assertEquals(emptySet<WizardSwitch>(), answers.answeredGearSwitches())
+
+        answers.chooseLogProgram(WizardLogProgram.WINTEST)
+        answers.qrgFollow = true
+        answers.clusterServer = true
+        answers.rotator = true
+
+        assertEquals(
+            setOf(WizardSwitch.LOG_WINTEST, WizardSwitch.QRG_FOLLOW, WizardSwitch.CLUSTER_SERVER),
+            answers.answeredLogSwitches(),
+        )
+        assertEquals(setOf(WizardSwitch.ROTATOR), answers.answeredGearSwitches())
+        // The stored side does not move with the answers.
+        assertEquals(setOf(WizardSwitch.AIRSCOUT), answers.storedGearSwitches())
+    }
+
+    @Test
+    fun theHighestPortIsNoRotatorPort() {
+        // PSTRotator answers on port + 1, so the setter stores 1..65534 only and would
+        // replace 65535 by its factory default without a word.
+        val target = allOff()
+        val answers = WizardIntegrations(target)
+        answers.rotator = true
+
+        answers.rotatorPort = 65535
+        assertFalse(answers.gearComplete, "65535 would be stored as 12000")
+
+        answers.rotatorPort = 65534
+        assertTrue(answers.gearComplete)
+        answers.writeGearTo(target)
+        assertEquals(65534, target.getStn_pstRotatorPort(), "an accepted port is stored as entered")
+
+        answers.rotatorPort = 0
+        assertFalse(answers.gearComplete)
+    }
+
+    @Test
+    fun loadingAgainPutsTheDetailsBackToTheStoredOnes() {
+        val answers = WizardIntegrations(winTestStation())
+        val storedFilePath = answers.filePath
+        answers.udpPort = 1
+        answers.wintestPort = 2
+        answers.wintestStationName = "typed"
+        answers.filePath = "/typed"
+        answers.rotatorHost = "typed"
+        answers.rotatorPort = 3
+        answers.airScoutPort = 4
+        answers.airScoutServerName = "typed"
+        answers.airScoutClientName = "typed"
+
+        answers.loadFresh()
+
+        assertEquals(12060, answers.udpPort)
+        assertEquals(9999, answers.wintestPort)
+        assertEquals("KST", answers.wintestStationName)
+        assertEquals(storedFilePath, answers.filePath)
+        assertEquals("127.0.0.1", answers.rotatorHost)
+        assertEquals(12000, answers.rotatorPort)
+        assertEquals(9872, answers.airScoutPort)
+        assertEquals("AS", answers.airScoutServerName)
+        assertEquals("KST", answers.airScoutClientName)
+
+        answers.filePath = "/typed"
+        answers.rotatorPort = 3
+        answers.loadStored()
+
+        assertEquals(storedFilePath, answers.filePath)
+        assertEquals(12000, answers.rotatorPort)
+    }
+
+    @Test
+    fun theStoredSwitchesAreKnownWhateverTheLogProgram() {
+        // The settings window lets the DX cluster server and a frequency source run without
+        // a log source; the page's own answers cannot express that.
+        val answers = WizardIntegrations(allOff {
+            setNotify_dxClusterServerEnabled(true)
+            setTrxSynch_ucxLogUDPListenerEnabled(true)
+        })
+
+        assertEquals(WizardLogProgram.NONE, answers.logProgram)
+        assertFalse(answers.clusterServer, "the page shows none of it")
+        assertTrue(answers.storedClusterServer)
+        assertTrue(answers.storedQrgFollow)
+
+        val off = WizardIntegrations(allOff())
+        assertFalse(off.storedClusterServer)
+        assertFalse(off.storedQrgFollow)
+    }
+}

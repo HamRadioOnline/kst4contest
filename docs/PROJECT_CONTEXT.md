@@ -400,6 +400,29 @@ section records only the durable architecture and operational boundaries.
 - The station map is a Compose canvas that fetches its own tiles. The JavaFX WebView, the bundled Leaflet resources, the CSS-3D-transform workaround and the `TileProxyServer` were removed with JavaFX; offline DEM, terrain packages and the profile cache are unaffected and must stay that way.
 - Deliberate test data, comments and Easter eggs are preserved unless explicitly changed.
 - Chat frames (issue #105, second slice): CH (live) and CR (history) go through one `MessageBusManagementThread.processChatFrame(fields, live)`. `classifyRoute` and `decideChatFrameEffects` are pure; history frames never play sounds, answer or spot, and keep their frequency extraction after publishing. Known oddities kept on purpose: TO_ME is case-sensitive, FROM_ME case-insensitive; the CR SERVER sender has no AirScout info.
+- **The setup wizard writes `preferences.xml` and does not touch a running session.** It runs
+  in `startRuntime` after the profile is resolved and before the `ChatController` exists, on
+  a `ChatPreferences` of its own, so what it stores is read like any stored setting. That is
+  why it needs neither `SettingsDraft` nor the tab states: there is no session to bring up to
+  date. From the menu the runtime is torn down first and the same profile restarted
+  (`ApplicationRuntimeLauncher.rerunSetupWizard`), which costs the session and asks first. A
+  profile counts as unconfigured when its callsign is empty or it still carries the bundled
+  template's credentials (`LoginConfiguration`); there is no flag for it in the file. It
+  asks for name, login, locator, bands and chat category, and optionally for antenna and
+  power, log program, rotator and AirScout. A station set up anew gets only what the
+  operator said yes to: the bundled template has several integrations on, and the wizard
+  switches them off and says so in its summary. That holds for a new
+  station also when the operator skips those pages with Finish: they are part of the run and
+  are written with their start values. A station left unchanged is the opposite case: a page
+  of it is written only if the operator opened it from the summary, which is what lets such a
+  profile keep several log sources as they are. Login and station can
+  each be taken from another configured profile; "station" then means every setting listed
+  in `app-desktop/src/test/resources/wizard-station-setters.txt`, also those no page asks
+  about, and a test fails when a new `ChatPreferences` setter is in neither that list nor
+  `wizard-other-setters.txt`. A new setting therefore needs that one decision: does another
+  operator at the same station inherit it. The other profile's file is only read, through
+  `ChatPreferences(Path)`, so a missing one is not seeded from the template. The reasons are
+  in `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
 
 ## Planned Technical Direction
 

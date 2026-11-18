@@ -18,10 +18,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.AwtWindow
+import java.awt.Dialog
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -125,32 +127,49 @@ internal fun FilePathRow(
     }
 }
 
-/**
- * The AWT file dialog, opened from Compose. The JavaFX chooser started in the user's
- * home directory and a cancelled choice kept the stored path — both are preserved.
- */
+/** The modal owner that keeps the native file chooser accessible when opened from the wizard. */
+val LocalFileDialogOwner = staticCompositionLocalOf<Dialog?> { null }
+
+/** The AWT file dialog, opened from Compose. */
 @Composable
 private fun FileChooserDialog(title: String, onResult: (String?) -> Unit) {
+    val owner = LocalFileDialogOwner.current
     AwtWindow(
         create = {
-            object : FileDialog(null as Frame?, title, LOAD) {
-                override fun setVisible(visible: Boolean) {
-                    if (visible) {
-                        directory = System.getProperty("user.home")
-                    }
-                    super.setVisible(visible)
-                    if (visible) {
-                        val chosenName = file
-                        onResult(
-                            if (chosenName == null) null
-                            else File(directory ?: "", chosenName).absolutePath
-                        )
-                    }
-                }
-            }
+            if (owner == null) LogFileDialog(title, onResult) else LogFileDialog(owner, title, onResult)
         },
         dispose = FileDialog::dispose,
     )
+}
+
+/**
+ * The JavaFX chooser started in the user's home directory and a cancelled choice kept the
+ * stored path. Both constructors share that behaviour.
+ */
+private class LogFileDialog : FileDialog {
+    private val onResult: (String?) -> Unit
+
+    constructor(title: String, onResult: (String?) -> Unit) : super(null as Frame?, title, LOAD) {
+        this.onResult = onResult
+    }
+
+    constructor(owner: Dialog, title: String, onResult: (String?) -> Unit) : super(owner, title, LOAD) {
+        this.onResult = onResult
+    }
+
+    override fun setVisible(visible: Boolean) {
+        if (visible) {
+            directory = System.getProperty("user.home")
+        }
+        super.setVisible(visible)
+        if (visible) {
+            val chosenName = file
+            onResult(
+                if (chosenName == null) null
+                else File(directory ?: "", chosenName).absolutePath
+            )
+        }
+    }
 }
 
 /** The label column width the shared form controls use, so the tabs line up. */

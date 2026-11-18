@@ -55,6 +55,9 @@ interface MainMenuActions {
     fun setQrgAsNameInChat()
     fun toggleAwayState()
     fun toggleSettingsWindow()
+
+    /** Ends the session after asking and runs the setup wizard for the active profile. */
+    fun openSetupWizard()
     fun toggleMonitorWindow()
     fun toggleStationMap()
     fun useDarkDesign()

@@ -2601,6 +2601,8 @@ public class ChatPreferences {
 	 */
 	public boolean readPreferencesFromXmlFile() {
 
+		boolean readable = true;
+
 		System.out.println("[ChatPreferences, Info]: restoring prefs from file " + storeAndRestorePreferencesFileName);
 
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -2617,6 +2619,10 @@ public class ChatPreferences {
 
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			Document doc = db.parse(xmlConfigFile);
+			Element rootElement = doc.getDocumentElement();
+			if (rootElement == null || !"praktiKST".equals(rootElement.getTagName())) {
+				readable = false;
+			}
 			NodeList list;
 
 			// --- Schema version (optional) ---
@@ -3457,13 +3463,14 @@ public class ChatPreferences {
 
 
 		} catch (ParserConfigurationException | SAXException | IOException e) {
+			readable = false;
 			e.printStackTrace();
 			System.out.println(e.getCause());
 			System.out.println(e.getMessage());
 		}
 
 		initializeActualQtfFromDefaultIfRequired();
-		return true;
+		return readable;
 
 	}
 

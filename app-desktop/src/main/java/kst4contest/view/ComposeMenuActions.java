@@ -55,6 +55,11 @@ public final class ComposeMenuActions implements MainMenuActions {
     }
 
     @Override
+    public void openSetupWizard() {
+        application.runOnUi(application::menuActionOpenSetupWizard);
+    }
+
+    @Override
     public void toggleMonitorWindow() {
         application.runOnUi(application::menuActionToggleMonitorWindow);
     }

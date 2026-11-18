@@ -28,6 +28,7 @@ class MainMenuModelTest {
         override fun setQrgAsNameInChat() { calls += "setQrgAsNameInChat" }
         override fun toggleAwayState() { calls += "toggleAwayState" }
         override fun toggleSettingsWindow() { calls += "toggleSettingsWindow" }
+        override fun openSetupWizard() { calls += "openSetupWizard" }
         override fun toggleMonitorWindow() { calls += "toggleMonitorWindow" }
         override fun toggleStationMap() { calls += "toggleStationMap" }
         override fun useDarkDesign() { calls += "useDarkDesign" }
@@ -180,5 +181,20 @@ class MainMenuModelTest {
             actions.calls.size,
             "every item must reach an action; one of them did nothing",
         )
+    }
+
+    @Test
+    fun theSetupAssistantIsReachableFromOptionsWhateverTheConnection() {
+        for (connectionState in On4KstConnectionState.values()) {
+            val actions = RecordingActions()
+            val model = model(connectionState = connectionState, actions = actions)
+            val entry = items(model.single { it.title == "Options" }).single { it.label == "Setup assistant..." }
+
+            // Like the profile switch: it gives the session up itself, after asking.
+            assertTrue(entry.enabled, "the assistant must be reachable while $connectionState")
+
+            entry.onClick()
+            assertEquals("openSetupWizard", actions.calls.last())
+        }
     }
 }

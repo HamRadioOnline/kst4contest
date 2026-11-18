@@ -2,11 +2,57 @@
 
 > 🇬🇧 [English version](en-Configuration) | 🇩🇪 Du liest gerade die deutsche Version
 
-Nach dem ersten Start öffnet sich das **Einstellungsfenster** – dieses ist der zentrale Ausgangspunkt für alle Konfigurationen. Es empfiehlt sich, das Einstellungsfenster während des Betriebs geöffnet zu lassen (z. B. um den Beacon schnell ein- und auszuschalten).
+Beim ersten Start fragt der **Einrichtungsassistent** das Nötigste ab (siehe unten). Danach öffnet sich das **Einstellungsfenster** – dieses ist der zentrale Ausgangspunkt für alle Konfigurationen. Es empfiehlt sich, das Einstellungsfenster während des Betriebs geöffnet zu lassen (z. B. um den Beacon schnell ein- und auszuschalten).
 
 > **Wichtig**: Änderungen im Einstellungsfenster wirken, sobald **Apply/Close prefs** oder **Save Settings** gedrückt wird; **Connect** übernimmt sie ebenfalls vorher. Wer mit offenen Änderungen das Fenster schließt, das Profil wechselt oder das Programm beendet, wird zuerst gefragt, ob sie übernommen oder verworfen werden sollen, oder kann zurück. Farben, Sprache, die Anmeldedaten im Reiter **Station** und die beiden Beacon-Aktivierungsschalter wirken sofort.
 >
 > Fachliche Einstellungen mit **„Save Settings"** sichern, wenn sie beim nächsten Start wieder gelten sollen. Layoutänderungen wie Fenstergrößen, Divider-Positionen und Tabellenbreiten speichert KST4Contest automatisch. Die gemeinsame Datei liegt unter Linux und macOS in `~/.praktiKST/preferences.xml` und unter Windows in `%USERPROFILE%\.praktiKST\preferences.xml` (bzw. `C:\Users\<Benutzername>\.praktiKST\preferences.xml`).
+
+---
+
+## Einrichtungsassistent (ab v1.50)
+
+Solange ein Profil kein eigenes Rufzeichen hat, startet es mit dem Einrichtungsassistenten. Das gilt für die erste Installation und für jedes neu angelegte oder duplizierte Operator-Profil.
+
+Der Assistent fragt:
+
+1. **Persönliches** – Sprache und Anzeigename im Chat.
+2. **Anmeldung** – Rufzeichen und Passwort des ON4KST-Kontos.
+3. **Standort und Bänder** – Locator, aktive Bänder und Chatkategorie. Die Kategorie wird aus den Bändern vorgeschlagen und lässt sich ändern. Ein zweiter Chat ist freiwillig.
+4. **Antenne und Leistung** – freiwillig: Öffnungswinkel, Antennengewinn, Antennenhöhe, Sendeleistung und Standorthöhe. Die Werte speisen die Pfadanalyse; für den Chat braucht sie niemand.
+5. **Logprogramm** – keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST oder eine Logdatei. Port, Stationsname oder Datei erscheinen erst nach der Wahl und sind mit den gespeicherten Werten vorbelegt; eine schon eingetragene Logdatei muss also nicht neu gewählt werden. Mit einem Netzwerk-Logprogramm lässt sich außerdem die eigene Frequenz übernehmen und der lokale DX-Cluster-Server einschalten.
+6. **Rotor und AirScout** – je ein Schalter; Host, Port und Kennungen erscheinen erst, wenn er gesetzt ist.
+7. **Zusammenfassung** – erst **Speichern** schreibt die Einstellungen. **Speichern und verbinden** meldet danach gleich am Chat an.
+
+Sobald die Pflichtangaben gültig sind – Anzeigename, Anmeldung, Locator, mindestens ein Band, die Chatkategorie und bei eingeschaltetem Zweitchat dessen Kategorie –, führt **Fertig** direkt zur Zusammenfassung. Die Schritte 4 bis 6 lassen sich also überspringen. Steht auf einer dieser Seiten schon ein ungültiger Wert, etwa ein Port außerhalb des Bereichs, muss er erst berichtigt werden.
+
+Eine **neu eingerichtete** Station bekommt nur eingeschaltet, was im Assistenten bejaht wurde. Die mitgelieferte Vorlage hat Logabgleich, Frequenzübernahme, DX-Cluster-Server und AirScout an; der Assistent schaltet ab, was nicht gewählt wurde, und nennt es in der Zusammenfassung unter „Wird abgeschaltet".
+
+Gibt es schon ein eingerichtetes Profil oder hat das Profil selbst schon eine Station, fragt die erste Seite getrennt für **Anmeldung** und **Station**, woher die Angaben kommen:
+
+- **neu eingeben** – immer möglich; die Schritte erscheinen, eine neue Station beginnt leer;
+- **von einem anderen Profil übernehmen** – nur, wenn es ein anderes Profil mit eigener Anmeldung gibt; die Werte kommen aus dem gewählten Profil;
+- **unverändert lassen** – das Profil behält, was es hat. Für die Anmeldung gibt es das nur, wenn das Profil schon eine eigene hat; für die Station immer, solange das Profil nicht mehr die mitgelieferten Anmeldedaten der Vorlage trägt, also nicht bei einer frischen Installation.
+
+Anmeldung und Station werden unabhängig gewählt und können aus verschiedenen Profilen kommen.
+
+Damit sind die üblichen Fälle mit wenigen Klicks erledigt:
+
+| Fall | Anmeldung | Station |
+|---|---|---|
+| Mehrmannbetrieb, gemeinsames Rufzeichen | übernehmen | übernehmen |
+| Mehrmannbetrieb, eigenes Rufzeichen | neu | übernehmen |
+| Ein Operator, mehrere Standorte | übernehmen | neu |
+
+Übernommen wird beim Punkt **Station** die ganze Station: Locator, Bänder, das Ausweichband für Spots, Chatkategorien, Antennen- und Pfadanalysewerte, QTF-Vorgabe und größte Entfernung, alle Logquellen, die Frequenzübernahme samt SO2R, der lokale DX-Cluster-Server, Rotoren und AirScout – auch Einzelheiten, die der Assistent nie fragt. Sprache, Anzeigename, Fensteranordnung, Farben, Kurzbefehle und Baken gehören zum Operator und werden nie übernommen, ebenso wenig das Spotter-Rufzeichen des DX-Cluster-Servers. Schaltet das Übernehmen etwas ab, das im eigenen Profil eingeschaltet war, steht es in der Zusammenfassung unter „Wird abgeschaltet".
+
+Übernommene Werte lassen sich in der Zusammenfassung über **Ändern** anpassen, etwa ein `/P` am Rufzeichen. Ändern lässt sich dort, was der Assistent auch fragt; übernommene Einzelheiten wie Rotor 2, SO2R oder die Win-Test-Feineinstellungen ändert man im Einstellungsfenster. Schaltet das Übernehmen SO2R oder Rotor 2 ab, steht auch das unter „Wird abgeschaltet". Die Zusammenfassung zeigt außerdem das Ausweichband für Spots, das mit der Station kommt. Eine Ausnahme: Hat die übernommene Station mehrere Logquellen zugleich eingeschaltet, kommen alle an, die Seite „Logprogramm" lässt sich dann aber nicht öffnen, weil sie nur eine Quelle kennt; solche Änderungen macht man im Einstellungsfenster. Das andere Profil wird nur gelesen und nie verändert. Angeboten werden nur Profile, die selbst eine Anmeldung haben.
+
+**Später** schließt den Assistenten, ohne etwas zu schreiben. Er erscheint beim nächsten Start des Profils wieder, solange das Rufzeichen fehlt.
+
+Über **Options → Einrichtungsassistent...** lässt er sich jederzeit erneut aufrufen. Dabei wird die laufende Sitzung nach einer Rückfrage beendet und das Profil neu gestartet. Für einzelne Änderungen im Betrieb ist das Einstellungsfenster gedacht.
+
+Bleibt die Station **unverändert**, fasst der Assistent Antenne, Logprogramm, Rotor und AirScout nicht an, solange die zugehörige Seite nicht über **Ändern** geöffnet wird. Sind im Profil mehrere Logquellen zugleich eingeschaltet, lässt sich die Seite „Logprogramm" nicht öffnen: sie kennt nur eine Quelle. Solche Stationen stellt man weiter im Einstellungsfenster ein.
 
 ---
 

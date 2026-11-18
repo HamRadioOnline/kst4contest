@@ -2,11 +2,57 @@
 
 > 🇬🇧 You are reading the English version | 🇩🇪 [Deutsche Version](de-Konfiguration)
 
-After the first start, the **settings window** opens – this is the central starting point for all configuration. It is recommended to keep the settings window open during operation (e.g. to quickly toggle the beacon on and off).
+On the first start, the **setup assistant** asks for the essentials (see below). After that the **settings window** opens – this is the central starting point for all configuration. It is recommended to keep the settings window open during operation (e.g. to quickly toggle the beacon on and off).
 
 > **Important**: Changes in the settings window take effect when you click **Apply/Close prefs** or **Save Settings**; **Connect** applies them first as well. Closing the window, switching the operator profile or exiting with changes pending first asks whether to apply or discard them, or to go back. Colours, the language, the login data on the **Station** tab and both beacon enable settings take effect immediately.
 >
 > Use **Save Settings** for functional settings which should remain in effect after the next start. KST4Contest saves layout changes such as window sizes, divider positions and table-column widths automatically. The shared file is `~/.praktiKST/preferences.xml` on Linux and macOS and `%USERPROFILE%\.praktiKST\preferences.xml` (or `C:\Users\<Username>\.praktiKST\preferences.xml`) on Windows.
+
+---
+
+## Setup Assistant (since v1.50)
+
+As long as a profile has no callsign of its own, it starts with the setup assistant. This applies to the first installation and to every newly created or duplicated operator profile.
+
+The assistant asks for:
+
+1. **Personal** – language and the name shown in the chat.
+2. **Login** – callsign and password of the ON4KST account.
+3. **Location and bands** – locator, active bands and chat category. The category is suggested from the bands and can be changed. A second chat is optional.
+4. **Antenna and power** – optional: beam width, antenna gain, antenna height, transmit power and site elevation. These values feed the path analysis; the chat does not need them.
+5. **Log program** – none, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, or a log file. Port, station name or file appear only after the choice and start from the stored values, so a log file that is already entered need not be chosen again. With a network log program you can also take your own frequency from it and enable the local DX cluster server.
+6. **Rotator and AirScout** – one switch each; host, port and identifiers appear only once it is set.
+7. **Summary** – nothing is written until you click **Save**. **Save and connect** logs into the chat right afterwards.
+
+As soon as the required entries are valid – name, login, locator, at least one band, the chat category and, with a second chat enabled, its category – **Finish** leads straight to the summary. Steps 4 to 6 can be skipped. If one of those pages already holds an invalid value, such as a port out of range, it has to be corrected first.
+
+A station that is **set up anew** gets only what was confirmed in the assistant. The bundled template has log synchronisation, frequency takeover, DX cluster server and AirScout enabled; the assistant switches off what was not chosen and names it in the summary under "Will be switched off".
+
+If a configured profile already exists, or the profile itself already has a station, the first page asks separately for **login** and **station** where the entries come from:
+
+- **enter new** – always possible; the steps appear, a new station starts empty;
+- **take from another profile** – only if another profile with a login of its own exists; the values come from the chosen profile;
+- **leave unchanged** – the profile keeps what it has. For the login this is offered only if the profile already has one of its own; for the station always, as long as the profile no longer carries the bundled template login, that is, not on a fresh installation.
+
+Login and station are chosen independently and may come from different profiles.
+
+This settles the usual cases with a few clicks:
+
+| Case | Login | Station |
+|---|---|---|
+| Multi-operator, shared callsign | take | take |
+| Multi-operator, own callsign | new | take |
+| One operator, several sites | take | new |
+
+For **station**, the whole station is taken: locator, bands, the fallback band for spots, chat categories, antenna and path-analysis values, default QTF and maximum distance, all log sources, frequency takeover including SO2R, the local DX cluster server, rotators and AirScout – including details the assistant never asks about. Language, display name, window layout, colours, shortcuts and beacons belong to the operator and are never taken, nor is the spotter callsign of the DX cluster server. If taking over switches off something that was enabled in the own profile, the summary lists it under "Will be switched off".
+
+Taken values can be adjusted in the summary through **Change**, for example a `/P` on the callsign. What can be changed there is what the assistant asks about; taken details such as rotator 2, SO2R or the Win-Test fine settings are changed in the settings window. If taking over switches off SO2R or rotator 2, that is listed under "Will be switched off" too. The summary also shows the fallback band for spots that comes with the station. One exception: if the taken station has several log sources enabled at once, all of them arrive, but the "Log program" page then cannot be opened, because it knows one source only; such changes are made in the settings window. The other profile is only read and never changed. Only profiles that have a login of their own are offered.
+
+**Later** closes the assistant without writing anything. It appears again on the next start of the profile as long as the callsign is missing.
+
+**Options → Setup assistant...** opens it again at any time. This ends the running session after a confirmation and restarts the profile. Use the settings window for single changes during operation.
+
+If the station is left **unchanged**, the assistant does not touch antenna, log program, rotator and AirScout unless the corresponding page is opened through **Change**. If several log sources are enabled in the profile at once, the "Log program" page cannot be opened: it knows one source only. Such stations are still configured in the settings window.
 
 ---
 
