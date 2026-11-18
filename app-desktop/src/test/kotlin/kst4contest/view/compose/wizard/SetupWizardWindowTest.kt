@@ -29,28 +29,35 @@ class SetupWizardWindowTest {
     private val closer = Executors.newSingleThreadExecutor()
 
     /** Closes the dialog the way its X does, as soon as it is on screen. */
-    private fun disposeOnceShowing(): Future<*> =
+    private fun closeOnceShowing(): Future<*> =
         closer.submit {
             awaitUntil(Duration.ofSeconds(10), "the wizard's dialog never appeared") {
                 showingDialog() != null
             }
-            EventQueue.invokeLater { showingDialog()?.dispose() }
+            EventQueue.invokeLater {
+                val window = showingDialog()
+                window?.dispatchEvent(java.awt.event.WindowEvent(window, java.awt.event.WindowEvent.WINDOW_CLOSING))
+            }
         }
 
     @Test
     fun closingTheWindowCountsAsLater() {
         assumeFalse(GraphicsEnvironment.isHeadless(), "needs a display")
 
+        val worker = Executors.newSingleThreadExecutor()
         try {
-            val closing = disposeOnceShowing()
+            val closing = closeOnceShowing()
             val prefs = prefs()
+            val call = worker.submit<SetupWizardOutcome> { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
 
-            val outcome = SetupWizardWindow.show(SetupWizardState(prefs), prefs)
+            // A dialog that never appears must fail the test, not hang it.
+            val outcome = call.get(20, TimeUnit.SECONDS)
 
             assertEquals(SetupWizardOutcome.LATER, outcome)
             assertEquals("", prefs.getStn_loginCallSign(), "closing the window wrote something")
             closing.get(1, TimeUnit.SECONDS)
         } finally {
+            worker.shutdownNow()
             closer.shutdownNow()
         }
     }
@@ -61,7 +68,7 @@ class SetupWizardWindowTest {
 
         val worker = Executors.newSingleThreadExecutor()
         try {
-            val closing = disposeOnceShowing()
+            val closing = closeOnceShowing()
             val prefs = prefs()
             val call = worker.submit {
                 EventQueue.invokeAndWait { SetupWizardWindow.show(SetupWizardState(prefs), prefs) }
