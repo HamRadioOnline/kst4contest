@@ -20,11 +20,11 @@ The assistant asks for:
 2. **Login** – callsign and password of the ON4KST account.
 3. **Location and bands** – locator, active bands and chat category. The category is suggested from the bands and can be changed. A second chat is optional.
 4. **Antenna and power** – optional: beam width, antenna gain, antenna height, transmit power and site elevation. These values feed the path analysis; the chat does not need them.
-5. **Log program** – none, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, or a log file. Port, station name or file appear only after the choice. With a network log program you can also take your own frequency from it and enable the local DX cluster server.
+5. **Log program** – none, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST, or a log file. Port, station name or file appear only after the choice and start from the stored values, so a log file that is already entered need not be chosen again. With a network log program you can also take your own frequency from it and enable the local DX cluster server.
 6. **Rotator and AirScout** – one switch each; host, port and identifiers appear only once it is set.
 7. **Summary** – nothing is written until you click **Save**. **Save and connect** logs into the chat right afterwards.
 
-As soon as login, locator, at least one band and the chat category are there, **Finish** leads straight to the summary. Steps 4 to 6 can be skipped.
+As soon as the required entries are valid – name, login, locator, at least one band, the chat category and, with a second chat enabled, its category – **Finish** leads straight to the summary. Steps 4 to 6 can be skipped. If one of those pages already holds an invalid value, such as a port out of range, it has to be corrected first.
 
 A station that is **set up anew** gets only what was confirmed in the assistant. The bundled template has log synchronisation, frequency takeover, DX cluster server and AirScout enabled; the assistant switches off what was not chosen and names it in the summary under "Will be switched off".
 

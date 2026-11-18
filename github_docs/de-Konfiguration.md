@@ -20,11 +20,11 @@ Der Assistent fragt:
 2. **Anmeldung** – Rufzeichen und Passwort des ON4KST-Kontos.
 3. **Standort und Bänder** – Locator, aktive Bänder und Chatkategorie. Die Kategorie wird aus den Bändern vorgeschlagen und lässt sich ändern. Ein zweiter Chat ist freiwillig.
 4. **Antenne und Leistung** – freiwillig: Öffnungswinkel, Antennengewinn, Antennenhöhe, Sendeleistung und Standorthöhe. Die Werte speisen die Pfadanalyse; für den Chat braucht sie niemand.
-5. **Logprogramm** – keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST oder eine Logdatei. Port, Stationsname oder Datei erscheinen erst nach der Wahl. Mit einem Netzwerk-Logprogramm lässt sich außerdem die eigene Frequenz übernehmen und der lokale DX-Cluster-Server einschalten.
+5. **Logprogramm** – keines, Win-Test, UCXLog/DXLog.net/N1MM+/QARTEST oder eine Logdatei. Port, Stationsname oder Datei erscheinen erst nach der Wahl und sind mit den gespeicherten Werten vorbelegt; eine schon eingetragene Logdatei muss also nicht neu gewählt werden. Mit einem Netzwerk-Logprogramm lässt sich außerdem die eigene Frequenz übernehmen und der lokale DX-Cluster-Server einschalten.
 6. **Rotor und AirScout** – je ein Schalter; Host, Port und Kennungen erscheinen erst, wenn er gesetzt ist.
 7. **Zusammenfassung** – erst **Speichern** schreibt die Einstellungen. **Speichern und verbinden** meldet danach gleich am Chat an.
 
-Sobald Anmeldung, Locator, mindestens ein Band und die Chatkategorie stehen, führt **Fertig** direkt zur Zusammenfassung. Die Schritte 4 bis 6 lassen sich also überspringen.
+Sobald die Pflichtangaben gültig sind – Anzeigename, Anmeldung, Locator, mindestens ein Band, die Chatkategorie und bei eingeschaltetem Zweitchat dessen Kategorie –, führt **Fertig** direkt zur Zusammenfassung. Die Schritte 4 bis 6 lassen sich also überspringen. Steht auf einer dieser Seiten schon ein ungültiger Wert, etwa ein Port außerhalb des Bereichs, muss er erst berichtigt werden.
 
 Eine **neu eingerichtete** Station bekommt nur eingeschaltet, was im Assistenten bejaht wurde. Die mitgelieferte Vorlage hat Logabgleich, Frequenzübernahme, DX-Cluster-Server und AirScout an; der Assistent schaltet ab, was nicht gewählt wurde, und nennt es in der Zusammenfassung unter „Wird abgeschaltet".
 

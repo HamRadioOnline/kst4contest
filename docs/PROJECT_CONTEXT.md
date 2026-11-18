@@ -411,9 +411,11 @@ section records only the durable architecture and operational boundaries.
   asks for name, login, locator, bands and chat category, and optionally for antenna and
   power, log program, rotator and AirScout. A station set up anew gets only what the
   operator said yes to: the bundled template has several integrations on, and the wizard
-  switches them off and says so in its summary. A page that was not shown in a run is not
-  written, which is what lets "leave the station unchanged" keep a profile with several log
-  sources as it is. The reasons and the open stage 3 are in
+  switches them off and says so in its summary. That holds for a new
+  station also when the operator skips those pages with Finish: they are part of the run and
+  are written with their start values. A station left unchanged is the opposite case: a page
+  of it is written only if the operator opened it from the summary, which is what lets such a
+  profile keep several log sources as they are. The reasons and the open stage 3 are in
   `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
 
 ## Planned Technical Direction

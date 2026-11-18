@@ -107,12 +107,18 @@ Schritt öffnen und ändern. Ein übernommenes Rufzeichen bekommt so sein `/P`.
 
 Eine Ausnahme hat das Logprogramm. Das Einstellungsfenster erlaubt mehrere Logquellen
 zugleich, die Frage des Assistenten nur eine. Hat ein unverändert gelassenes Profil mehr als
-eine Quelle eingeschaltet, zeigt die Zusammenfassung das an und lässt die Seite zu: sie
-würde beim Öffnen alle Quellen bis auf eine abschalten.
+eine Quelle eingeschaltet, zeigt die Zusammenfassung das an und hält die Seite geschlossen:
+sie würde beim Öffnen alle Quellen bis auf eine abschalten.
 
-**Geschrieben wird nur, was gezeigt wurde.** Bleibt die Station unverändert und öffnet der
-Nutzer weder Antenne noch Logprogramm noch Rotor und AirScout, fasst der Assistent diese
-Einstellungen nicht an.
+**Bei einer unverändert gelassenen Station wird nur geschrieben, was geöffnet wurde.**
+Öffnet der Nutzer weder Antenne noch Logprogramm noch Rotor und AirScout, fasst der
+Assistent diese Einstellungen nicht an. Die Zusammenfassung zeigt dann, was im Profil steht,
+auch wo das Einstellungsfenster mehr erlaubt als die Fragen des Assistenten: einen
+DX-Cluster-Server oder eine Frequenzquelle ohne Logquelle.
+
+Bei einer **neu eingerichteten** Station gehören alle Seiten zum Lauf. Wer sie mit „Fertig"
+überspringt, bekommt ihre Startwerte geschrieben: Integrationen aus, Antennenwerte wie
+gespeichert.
 
 Die **Startwerte des Assistenten** für eine neue Station sind bewusst nicht die der Vorlage:
 kein Band gewählt, Locator leer, kein Zweitchat, kein Logprogramm, kein lokaler
