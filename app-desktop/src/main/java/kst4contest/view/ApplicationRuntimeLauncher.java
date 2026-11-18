@@ -111,6 +111,11 @@ public final class ApplicationRuntimeLauncher {
      * other way round: a runtime shutting down flushes its pending layout write, and that
      * must not land on the file the wizard has just written.</p>
      *
+     * <p>The wizard is requested only once this call owns the switch. A call refused
+     * because a switch is already under way therefore leaves that switch's request alone:
+     * clearing it would let the running switch end the session and then start without the
+     * wizard it was made for.</p>
+     *
      * @return true if the new runtime was built
      */
     public static boolean rerunSetupWizard() {
@@ -120,16 +125,25 @@ public final class ApplicationRuntimeLauncher {
             return false;
         }
 
-        requestSetupWizard();
+        if (!beginSwitch()) {
+            return false;
+        }
+
         try {
-            boolean switched = switchProfile(active.getProfile());
-            if (!switched) {
-                consumeSetupWizardRequest();
+            requestSetupWizard();
+
+            boolean switched = false;
+            try {
+                switched = performSwitch(active.getProfile());
+            } finally {
+                if (!switched) {
+                    // The request is this call's own, and no start consumed it.
+                    consumeSetupWizardRequest();
+                }
             }
             return switched;
-        } catch (RuntimeException e) {
-            consumeSetupWizardRequest();
-            throw e;
+        } finally {
+            endSwitch();
         }
     }
 
@@ -137,7 +151,8 @@ public final class ApplicationRuntimeLauncher {
      * Replaces the running runtime with one bound to another operator profile.
      *
      * @param targetProfile profile to activate
-     * @return true if the new runtime was built
+     * @return true if the new runtime was built; false also when another switch is
+     *         already under way
      */
     public static boolean switchProfile(final OperatorProfile targetProfile) {
 
@@ -146,36 +161,42 @@ public final class ApplicationRuntimeLauncher {
         }
 
         try {
-            if (targetProfile == null) {
-                return false;
-            }
-
-            new OperatorProfileStore().recordLastUsed(targetProfile.getProfileId());
-
-            if (currentRuntime != null) {
-                currentRuntime.shutdownRuntime();
-            }
-
-            ActiveOperatorProfile.set(OperatorProfilePaths.resolve(targetProfile));
-
-            Kst4ContestApplication nextRuntime = new Kst4ContestApplication();
-
-            try {
-                nextRuntime.startRuntime();
-            } catch (Exception e) {
-                // The previous runtime is already gone, so there is nothing left to return to.
-                LOGGER.log(Level.SEVERE, "Could not start the selected operator profile", e);
-                Kst4ContestApplication.alertWindowEvent(
-                        "The operator profile could not be started: " + e.getMessage()
-                                + "\n\nKST4Contest has to be closed.");
-                System.exit(1);
-                return false;
-            }
-
-            setCurrent(nextRuntime);
-            return true;
+            return performSwitch(targetProfile);
         } finally {
             endSwitch();
         }
+    }
+
+    /** The switch itself. The caller holds the switch-in-progress mark. */
+    private static boolean performSwitch(final OperatorProfile targetProfile) {
+
+        if (targetProfile == null) {
+            return false;
+        }
+
+        new OperatorProfileStore().recordLastUsed(targetProfile.getProfileId());
+
+        if (currentRuntime != null) {
+            currentRuntime.shutdownRuntime();
+        }
+
+        ActiveOperatorProfile.set(OperatorProfilePaths.resolve(targetProfile));
+
+        Kst4ContestApplication nextRuntime = new Kst4ContestApplication();
+
+        try {
+            nextRuntime.startRuntime();
+        } catch (Exception e) {
+            // The previous runtime is already gone, so there is nothing left to return to.
+            LOGGER.log(Level.SEVERE, "Could not start the selected operator profile", e);
+            Kst4ContestApplication.alertWindowEvent(
+                    "The operator profile could not be started: " + e.getMessage()
+                            + "\n\nKST4Contest has to be closed.");
+            System.exit(1);
+            return false;
+        }
+
+        setCurrent(nextRuntime);
+        return true;
     }
 }

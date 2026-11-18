@@ -43,15 +43,41 @@ class ApplicationRuntimeLauncherSetupWizardTest {
     }
 
     @Test
-    void rerunSetupWizardWhileSwitchInProgressReturnsFalseAndClearsRequest() {
+    void aRefusedRerunLeavesTheRequestOfTheRunningSwitchAlone() {
         OperatorProfileSelection previous = ActiveOperatorProfile.get();
         OperatorProfile profile = new OperatorProfile("wizard-guard-test", "Wizard Guard Test", false, false);
         ActiveOperatorProfile.set(new OperatorProfileSelection(profile, "preferences.xml", "worked.db", false));
+
+        // A first rerun is under way: it holds the guard and its request waits for startRuntime.
+        assertTrue(ApplicationRuntimeLauncher.beginSwitch());
+        ApplicationRuntimeLauncher.requestSetupWizard();
+        try {
+            // A second one arrives while the first tears its windows down, and is refused.
+            assertFalse(ApplicationRuntimeLauncher.rerunSetupWizard());
+
+            assertTrue(ApplicationRuntimeLauncher.consumeSetupWizardRequest(),
+                    "the refused rerun took the running switch's request with it: that switch "
+                            + "would end the session and then start without the wizard");
+        } finally {
+            ApplicationRuntimeLauncher.endSwitch();
+            ApplicationRuntimeLauncher.consumeSetupWizardRequest();
+            ActiveOperatorProfile.set(previous);
+        }
+    }
+
+    @Test
+    void aRefusedRerunLeavesNoRequestOfItsOwn() {
+        OperatorProfileSelection previous = ActiveOperatorProfile.get();
+        OperatorProfile profile = new OperatorProfile("wizard-guard-test", "Wizard Guard Test", false, false);
+        ActiveOperatorProfile.set(new OperatorProfileSelection(profile, "preferences.xml", "worked.db", false));
+
+        // A plain profile switch is under way; nobody asked for the wizard.
         assertTrue(ApplicationRuntimeLauncher.beginSwitch());
         try {
             assertFalse(ApplicationRuntimeLauncher.rerunSetupWizard());
+
             assertFalse(ApplicationRuntimeLauncher.consumeSetupWizardRequest(),
-                    "a refused rerun must not leave a wizard request behind");
+                    "a refused rerun must not hand its wizard to the switch that refused it");
         } finally {
             ApplicationRuntimeLauncher.endSwitch();
             ApplicationRuntimeLauncher.consumeSetupWizardRequest();
