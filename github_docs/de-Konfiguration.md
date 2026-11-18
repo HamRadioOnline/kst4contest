@@ -28,7 +28,23 @@ Sobald die Pflichtangaben gültig sind – Anzeigename, Anmeldung, Locator, mind
 
 Eine **neu eingerichtete** Station bekommt nur eingeschaltet, was im Assistenten bejaht wurde. Die mitgelieferte Vorlage hat Logabgleich, Frequenzübernahme, DX-Cluster-Server und AirScout an; der Assistent schaltet ab, was nicht gewählt wurde, und nennt es in der Zusammenfassung unter „Wird abgeschaltet".
 
-Hat das Profil schon eine Station (etwa nach dem Duplizieren), fragt die erste Seite, ob sie **unverändert** bleiben oder **neu eingerichtet** werden soll. So braucht ein weiterer Operator an derselben Station nur Namen und Anmeldung einzutragen.
+Gibt es schon ein eingerichtetes Profil oder hat das Profil selbst schon eine Station, fragt die erste Seite getrennt für **Anmeldung** und **Station**, woher die Angaben kommen:
+
+- **neu eingeben** – die Schritte erscheinen, eine neue Station beginnt leer;
+- **von einem anderen Profil übernehmen** – die Werte kommen aus dem gewählten Profil;
+- **unverändert lassen** – das Profil behält, was es hat.
+
+Damit sind die üblichen Fälle mit wenigen Klicks erledigt:
+
+| Fall | Anmeldung | Station |
+|---|---|---|
+| Mehrmannbetrieb, gemeinsames Rufzeichen | übernehmen | übernehmen |
+| Mehrmannbetrieb, eigenes Rufzeichen | neu | übernehmen |
+| Ein Operator, mehrere Standorte | übernehmen | neu |
+
+Übernommen wird beim Punkt **Station** die ganze Station: Locator, Bänder, das Ausweichband für Spots, Chatkategorien, Antennen- und Pfadanalysewerte, Logprogramm, Rotoren und AirScout, auch Einzelheiten, die der Assistent nie fragt. Sprache, Anzeigename, Fensteranordnung, Farben, Kurzbefehle und Baken gehören zum Operator und werden nie übernommen. Schaltet das Übernehmen etwas ab, das im eigenen Profil eingeschaltet war, steht es in der Zusammenfassung unter „Wird abgeschaltet".
+
+Übernommene Werte lassen sich in der Zusammenfassung über **Ändern** anpassen, etwa ein `/P` am Rufzeichen. Das andere Profil wird dabei nur gelesen und nie verändert. Angeboten werden nur Profile, die selbst eine Anmeldung haben.
 
 **Später** schließt den Assistenten, ohne etwas zu schreiben. Er erscheint beim nächsten Start des Profils wieder, solange das Rufzeichen fehlt.
 

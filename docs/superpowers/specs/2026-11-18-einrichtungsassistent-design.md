@@ -204,6 +204,15 @@ Im Einzelnen:
   und belegt die Antworten der Gruppe damit vor. Geschrieben wird nur in das aktive Profil.
   `duplicateProfile` bleibt unverändert und löscht die Anmeldedaten weiterhin: das
   Duplizieren kopiert sie nie von selbst, im Assistenten wählt der Nutzer es ausdrücklich.
+- **Was „Station" beim Übernehmen heißt**, steht Zeile für Zeile in
+  `app-desktop/src/test/resources/wizard-station-setters.txt`: jeder Setter von
+  `ChatPreferences` ist dort oder in `wizard-other-setters.txt` eingeordnet, und ein Test
+  schlägt fehl, wenn ein neuer Setter in keiner der beiden Listen steht. Übernommen wird die
+  ganze Station, auch was der Assistent nie fragt und was seine Fragen nicht ausdrücken
+  können (Rotor 2, SO2R, mehrere Logquellen). „Wird abgeschaltet" vergleicht dabei immer mit
+  dem eigenen Profil. Als Spender gilt nur ein Profil, dessen Datei vorhanden und lesbar ist
+  und das eine eigene Anmeldung hat; gelesen wird es über `ChatPreferences(Path)`, damit
+  eine fehlende Datei nicht aus der Vorlage angelegt wird.
 - **„Speichern und verbinden"** merkt sich den Wunsch; nach dem Start der Laufzeit geht er
   den Weg des Verbinden-Knopfs (`connectFromSettings`).
 
@@ -244,7 +253,7 @@ tatsächlichen Anmeldestatus.
    Startwerten, die Integrationen abschalten.
 3. „Von Profil X übernehmen".
 
-Stufe 1 und 2 sind umgesetzt. Offen ist Stufe 3.
+Alle drei Stufen sind umgesetzt.
 
 ## Unverändert
 

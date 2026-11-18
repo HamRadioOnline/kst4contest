@@ -415,8 +415,14 @@ section records only the durable architecture and operational boundaries.
   station also when the operator skips those pages with Finish: they are part of the run and
   are written with their start values. A station left unchanged is the opposite case: a page
   of it is written only if the operator opened it from the summary, which is what lets such a
-  profile keep several log sources as they are. The reasons and the open stage 3 are in
-  `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
+  profile keep several log sources as they are. Login and station can
+  each be taken from another configured profile; "station" then means every setting listed
+  in `app-desktop/src/test/resources/wizard-station-setters.txt`, also those no page asks
+  about, and a test fails when a new `ChatPreferences` setter is in neither that list nor
+  `wizard-other-setters.txt`. A new setting therefore needs that one decision: does another
+  operator at the same station inherit it. The other profile's file is only read, through
+  `ChatPreferences(Path)`, so a missing one is not seeded from the template. The reasons are
+  in `docs/superpowers/specs/2026-11-18-einrichtungsassistent-design.md`.
 
 ## Planned Technical Direction
 
