@@ -26,6 +26,13 @@ class SetupWizardWindowTest {
     private fun showingDialog(): Window? =
         Window.getWindows().firstOrNull { it.isShowing && it.javaClass.name.contains("ComposeDialog") }
 
+    /** Removes whatever dialog this test still has showing, without waiting and without failing again. */
+    private fun disposeLeftoverDialog() {
+        EventQueue.invokeLater {
+            showingDialog()?.dispose()
+        }
+    }
+
     private val closer = Executors.newSingleThreadExecutor()
 
     /** Closes the dialog the way its X does, as soon as it is on screen. */
@@ -57,6 +64,7 @@ class SetupWizardWindowTest {
             assertEquals("", prefs.getStn_loginCallSign(), "closing the window wrote something")
             closing.get(1, TimeUnit.SECONDS)
         } finally {
+            disposeLeftoverDialog()
             worker.shutdownNow()
             closer.shutdownNow()
         }
@@ -78,6 +86,7 @@ class SetupWizardWindowTest {
             call.get(20, TimeUnit.SECONDS)
             closing.get(1, TimeUnit.SECONDS)
         } finally {
+            disposeLeftoverDialog()
             worker.shutdownNow()
             closer.shutdownNow()
         }
