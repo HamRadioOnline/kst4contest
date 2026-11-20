@@ -59,6 +59,8 @@ $endif$
 \def\maxheight{\ifdim\Gin@nat@height>0.65\textheight 0.65\textheight\else\Gin@nat@height\fi}
 \makeatother
 \setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Newer Pandoc versions wrap images in this command. Graphicx already bounds them above.
+\providecommand{\pandocbounded}[1]{#1}
 
 %% ─── Tables ───────────────────────────────────────────────────────────────
 \usepackage{longtable}
